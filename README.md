@@ -72,14 +72,26 @@ Coming with the first stable release.
 
 ## Usage
 
-1. [Create a fine-grained token](https://github.com/settings/personal-access-tokens/new)
-   with read-only **Issues** and **Metadata** access to the repositories you care about.
-2. Click the sourceglance icon in the top bar and choose **Settings**.
-3. Paste the token into **Personal access token** and press the apply button. Settings
-   shows "Signed in as @you".
+1. Click the sourceglance icon in the top bar and choose **Settings**.
+2. Click **Sign in with GitHub**. sourceglance copies a short code and opens GitHub in your
+   browser; paste the code and approve. Settings shows "Signed in as @you".
+
+   This gives sourceglance access to issues, pull requests and project boards only, and
+   nothing else: no code, settings or admin access.
+3. Click **Choose repositories** and pick which repositories sourceglance may access. For
+   another person's private repository, its owner has to install the app there.
 4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
    everything assigned to you.
 5. Click the icon to see your issues; click any issue to open it in your browser.
+
+**More sign-in options** in Settings:
+
+- **Sign in with full access** reaches every repository you can, including other people's
+  private repositories, without anyone installing anything. GitHub has no read-only
+  option for this, so it also grants write access; sourceglance itself only ever reads.
+- **Personal access token**: paste a
+  [fine-grained token](https://github.com/settings/personal-access-tokens/new) with
+  read-only **Issues** and **Metadata** access.
 
 ## Roadmap
 

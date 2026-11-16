@@ -27,8 +27,15 @@ You can expect:
 
 ## Handling tokens safely
 
-- Use a **fine-grained** personal access token with read-only access to issues and
-  projects.
+- **Sign in with GitHub** (the default) is limited to Issues, Pull requests and Projects
+  (read and write) plus read-only Metadata, on the repositories you install it on. It has
+  no access to code, settings or administration. Revoke it under
+  **GitHub Settings → Applications → Authorized GitHub Apps**.
+- **Sign in with full access** is opt-in. It grants the `repo` scope, which also allows
+  writes, because GitHub has no read-only scope for private issues. sourceglance only sends
+  `GET` requests. Revoke it under **Authorized OAuth Apps**.
+- A **fine-grained** personal access token with read-only access is also supported. It
+  only sees the repositories you grant it.
 - sourceglance stores the token in the GNOME keyring, never in GSettings or plain files.
 - Never paste tokens into issues, logs or screenshots. If you leak one, revoke it right away
   in your GitHub settings.

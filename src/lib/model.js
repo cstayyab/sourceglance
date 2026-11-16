@@ -50,6 +50,76 @@ export function isSafeGitHubUrl(url) {
     return typeof url === 'string' && GITHUB_URL_RE.test(url);
 }
 
+// OAuth device flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow).
+// The default sign-in is a GitHub App limited to issues, pull requests and projects; it
+// takes no scope. The opt-in full-access
+// sign-in uses an OAuth App, and reading private issues there needs `repo`: OAuth Apps have
+// no read-only scope for that. sourceglance only ever sends GET requests to the API.
+export const FULL_ACCESS_SCOPE = 'repo';
+export const DEVICE_VERIFICATION_URL = 'https://github.com/login/device';
+export const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
+
+/** Page where the user picks which repositories a GitHub App may read, or null for a bad slug. */
+export function appInstallUrl(slug) {
+    return /^[a-z0-9](?:[a-z0-9-]{0,33}[a-z0-9])?$/.test(slug ?? '')
+        ? `https://github.com/apps/${slug}/installations/new`
+        : null;
+}
+
+/** application/x-www-form-urlencoded body from a plain object. */
+export function formEncode(fields) {
+    return Object.entries(fields)
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+}
+
+/**
+ * Validate GitHub's device-code response. Returns null if it is unusable. The verification
+ * link is untrusted data, so anything other than a github.com link falls back to the known one.
+ */
+export function parseDeviceCodeResponse(json) {
+    const {device_code: deviceCode, user_code: userCode} = json ?? {};
+    if (typeof deviceCode !== 'string' || !deviceCode ||
+        typeof userCode !== 'string' || !/^[A-Z0-9-]{4,16}$/.test(userCode))
+        return null;
+    const uri = json.verification_uri;
+    return {
+        deviceCode,
+        userCode,
+        verificationUri: isSafeGitHubUrl(uri) ? uri : DEVICE_VERIFICATION_URL,
+        expiresIn: positiveInt(json.expires_in, 900),
+        interval: positiveInt(json.interval, 5),
+    };
+}
+
+function positiveInt(value, fallback) {
+    return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+/**
+ * Classify one poll of the device-flow token endpoint. GitHub answers HTTP 200 with an
+ * `error` field while waiting.
+ *
+ * States: done (with token), pending, slow-down (with the new interval), expired, denied, error.
+ */
+export function classifyDeviceTokenResponse(json, interval) {
+    if (typeof json?.access_token === 'string' && json.access_token)
+        return {state: 'done', token: json.access_token};
+    switch (json?.error) {
+    case 'authorization_pending':
+        return {state: 'pending', interval};
+    case 'slow_down':
+        // GitHub sends the new interval; otherwise add the 5 s the spec asks for.
+        return {state: 'slow-down', interval: positiveInt(json.interval, interval + 5)};
+    case 'expired_token':
+        return {state: 'expired'};
+    case 'access_denied':
+        return {state: 'denied'};
+    default:
+        return {state: 'error', error: typeof json?.error === 'string' ? json.error : 'unknown'};
+    }
+}
+
 /** "https://api.github.com/repos/owner/name" → "owner/name" */
 export function repoFromApiUrl(url) {
     const match = /\/repos\/([^/]+\/[^/]+)$/.exec(url ?? '');

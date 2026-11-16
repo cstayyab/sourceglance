@@ -17,10 +17,11 @@ npm install
 ```
 src/
 ├── extension.js      # Lifecycle and refresh loop: created in enable(), destroyed in disable()
-├── prefs.js          # Settings window (libadwaita): token sign-in, filters
+├── prefs.js          # Settings window (libadwaita): GitHub / token sign-in, filters
 ├── lib/
+│   ├── config.js     # Build-time config: OAuth App client ID
 │   ├── indicator.js  # Panel button and menu (pure view: render(state))
-│   ├── github.js     # GitHub REST client (Soup 3)
+│   ├── github.js     # GitHub REST client and device-flow sign-in (Soup 3)
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
@@ -84,6 +85,53 @@ Decision logic is in `tools/installer/lib/plan.js` (no GNOME imports, tested by
 run inside a headless GNOME Shell with isolated `HOME`/`XDG_*` directories; use it to
 refresh `docs/images/setup-*.png`. Keep the wizard to GTK 4.14 / libadwaita 1.5 APIs so it
 runs on GNOME 46.
+
+## GitHub apps for sign-in
+
+Both sign-in buttons use the OAuth device flow, which needs a registered app's client ID
+in `src/lib/config.js`. Client IDs are public by design. Never generate a client secret
+for these apps: device flow doesn't need one, and sourceglance can't keep one secret.
+
+### GitHub App: "Sign in with GitHub" (default, issues, PRs and projects only)
+
+1. Go to [github.com/settings/apps](https://github.com/settings/apps) → **New GitHub App**.
+2. Name it (for example `sourceglance`). Use `https://github.com/omer-gh/sourceglance` for the
+   homepage and callback URL. Device flow doesn't use the callback.
+3. Uncheck **Expire user authorization tokens**: refreshing a token needs the client
+   secret.
+4. Check **Enable Device Flow**. Under **Webhook**, uncheck **Active**.
+5. Permissions, and leave everything else at **No access**:
+   - Repository: **Issues** and **Pull requests**: **Read and write**.
+   - Repository: **Metadata**: **Read-only** (GitHub requires it: repository names and
+     basic info).
+   - Organization: **Projects**: **Read and write**, for organization project boards.
+
+   This lets sourceglance comment on, close, label and assign issues and PRs and move
+   project items. It can't touch code, so it can't merge PRs: merging needs **Contents:
+   Read and write**, which also allows pushing code.
+6. **Where can this GitHub App be installed?** Choose **Any account**, so owners of other
+   repositories can install it for their collaborators.
+7. Create it. Put the **Client ID** in `GITHUB_APP_CLIENT_ID` and the URL name from
+   `https://github.com/apps/<slug>` in `GITHUB_APP_SLUG`.
+8. Install it on your account and pick the repositories it may read. Settings links to
+   this page as **Choose repositories**.
+
+The app's token can never do more than these permissions, and only on repositories where
+the app is installed. A collaborator's private repository needs its owner to install the
+app.
+
+### OAuth App: "Sign in with full access" (opt-in)
+
+1. Go to [github.com/settings/developers](https://github.com/settings/developers) →
+   **OAuth Apps** → **New OAuth App**.
+2. Name it `sourceglance`. Use `https://github.com/omer-gh/sourceglance` for both the homepage
+   and the callback URL.
+3. Register it, then check **Enable Device Flow** and save.
+4. Put the **Client ID** in `OAUTH_CLIENT_ID`.
+
+It asks for the `repo` scope, because OAuth Apps have no read-only scope for issues in
+private repositories. That reaches every repository you can, including others' private
+ones, but also allows writes. sourceglance only sends `GET` requests to the API.
 
 ## Run it locally by hand
 
