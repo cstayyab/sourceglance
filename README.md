@@ -63,6 +63,8 @@ Coming with the first stable release.
 | `v0.3.0` | Notifications and unread badge |
 | `v1.0.0` | Published on extensions.gnome.org |
 
+Details and acceptance criteria: [docs/product/roadmap.md](docs/product/roadmap.md).
+
 ## Contributing
 
 Contributions are welcome — bug reports, ideas, docs and code. Start with
