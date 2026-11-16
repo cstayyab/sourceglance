@@ -2,7 +2,7 @@
 import GLib from 'gi://GLib';
 import Secret from 'gi://Secret';
 
-import {UUID, backupsToPrune} from './plan.js';
+import {UUID, backupsToPrune, canRestartInSession} from './plan.js';
 import {
     PAYLOAD_EXTENSION_DIR, SETTINGS_PATH, backupsDir, exists, extensionDir, extensionsDir,
     installedVersion, mkdirp, packageMetadata, readJson, restartInShell, run, runOrThrow,
@@ -43,16 +43,18 @@ async function resetSettings(log) {
 }
 
 /**
- * After an update, run the new version in this session without logging out. Only when the
- * old install already had the loader (versions/current): older versions run their code from
- * the top-level files, which GNOME Shell keeps in memory until the next login. And only when
- * the running Shell has this very folder enabled.
+ * After an update, run the new version in this session without logging out, when that's
+ * safe (canRestartInSession in plan.js says when).
  */
-async function startNewVersion({hadLoader, target, log, progress}) {
+async function startNewVersion({hadLoader, hadDevBuild, target, log, progress}) {
     if (!hadLoader)
         return false;
+    if (hadDevBuild) {
+        log.write('A development build (make reload) was installed; log out to start the new version');
+        return false;
+    }
     const info = await shellExtensionInfo();
-    if (info?.state !== 'ACTIVE' || info.path !== target)
+    if (!canRestartInSession({hadLoader, hadDevBuild, info, target}))
         return false;
     progress(0.9, 'Starting the new version…');
     const restarted = await restartInShell();
@@ -72,6 +74,7 @@ export async function install({enableAfter = true, reset = false, log, progress 
     const version = packageMetadata()?.['version-name'];
     const previous = installedVersion();
     const hadLoader = exists(GLib.build_filenamev([target, 'versions', 'current']));
+    const hadDevBuild = exists(GLib.build_filenamev([target, 'dev', 'current']));
     let backup = null;
     let staged = false;
 
@@ -120,7 +123,7 @@ export async function install({enableAfter = true, reset = false, log, progress 
         throw new SetupError(e.message, {rolledBack});
     }
     // The files are in place; a failed restart only means waiting for the next login.
-    const restarted = await startNewVersion({hadLoader, target, log, progress});
+    const restarted = await startNewVersion({hadLoader, hadDevBuild, target, log, progress});
     progress(1, 'Done');
     return {restarted};
 }
