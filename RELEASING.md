@@ -5,7 +5,7 @@
 sourceglance follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
 
 | Bump | When | Example |
-|------|------|---------|
+| ------ | ------ | --------- |
 | `PATCH` | Bug fixes only, no new behaviour | `0.1.0` → `0.1.1` |
 | `MINOR` | New features, backwards compatible | `0.1.1` → `0.2.0` |
 | `MAJOR` | Breaking changes (removed settings, dropped GNOME versions) | `0.9.0` → `1.0.0` |

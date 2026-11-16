@@ -15,7 +15,7 @@ the GNOME top bar and answers two questions in one click: *What's assigned to me
 ## Who it's for
 
 | Persona | Needs | What success looks like |
-|---------|-------|-------------------------|
+| --------- | ------- | ------------------------- |
 | **Solo maintainer** (primary) | Track issues across a handful of personal and open source repos | Never opens a browser tab just to check assignments |
 | **Team developer** | Keep up with issues assigned across the team's org repos | Notices new assignments within one refresh cycle |
 | **Tech lead / PM** (v0.2+) | Watch a GitHub Projects board's columns | Knows board status without opening GitHub |
@@ -48,7 +48,7 @@ the GNOME top bar and answers two questions in one click: *What's assigned to me
 ## Success metrics
 
 | Metric | Target by v1.0 |
-|--------|----------------|
+| -------- | ---------------- |
 | Installs on extensions.gnome.org | 1,000 |
 | Rating on extensions.gnome.org | ≥ 4.5 |
 | Crash or "extension error" reports per release | 0 open for more than 14 days |

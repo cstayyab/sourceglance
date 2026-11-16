@@ -18,7 +18,7 @@ contribution too.
 Use one of the templates — blank issues are turned off:
 
 | Template | Use it for |
-|----------|------------|
+| ---------- | ------------ |
 | **Bug report** | Something is broken or behaves differently than documented |
 | **Feature request** | A new capability or a change to existing behaviour |
 | **Questions** | Use [Discussions](https://github.com/omer-gh/sourceglance/discussions), not issues |
@@ -32,7 +32,7 @@ A good bug report includes your Ubuntu version, GNOME Shell version
 Maintainers apply labels during triage:
 
 | Label | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `bug` | Confirmed defect |
 | `enhancement` | New feature or improvement |
 | `documentation` | Docs only |

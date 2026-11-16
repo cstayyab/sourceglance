@@ -7,9 +7,9 @@ sourceglance handles GitHub access tokens, so we take security reports seriously
 Only the latest release gets security fixes.
 
 | Version | Supported |
-|---------|-----------|
-| latest  | ✅ |
-| older   | ❌ |
+| --- | --- |
+| latest | ✅ |
+| older | ❌ |
 
 ## Reporting a vulnerability
 

@@ -89,7 +89,7 @@ The setup file also works from a terminal, for scripts or remote machines:
 ```
 
 | Command | Effect |
-|---------|--------|
+| --------- | -------- |
 | `--quiet --accept-license` | Install or upgrade without the wizard. Prints the license; passing `--accept-license` means you accept it, including that there is no warranty. |
 | `--quiet --accept-license --repair` | Reinstall |
 | `--quiet --uninstall` | Remove (a backup copy is kept) |
@@ -102,7 +102,7 @@ Exit codes: `0` success, `1` failed, `2` bad usage, `3` cancelled.
 ## Troubleshooting
 
 | Problem | Fix |
-|---------|-----|
+| --------- | ----- |
 | Double-clicking does nothing | Make sure **Executable as Program** is on (step 3). |
 | "AppImages require FUSE" | Run it from a terminal with `--appimage-extract-and-run`, or install FUSE: `sudo apt install fuse3`. |
 | System Check: GNOME Shell not supported | sourceglance needs GNOME Shell 46–50 (Ubuntu 24.04 or newer). |

@@ -6,7 +6,7 @@ automatically and what reviewers check by hand.
 ## Automated checks
 
 | Check | When | What it catches |
-|-------|------|-----------------|
+| ------- | ------ | ----------------- |
 | **CodeQL** (`codeql.yml`) | Every PR, push to `main`, weekly | Code-level vulnerabilities in JavaScript and in our GitHub Actions workflows |
 | **Dependency review** (`dependency-review.yml`) | Every PR | New dependencies with known vulnerabilities or incompatible licenses |
 | **Dependabot** (`dependabot.yml`) | Weekly | Outdated npm dev dependencies and GitHub Actions versions; security alerts |

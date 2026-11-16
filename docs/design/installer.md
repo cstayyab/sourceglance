@@ -12,7 +12,7 @@ The technology choice is recorded in [ADR 0005](../adr/0005-self-contained-insta
 ## What the user downloads
 
 | Release asset | Purpose |
-|---------------|---------|
+| --------------- | --------- |
 | `sourceglance-Setup-X.Y.Z-x86_64.AppImage` | **The installer** for most PCs (Intel/AMD). |
 | `sourceglance-Setup-X.Y.Z-aarch64.AppImage` | The installer for ARM PCs. |
 | `sourceglance@omer-gh.github.io.shell-extension.zip` | The plain extension, for manual installs. |
@@ -95,7 +95,7 @@ only to GitHub.
 ### 4. Setup Options
 
 | Option | Default | Notes |
-|--------|---------|-------|
+| -------- | --------- | ------- |
 | Install for | **Only for me** | "Everyone on this computer" shown disabled: *not supported yet* |
 | Location | `~/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io` | Read-only; this is where GNOME looks |
 | ☑ Turn on sourceglance after installation | on | Adds it to the enabled extensions |
@@ -107,7 +107,7 @@ Runs automatically and lists each check with ✓ / ✗, like a prerequisites pag
 stays disabled while any check fails.
 
 | Check | Failure text | Fix button |
-|-------|--------------|-----------|
+| ------- | -------------- | ----------- |
 | Not running as administrator | "Run Setup as your normal user. sourceglance installs only for you." | — |
 | GNOME Shell version supported | "sourceglance 0.1.0 supports GNOME Shell 46–50. You have 45." | — |
 | Package integrity | "The setup file is damaged. Download it again." | — |
@@ -151,7 +151,7 @@ When sourceglance is already installed, Setup opens on **Program Maintenance** i
 Welcome:
 
 | Installed | Choices |
-|-----------|---------|
+| ----------- | --------- |
 | Same version | ( ) **Repair** — reinstall the files · ( ) **Remove** — uninstall sourceglance |
 | Older version | Normal flow as an **Upgrade** (Welcome text changes) |
 | Newer version | Warning "A newer version (0.2.0) is installed." · ( ) **Downgrade** · ( ) **Remove** |
@@ -170,7 +170,7 @@ Features*), where it can be turned off or removed without Setup.
 The same file works from a terminal, like `msiexec`:
 
 | Option | Effect |
-|--------|--------|
+| -------- | -------- |
 | `--quiet --accept-license` | Unattended install with defaults; prints the license; still refuses root and runs every check |
 | `--repair`, `--uninstall` | Maintenance actions (add `--quiet` for unattended) |
 | `--check` | Run the system check only |
