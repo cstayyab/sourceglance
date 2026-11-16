@@ -7,12 +7,14 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-17
+
 ### Fixed
 
 - An item's actions in the top-bar lists (Open, Comment, Close, Assignees, Labels, status) no
   longer get clipped to a sliver when the list is taller than the screen. Clicking an issue,
   pull request or draft now opens its actions in a menu beside the list, and long lists
-  scroll.
+  scroll ([#57](https://github.com/omer-gh/sourceglance/pull/57)).
 
 ## [0.4.1] - 2026-11-16
 
@@ -129,7 +131,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/omer-gh/sourceglance/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/omer-gh/sourceglance/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/omer-gh/sourceglance/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/omer-gh/sourceglance/compare/v0.2.0...v0.3.0
