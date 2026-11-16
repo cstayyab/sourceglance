@@ -65,3 +65,12 @@
 .sourceglance-window .sourceglance-action:hover {
     background-color: alpha(#58a6ff, 0.26);
 }
+
+/* The splash window shown when sourceglance starts from its app icon. */
+.sourceglance-splash {
+    background-image: linear-gradient(to bottom, alpha(#58a6ff, 0.22), alpha(#1f6feb, 0.08));
+}
+
+.sourceglance-splash progressbar > trough > progress {
+    background-color: #1f6feb;
+}

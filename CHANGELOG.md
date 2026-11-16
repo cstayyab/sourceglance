@@ -22,6 +22,11 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   assigned to you, linking to them on GitHub.
 - **Start automatically** and **Quit** at the bottom of the sourceglance menu. Quit hides
   sourceglance and stops refreshing until you choose **Start now** in Settings.
+- **sourceglance window** (the app icon, or Settings): a sidebar with your Issues, Pull
+  requests and Projects, with counts and the same actions as the menus, and the settings
+  pages (Desktop Widgets, System Tray, Accounts, System Start), in the top-bar blue.
+- **Splash window** when sourceglance starts from its app icon, with its version and the
+  start-up steps.
 - **App icon** in the app grid and dock: starts sourceglance (also after Quit) and opens its
   Settings. Turn it off with Settings → Top bar → Show in app grid.
 - **Filter by label**: a dropdown on the Issues and Pull requests headings shows only items
