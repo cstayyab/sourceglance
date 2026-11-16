@@ -71,7 +71,7 @@ the signed-in flow by hand in a nested session (below) with your own token.
 ```
 
 | Mode | What it does | Use it for |
-|------|--------------|------------|
+| ------ | -------------- | ------------ |
 | default (`--nested`) | Starts a second GNOME Shell in a window and enables sourceglance there. Its settings live in `~/.cache/sourceglance-preview`, so your real session isn't changed. | Checking the menu, states and settings UI safely |
 | `--session` | Installs and enables sourceglance in your real desktop session | Testing sign-in (the nested session can't reach your keyring) |
 
@@ -86,7 +86,7 @@ The MSI-style installer lives in `tools/installer/` (design:
 [installer.md](design/installer.md); user guide: [installing.md](installing.md)).
 
 | Command | What it does |
-|---------|--------------|
+| --------- | -------------- |
 | `make setup-run` | Stage the payload and open the wizard from source. **It really installs** into your account; pass `ARGS=--check` to only run the checks. |
 | `make setup-test` | Command-line install / upgrade / repair / remove test in an isolated home |
 | `make setup` | Build `dist/sourceglance-Setup-<version>-{x86_64,aarch64}.AppImage` (needs `squashfs-tools`; downloads the pinned AppImage runtime and verifies its SHA-256) |

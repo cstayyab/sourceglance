@@ -33,7 +33,7 @@ It runs in two processes that share code under `src/lib/`:
 ## Modules
 
 | Module | Responsibility | Depends on |
-|--------|----------------|------------|
+| -------- | ---------------- | ------------ |
 | `extension.js` | Lifecycle (`enable`/`disable`), refresh timer, reacts to settings and keyring changes, builds the state passed to the indicator | everything below |
 | `prefs.js` | Settings window: token sign-in/out, repo filter, interval | `tokenStore`, `github` |
 | `lib/indicator.js` | `PanelMenu.Button` subclass. Pure view: `render(state)` rebuilds the menu. No network or storage access. | `model` |

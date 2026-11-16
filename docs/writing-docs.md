@@ -3,7 +3,7 @@
 ## Where docs live
 
 | What | Where |
-|------|-------|
+| ------ | ------- |
 | What sourceglance is, installing it, basic usage | `README.md` |
 | Contributor guides and deeper topics | `docs/` (one topic per file, linked from `docs/README.md`) |
 | Contribution rules | `CONTRIBUTING.md` |

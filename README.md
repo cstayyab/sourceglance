@@ -118,7 +118,7 @@ Organization repositories need an organization owner to install it.
 ## Roadmap
 
 | Milestone | Goal |
-|-----------|------|
+| ----------- | ------ |
 | `v0.1.0` | Token sign-in and assigned-issues list |
 | `v0.2.0` | GitHub Projects (v2) board view |
 | `v0.3.0` | Notifications and unread badge |

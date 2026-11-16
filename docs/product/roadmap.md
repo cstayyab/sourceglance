@@ -9,7 +9,7 @@ Scope can move between milestones during planning; the milestone is the source o
 bar.
 
 | # | Requirement | Acceptance criteria |
-|---|-------------|---------------------|
+| --- | ------------- | --------------------- |
 | R1 | Token sign-in | User pastes a fine-grained token in Settings; it's validated against GitHub and saved to the GNOME keyring; Settings shows "Signed in as @login". |
 | R2 | Sign out | One button removes the token from the keyring; the menu returns to the signed-out state. |
 | R3 | Assigned issues list | Menu lists open issues assigned to the user, grouped by repository, newest update first, up to 25 items, plus a "View all on GitHub" link. |
@@ -28,7 +28,7 @@ repository, terminal or developer tools.
 Design: [installer wizard](../design/installer.md), [ADR 0005](../adr/0005-self-contained-installer.md).
 
 | # | Requirement | Acceptance criteria |
-|---|-------------|---------------------|
+| --- | ------------- | --------------------- |
 | I1 | Double-click setup file | `sourceglance-Setup-X.Y.Z-<arch>.AppImage` (x86_64, aarch64) on each release; after the one-time *Executable as Program* toggle, double-clicking opens the wizard. Works offline. |
 | I2 | Wizard window | One window with Back / Next / Cancel: Welcome → License → Before you install → Options → System check → Ready → Installing → Completed. |
 | I3 | License agreement | Full MIT text, "AS IS / no warranty / at your own risk" banner, online link; Next enabled only after selecting "I accept" (default is "I do not accept"). |

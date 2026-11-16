@@ -6,7 +6,7 @@ storage, or anything rendered from GitHub data. Last reviewed: **2026-11-16 (v0.
 ## What we protect
 
 | Asset | Why it matters |
-|-------|----------------|
+| ------- | ---------------- |
 | **GitHub token** | Grants access to the user's repositories; leaking it is the worst outcome. |
 | **The user's desktop session** | The extension runs inside GNOME Shell with the user's full privileges. A crash freezes the desktop; malicious code could do anything the user can. |
 | **Private repository data** | Issue titles and repo names from private repos must not leave the machine except to GitHub. |
@@ -29,7 +29,7 @@ people.
 ## Threats and mitigations
 
 | # | Threat | Mitigation | Status |
-|---|--------|------------|--------|
+| --- | -------- | ------------ | -------- |
 | T1 | Token read from disk or backups | Stored only in the GNOME keyring ([ADR 0002](../adr/0002-token-in-gnome-keyring.md)); never in GSettings/dconf or files | ✅ v0.1 |
 | T2 | Token leaked in logs, errors, issues or screenshots | Errors carry only kind + HTTP status; token never logged; Settings clears the field after saving; issue templates remind users to scrub logs | ✅ v0.1 |
 | T3 | Token sent to the wrong host / intercepted | Requests go only to the hard-coded `https://api.github.com`; Soup verifies TLS with the system CA store | ✅ v0.1 |
