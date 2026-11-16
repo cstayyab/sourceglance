@@ -19,12 +19,21 @@ declare -A RUNTIME_SHA256=(
 )
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/sourceglance-build"
 
-# Copy the extension, compile its schema, and write a SHA-256 manifest of every file.
+# Stage the extension in its installed layout (tools/installer/loader/loader.js): a small
+# loader at the top, this version in versions/<version>/, and versions/current naming it.
+# The top level also keeps metadata.json, stylesheet.css and schemas/, which GNOME Shell reads
+# from there, and icons/, so a version still running from before an update keeps its icons.
+# Then write a SHA-256 manifest of every file.
 stage_payload() {
-    local dest=$1
-    mkdir -p "$dest/extension"
-    cp -R "$ROOT/src/." "$dest/extension/"
-    glib-compile-schemas "$dest/extension/schemas"
+    local dest=$1 ext="$1/extension"
+    mkdir -p "$ext/versions/$VERSION"
+    cp -R "$ROOT/src/." "$ext/versions/$VERSION/"
+    glib-compile-schemas "$ext/versions/$VERSION/schemas"
+    printf '%s\n' "$VERSION" > "$ext/versions/current"
+    cp "$ROOT/tools/installer/loader/extension.js" "$ROOT/tools/installer/loader/prefs.js" \
+        "$ROOT/tools/installer/loader/loader.js" "$ROOT/src/metadata.json" "$ROOT/src/stylesheet.css" "$ext/"
+    cp -R "$ROOT/src/schemas" "$ROOT/src/icons" "$ext/"
+    glib-compile-schemas "$ext/schemas"
     (cd "$dest/extension" && find . -type f -print0 | sort -z | sed -z 's|^\./||' | xargs -0 sha256sum) \
         > "$dest/manifest.sha256"
     cp "$ROOT/LICENSE" "$dest/LICENSE"

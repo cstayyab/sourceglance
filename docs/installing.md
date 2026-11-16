@@ -76,7 +76,14 @@ Run the same setup file again. If sourceglance is already installed, Setup opens
 - **Repair** reinstalls the files. Your settings and saved token are kept.
 - **Remove** uninstalls sourceglance. Deleting your saved token and resetting settings are
   separate options, both off by default.
-- A newer setup file **upgrades** an older installation automatically.
+- A newer setup file **upgrades** an older installation automatically. The new version
+  starts straight away, with no need to log out (coming from v0.2.0 or earlier, log out
+  once after this first update).
+
+sourceglance can do this for you: when a newer version is out, its window shows **Update
+available** next to Refresh. Clicking it downloads the new setup file into a private
+temporary folder, checks it against the release's `SHA256SUMS`, opens it only if it
+matches, and reopens the window on the new version when Setup finishes.
 
 Setup keeps a backup of the previous version in `~/.cache/sourceglance-setup/backups` (the
 three most recent), and restores it automatically if an install fails. A log is written

@@ -5,8 +5,8 @@ import Secret from 'gi://Secret';
 import {UUID, backupsToPrune} from './plan.js';
 import {
     PAYLOAD_EXTENSION_DIR, SETTINGS_PATH, backupsDir, exists, extensionDir, extensionsDir,
-    installedVersion, mkdirp, packageMetadata, readJson, run, runOrThrow, setExtensionEnabled,
-    timestamp, tildify, verifyPayload,
+    installedVersion, mkdirp, packageMetadata, readJson, restartInShell, run, runOrThrow,
+    setExtensionEnabled, shellExtensionInfo, timestamp, tildify, verifyPayload,
 } from './system.js';
 
 export class SetupError extends Error {
@@ -43,13 +43,35 @@ async function resetSettings(log) {
 }
 
 /**
+ * After an update, run the new version in this session without logging out. Only when the
+ * old install already had the loader (versions/current): older versions run their code from
+ * the top-level files, which GNOME Shell keeps in memory until the next login. And only when
+ * the running Shell has this very folder enabled.
+ */
+async function startNewVersion({hadLoader, target, log, progress}) {
+    if (!hadLoader)
+        return false;
+    const info = await shellExtensionInfo();
+    if (info?.state !== 'ACTIVE' || info.path !== target)
+        return false;
+    progress(0.9, 'Starting the new version…');
+    const restarted = await restartInShell();
+    log.write(restarted
+        ? 'sourceglance restarted with the new version; no need to log out'
+        : 'sourceglance could not be restarted; it starts with the new version at your next login');
+    return restarted;
+}
+
+/**
  * Install, upgrade, repair or downgrade to the packaged version.
  * progress(fraction, text) is called before each step.
+ * Resolves to {restarted}: true when the new version is already running (no log-out needed).
  */
 export async function install({enableAfter = true, reset = false, log, progress = () => {}}) {
     const target = extensionDir();
     const version = packageMetadata()?.['version-name'];
     const previous = installedVersion();
+    const hadLoader = exists(GLib.build_filenamev([target, 'versions', 'current']));
     let backup = null;
     let staged = false;
 
@@ -91,13 +113,16 @@ export async function install({enableAfter = true, reset = false, log, progress 
 
         progress(0.95, 'Cleaning up…');
         await pruneBackups(log);
-        progress(1, 'Done');
         log.write(`sourceglance ${version} installed`);
     } catch (e) {
         log.write(`Error: ${e.message}`);
         const rolledBack = await rollback({target, backup, staged, log});
         throw new SetupError(e.message, {rolledBack});
     }
+    // The files are in place; a failed restart only means waiting for the next login.
+    const restarted = await startNewVersion({hadLoader, target, log, progress});
+    progress(1, 'Done');
+    return {restarted};
 }
 
 async function rollback({target, backup, staged, log}) {

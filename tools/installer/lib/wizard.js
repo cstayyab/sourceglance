@@ -272,9 +272,10 @@ export class Wizard {
 
         // Completed
         this.logoutCheck = new Gtk.CheckButton({label: '_Log out now to start sourceglance', use_underline: true});
+        this.doneText = label('Log out and back in to start it. Then click the sourceglance icon in the top bar and choose Settings to sign in to GitHub.');
         this._page('done', vbox(18, [
             label(`<b>sourceglance ${esc(this.version)} has been installed.</b>`, {markup: true, css: ['title-4']}),
-            label('Log out and back in to start it. Then click the sourceglance icon in the top bar and choose Settings to sign in to GitHub.'),
+            this.doneText,
             this.logoutCheck,
         ]));
 
@@ -531,10 +532,15 @@ export class Wizard {
                     log: this.log, progress,
                 });
             } else {
-                await install({
+                const {restarted} = await install({
                     enableAfter: this.enableRow.active, reset: this.resetRow.active,
                     log: this.log, progress,
                 });
+                if (restarted) {
+                    this.doneText.label = 'sourceglance is running the new version now, with your settings and sign-ins. There’s no need to log out.';
+                    this.logoutCheck.active = false;
+                    this.logoutCheck.visible = false;
+                }
             }
             this.busy = false;
             this._show(this.index + 1);

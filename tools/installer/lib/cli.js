@@ -63,9 +63,11 @@ export async function runCli(opts) {
         const mode = decideMode(installedVersion(), version);
         if (opts.action === 'repair' && mode !== 'maintain')
             log.write(`Note: --repair with ${mode === 'install' ? 'nothing installed' : `version ${installedVersion()} installed`}; installing ${version}`);
-        await install({enableAfter: true, log});
+        const {restarted} = await install({enableAfter: true, log});
         print(`\nsourceglance ${version} is installed in ${tildify(extensionDir())}.`);
-        print('Log out and back in to start it, then open its Settings from the top bar to sign in.');
+        print(restarted
+            ? 'It is running the new version now; no need to log out.'
+            : 'Log out and back in to start it, then open its Settings from the top bar to sign in.');
         return EXIT.OK;
     } catch (e) {
         printerr(`Setup failed: ${e.message}${e.rolledBack ? ' (previous version restored)' : ''}`);

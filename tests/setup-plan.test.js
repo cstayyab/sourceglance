@@ -10,6 +10,7 @@ import {
     describeShellRange,
     evaluateChecks,
     flowFor,
+    parseExtensionInfo,
     isShellSupported,
     operationFor,
     parseArgs,
@@ -123,4 +124,17 @@ test('parseArgs handles actions, flags and errors', () => {
     assert.match(parseArgs(['--repair', '--uninstall']).error, /only one/);
     assert.match(parseArgs(['--bogus']).error, /Unknown option/);
     assert.equal(EXIT.USAGE, 2);
+});
+
+test('parseExtensionInfo reads the state and path', () => {
+    const text = `sourceglance@omer-gh.github.io
+  Name: sourceglance
+  Path: /home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io
+  Version: 0.3.0 (3)
+  Enabled: Yes
+  State: ACTIVE
+`;
+    assert.deepEqual(parseExtensionInfo(text),
+        {state: 'ACTIVE', path: '/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io'});
+    assert.deepEqual(parseExtensionInfo(''), {state: null, path: null});
 });

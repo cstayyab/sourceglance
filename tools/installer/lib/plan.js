@@ -152,6 +152,15 @@ export function backupsToPrune(names, keep = BACKUPS_TO_KEEP) {
     return [...names].sort().reverse().slice(keep);
 }
 
+/**
+ * `gnome-extensions info` output → {state: 'ACTIVE', path: '/home/…/<uuid>'}; fields it
+ * doesn't show are null.
+ */
+export function parseExtensionInfo(text) {
+    const field = name => new RegExp(`^\\s*${name}:\\s*(.+)$`, 'm').exec(text ?? '')?.[1]?.trim() ?? null;
+    return {state: field('State'), path: field('Path')};
+}
+
 /** Parse "sha256sum"-format manifest text into [{hash, path}]. */
 export function parseManifest(text) {
     const entries = [];
