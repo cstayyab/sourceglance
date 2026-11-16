@@ -17,6 +17,8 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **Desktop widgets**: cards with your lists, pinned to the desktop under your windows.
 - **A main window** with every list and all settings in one place.
 
+![sourceglance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
+
 > **Status: first release.** v0.1.0 is out as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
@@ -137,6 +139,8 @@ repository. Organization repositories need an organization owner to install it.
 
 ### Top bar
 
+![The Issues menu with GitHub and GitLab sections](docs/images/menu.png)
+
 The top bar shows sourceglance's buttons as one tinted block, each list with its count:
 
 - **sourceglance**: who you're signed in as, Refresh and Settings, plus **Start
@@ -161,6 +165,8 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 - **Board: Status…** for each project board it's on
 
 ### Main window
+
+![The sourceglance window with the Issues list and the settings sidebar](docs/images/window.png)
 
 The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
 and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
