@@ -16,7 +16,9 @@ import {
     parseLogins,
     parseProjectItems,
     parseSearchResponse,
+    parseViewerBoards,
     projectItemsRequest,
+    viewerBoardsRequest,
 } from './model.js';
 
 Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
@@ -156,6 +158,24 @@ export class GitHubClient {
     async search(token, repos = [], search = 'issue', cancellable = null) {
         const json = await this._get(buildSearchPath(repos, search), token, cancellable);
         return parseSearchResponse(json, search);
+    }
+
+    /** Resolves to how many items a search finds, e.g. 'issue-closed' or 'pr-closed'. */
+    async countSearch(token, repos = [], search = 'issue-closed', cancellable = null) {
+        const json = await this._get(buildSearchPath(repos, search), token, cancellable);
+        return Number.isInteger(json?.total_count) ? json.total_count : 0;
+    }
+
+    /**
+     * Resolves to your project boards with their draft items (see parseViewerBoards()). Rejects
+     * only if GitHub returned no data at all, e.g. the sign-in can't read projects.
+     */
+    async getViewerBoards(token, cancellable = null) {
+        const request = viewerBoardsRequest();
+        const json = await this._request(request.method, request.path, token, request.body, cancellable);
+        if (!json?.data && json?.errors?.length)
+            throw new GitHubError({kind: classifyGraphqlErrors(json.errors), status: 200, retryAt: null});
+        return parseViewerBoards(json);
     }
 
     /**

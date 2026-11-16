@@ -22,10 +22,10 @@ export default [
             },
         },
         rules: {
-            // GNOME style keeps `GObject.registerClass(class Foo …)` bodies unindented.
+            // GNOME style keeps `GObject.registerClass([{…},] class Foo …)` bodies unindented.
             'indent': ['error', 4, {
                 ignoredNodes: [
-                    'CallExpression[callee.object.name=GObject][callee.property.name=registerClass] > ClassExpression:first-child',
+                    'CallExpression[callee.object.name=GObject][callee.property.name=registerClass] > ClassExpression',
                 ],
             }],
             'quotes': ['error', 'single', {avoidEscape: true}],
@@ -41,7 +41,7 @@ export default [
     },
     {
         // ADR 0004: the pure core must stay importable from Node.
-        files: ['src/lib/model.js', 'tools/installer/lib/plan.js'],
+        files: ['src/lib/model.js', 'src/lib/gitlabModel.js', 'tools/installer/lib/plan.js'],
         rules: {
             'no-restricted-imports': ['error', {patterns: ['gi://*', 'resource://*']}],
         },

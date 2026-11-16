@@ -1,75 +1,72 @@
-// Panel indicator and menu. A pure view: render(state) redraws everything (see docs/design/v0.1-ui.md).
+// A top-bar button: an icon with a count, and a menu filled by one of the views. A pure view:
+// render(state) redraws everything (see views.js).
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
-import Gio from 'gi://Gio';
-import Pango from 'gi://Pango';
 import St from 'gi://St';
 
-import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {countLabel, isSafeGitHubUrl, itemKey, relativeTime, truncate} from './model.js';
+import {gtypeName} from './model.js';
+import {TabBar} from './tabs.js';
+import {VIEWS, addAppFooter, badgeText} from './views.js';
 
-const VIEW_ALL_URL = 'https://github.com/issues/assigned';
+const NAMES = {
+    issues: () => _('Issues'),
+    projects: () => _('Projects'),
+    prs: () => _('Pull requests'),
+    app: () => 'sourceglance',
+};
 
-function formatRelative(date) {
-    const {unit, value} = relativeTime(date);
-    switch (unit) {
-    case 'now':
-        return _('just now');
-    case 'minute':
-        return ngettext('%d min ago', '%d min ago', value).format(value);
-    case 'hour':
-        return ngettext('%d hour ago', '%d hours ago', value).format(value);
-    default:
-        return ngettext('%d day ago', '%d days ago', value).format(value);
-    }
-}
-
-function formatClock(ms) {
-    return GLib.DateTime.new_from_unix_local(Math.floor(ms / 1000)).format('%H:%M');
-}
-
-function errorText(error, intervalMinutes) {
-    switch (error.kind) {
-    case 'auth':
-        return _('Your token was rejected. Update it in Settings.');
-    case 'forbidden':
-        return _('Your token can’t read these issues. Check its permissions in Settings.');
-    case 'rate-limit':
-        return error.retryAt
-            ? _('GitHub rate limit reached. Retrying at %s.').format(formatClock(error.retryAt))
-            : _('GitHub rate limit reached. Retrying later.');
-    case 'query':
-        return _('A watched repository doesn’t exist or isn’t visible to your token. Check Settings.');
-    default:
-        return ngettext('Couldn’t reach GitHub. Retrying in %d min.',
-            'Couldn’t reach GitHub. Retrying in %d min.', intervalMinutes).format(intervalMinutes);
-    }
-}
-
-export const Indicator = GObject.registerClass(
-class Indicator extends PanelMenu.Button {
-    _init({onRefresh, onSettings, onAction}) {
-        super._init(0.0, 'sourceglance');
-        this._onRefresh = onRefresh;
-        this._onSettings = onSettings;
-        this._onAction = onAction;
+export const ToolbarButton = GObject.registerClass({GTypeName: gtypeName('ToolbarButton', import.meta.url)},
+class ToolbarButton extends PanelMenu.Button {
+    /**
+     * @param {object} params
+     * @param {string} params.id 'issues', 'prs', 'projects' or 'app'
+     * @param {object} params.icons Gio.Icon per id
+     * @param {string[]|null} params.tabs for the app button in the tabs layout: the lists to show as tabs
+     */
+    _init({id, icons, tabs = null, onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit,
+        getCollapsed, setCollapsed}) {
+        super._init(0.0, `sourceglance ${id}`);
+        this._id = id;
+        this._icons = icons;
+        this._tabs = tabs;
+        this._tab = tabs?.[0] ?? 'app';
+        this._callbacks = {onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit};
+        this._getCollapsed = getCollapsed;
+        this._setCollapsed = setCollapsed;
         this._state = null;
+        // Label chosen in each list's dropdown; null shows everything. Kept across refreshes.
+        this._filters = {issues: null, prs: null};
+        this._rebuildId = 0;
+        this.connect('destroy', () => {
+            if (this._rebuildId)
+                GLib.source_remove(this._rebuildId);
+            this._rebuildId = 0;
+        });
+
+        // All sourceglance buttons share a tinted group look (see stylesheet.css).
+        this.add_style_class_name('sourceglance-group');
+        if (id === 'app')
+            this.add_style_class_name('sourceglance-group-app');
 
         const box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
-        this._icon = new St.Icon({
-            icon_name: 'checkbox-checked-symbolic',
-            style_class: 'system-status-icon',
-        });
+        this._icon = new St.Icon({gicon: icons[id], style_class: 'system-status-icon'});
         this._count = new St.Label({
             style_class: 'sourceglance-count',
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
         });
         box.add_child(this._icon);
+        if (id === 'app') {
+            box.add_child(new St.Label({
+                text: 'sourceglance',
+                style_class: 'sourceglance-app-label',
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        }
         box.add_child(this._count);
         this.add_child(box);
 
@@ -86,152 +83,83 @@ class Indicator extends PanelMenu.Button {
         this._rebuildMenu();
     }
 
-    _hasList() {
-        const {status, groups, prGroups} = this._state;
-        return status === 'ready' || (status === 'error' && groups.length + prGroups.length > 0);
+    _badge() {
+        if (this._id !== 'app')
+            return badgeText(this._id, this._state);
+        if (!this._tabs)
+            return '';
+        // Tabs layout: the one button counts every list.
+        // Only numbers ('7', '25+'); skips '' and the '…' shown while projects load.
+        const counts = this._tabs.map(id => badgeText(id, this._state)).filter(text => /^\d+\+?$/.test(text));
+        if (counts.length === 0)
+            return '';
+        const total = counts.reduce((sum, text) => sum + Number.parseInt(text, 10), 0);
+        return counts.some(text => text.endsWith('+')) ? `${total}+` : String(total);
     }
 
     _updatePanel() {
-        const {status, total, shown} = this._state;
-        const label = this._hasList() ? countLabel(total, shown) : '';
+        const {status} = this._state;
+        const label = this._badge();
         this._count.text = label;
         this._count.visible = label !== '';
-        this._icon.opacity = status === 'error' ? 128 : 255;
+        this._icon.opacity = status === 'error' || (status === 'signed-out' && this._id !== 'app') ? 128 : 255;
 
-        let name;
+        const name = NAMES[this._id]();
         if (status === 'signed-out')
-            name = _('sourceglance: not signed in');
-        else if (label)
-            name = ngettext('sourceglance: %s item for you', 'sourceglance: %s items for you', total).format(label);
+            this.accessible_name = _('%s: not signed in').format(name);
         else
-            name = 'sourceglance';
-        this.accessible_name = name;
+            this.accessible_name = label ? `${name}: ${label}` : name;
     }
 
-    _headerText() {
-        const {status, login, refreshing, updatedAt} = this._state;
-        if (status === 'signed-out')
-            return _('Sign in to see your GitHub issues');
-        if (!login)
-            return status === 'error' ? _('GitHub issues') : _('Loading issues…');
-        if (refreshing)
-            return _('@%s · Refreshing…').format(login);
-        if (updatedAt)
-            return _('@%s · updated %s').format(login, formatRelative(updatedAt));
-        return `@${login}`;
-    }
-
-    _addInfo(text, styleClass) {
-        const item = new PopupMenu.PopupMenuItem(text, {reactive: false});
-        item.label.clutter_text.line_wrap = true;
-        item.label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        item.add_style_class_name(styleClass);
-        this.menu.addMenuItem(item);
-        return item;
-    }
-
-    _addAction(text, callback) {
-        const item = new PopupMenu.PopupMenuItem(text);
-        item.connect('activate', callback);
-        this.menu.addMenuItem(item);
-        return item;
-    }
-
-    _openUri(uri) {
-        if (!isSafeGitHubUrl(uri)) {
-            console.warn('sourceglance: refusing to open a non-GitHub link');
+    // Rebuild after the current event: the item that was clicked is destroyed by the rebuild.
+    _scheduleRebuild() {
+        if (this._rebuildId)
             return;
-        }
-        try {
-            Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
-        } catch (e) {
-            console.error(`sourceglance: could not open ${uri}`, e);
-        }
-    }
-
-    _itemLabel(item) {
-        const label = `#${item.number}  ${truncate(item.title)}`;
-        return item.kind === 'pr' && item.reason === 'review'
-            ? _('%s · review requested').format(label)
-            : label;
-    }
-
-    _addSection(title, groups) {
-        if (!groups?.length)
-            return;
-        this._addInfo(title, 'sourceglance-section');
-        for (const group of groups) {
-            this._addInfo(group.repo, 'sourceglance-repo');
-            for (const item of group.issues)
-                this._addItem(item);
-        }
-    }
-
-    /** An issue or PR row with its actions in a submenu. */
-    _addItem(item) {
-        const busy = this._state.busy.includes(itemKey(item));
-        const label = busy ? _('%s · working…').format(this._itemLabel(item)) : this._itemLabel(item);
-        const row = new PopupMenu.PopupSubMenuMenuItem(label);
-        row.add_style_class_name('sourceglance-issue');
-        this.menu.addMenuItem(row);
-
-        const add = (text, callback) => {
-            const entry = row.menu.addAction(text, callback);
-            entry.setSensitive(!busy);
-            return entry;
-        };
-        add(_('Open on GitHub'), () => this._openUri(item.url)).setSensitive(Boolean(item.url));
-        if (item.state === 'closed') {
-            add(_('Reopen'), () => this._onAction(item, 'reopen'));
-            return;
-        }
-        add(_('Comment…'), () => this._onAction(item, 'comment'));
-        add(item.kind === 'pr' ? _('Close pull request…') : _('Close issue…'),
-            () => this._onAction(item, 'close'));
-        add(_('Assignees…'), () => this._onAction(item, 'assignees'));
-        add(_('Labels…'), () => this._onAction(item, 'labels'));
-        for (const board of item.boards ?? []) {
-            add(_('%s: %s…').format(truncate(board.title, 30), board.status ?? _('No status')),
-                () => this._onAction(item, 'status', board));
-        }
+        this._rebuildId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._rebuildId = 0;
+            if (this._state)
+                this._rebuildMenu();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _rebuildMenu() {
-        const state = this._state;
         this.menu.removeAll();
+        const ui = {
+            menu: this.menu,
+            state: this._state,
+            filters: this._filters,
+            icons: this._icons,
+            scheduleRebuild: () => this._scheduleRebuild(),
+            repos: this._callbacks.getRepos(),
+            collapsed: this._getCollapsed(),
+            toggleCollapsed: id => {
+                const current = this._getCollapsed();
+                this._setCollapsed(current.includes(id) ? current.filter(other => other !== id) : [...current, id]);
+                this._scheduleRebuild();
+            },
+            ...this._callbacks,
+        };
 
-        this._addInfo(this._headerText(), 'sourceglance-header');
-        if (state.status === 'error')
-            this._addInfo(errorText(state.error, state.intervalMinutes), 'sourceglance-message');
-
-        const signedIn = state.status === 'ready' || state.status === 'error';
-        if (this._hasList()) {
-            if (state.total === 0) {
-                this._addInfo(_('No open issues or pull requests for you'), 'sourceglance-message');
-                // Limited sign-ins silently hide repositories they weren't granted.
-                this._addInfo(_('Missing some? sourceglance only sees the repositories you ' +
-                    'gave it. Check Settings.'), 'sourceglance-hint');
-            } else {
-                this._addSection(_('Issues'), state.groups);
-                this._addSection(_('Pull requests'), state.prGroups);
-            }
+        if (!this._tabs) {
+            VIEWS[this._id](ui);
+            if (this._id === 'app')
+                addAppFooter(ui);
+            return;
         }
-        if (signedIn && state.recentlyClosed.length > 0) {
-            this._addInfo(_('Recently closed'), 'sourceglance-section');
-            for (const item of state.recentlyClosed)
-                this._addItem(item);
-        }
-
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        if (signedIn) {
-            const viewAll = state.total > state.shown
-                ? _('View all %d on GitHub').format(state.total)
-                : _('View all on GitHub');
-            this._addAction(viewAll, () => this._openUri(VIEW_ALL_URL));
-            const refresh = this._addAction(_('Refresh'), () => this._onRefresh());
-            refresh.setSensitive(!state.refreshing);
-        }
-        this._addAction(_('Settings'), () => this._onSettings());
+        const ids = [...this._tabs, 'app'];
+        if (!ids.includes(this._tab))
+            this._tab = ids[0];
+        this.menu.addMenuItem(new TabBar({
+            tabs: ids.map(id => ({id, gicon: this._icons[id], name: NAMES[id](), badge: badgeText(id, this._state)})),
+            selected: this._tab,
+            onSelect: id => {
+                this._tab = id;
+                this._scheduleRebuild();
+            },
+        }));
+        VIEWS[this._tab](ui);
+        // In the tabs layout the footer stays at the bottom whichever tab is open.
+        addAppFooter(ui);
     }
 });

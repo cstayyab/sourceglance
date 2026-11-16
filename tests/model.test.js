@@ -3,7 +3,20 @@ import assert from 'node:assert/strict';
 
 import {
     DEVICE_VERIFICATION_URL,
+    LAUNCHER_ID,
     MAX_COMMENT_LENGTH,
+    TOOLBAR_LISTS,
+    WIDGET_WIDTH,
+    clampWidgetPosition,
+    defaultWidgetPosition,
+    normalizeWidgets,
+    draftTarget,
+    groupDraftsByStatus,
+    gtypeName,
+    itemKey,
+    normalizeButtons,
+    parseViewerBoards,
+    searchPageUrl,
     PROJECT_ITEMS_QUERY,
     classifyGraphqlErrors,
     moveStatusRequest,
@@ -11,6 +24,8 @@ import {
     projectItemsRequest,
     addLabelsRequest,
     appInstallUrl,
+    assigneeChangeRequests,
+    assigneeChoices,
     assigneesRequest,
     buildSearchPath,
     buildSearchQuery,
@@ -20,11 +35,18 @@ import {
     commentRequest,
     countLabel,
     diffSelection,
+    filterByLabel,
     formEncode,
     groupIssues,
+    isDoneStatus,
     isSafeGitHubUrl,
     isValidLogin,
     isValidRepo,
+    labelChangeRequests,
+    labelChoices,
+    labelOptions,
+    launcherDesktopEntry,
+    listBadge,
     mergeItems,
     nextRefreshDelaySeconds,
     parseDeviceCodeResponse,
@@ -240,6 +262,101 @@ test('classifyGraphqlErrors maps GraphQL error types', () => {
     assert.equal(classifyGraphqlErrors(null), 'query');
 });
 
+test('gtypeName is stable per module URL and differs between builds', () => {
+    const a = gtypeName('TabBar', 'file:///ext/dev/1/lib/tabs.js');
+    assert.equal(a, gtypeName('TabBar', 'file:///ext/dev/1/lib/tabs.js'));
+    assert.notEqual(a, gtypeName('TabBar', 'file:///ext/dev/2/lib/tabs.js'));
+    assert.match(a, /^Sourceglance_TabBar_[0-9a-f]{8}$/);
+});
+
+test('normalizeButtons keeps known lists in toolbar order', () => {
+    assert.deepEqual(normalizeButtons(['prs', 'issues', 'prs', 'evil', 'app']), ['issues', 'prs']);
+    assert.deepEqual(normalizeButtons([]), []);
+    assert.deepEqual(normalizeButtons(null), []);
+    assert.deepEqual(normalizeButtons(TOOLBAR_LISTS), ['issues', 'prs', 'projects']);
+});
+
+test('closed searches count closed items still assigned to you', () => {
+    assert.equal(buildSearchQuery([], 'issue-closed'), 'is:closed is:issue assignee:@me archived:false');
+    assert.equal(buildSearchQuery(['a/b'], 'pr-closed'), 'is:closed is:pr assignee:@me archived:false repo:a/b');
+    assert.ok(buildSearchPath([], 'issue-closed').endsWith('&per_page=1'));
+    assert.ok(buildSearchPath([], 'issue').endsWith('&per_page=25'));
+    const url = searchPageUrl('pr-closed');
+    assert.ok(url.startsWith('https://github.com/pulls?q=is%3Aclosed%20is%3Apr'));
+    assert.ok(isSafeGitHubUrl(url));
+    assert.ok(searchPageUrl('issue-closed').startsWith('https://github.com/issues?q='));
+});
+
+test('parseViewerBoards keeps open boards and their non-archived drafts only', () => {
+    const field = {id: 'F_1', options: [{id: 'o1', name: 'Todo'}, {id: 'o2', name: 'Done'}]};
+    const board = (id, extra = {}) => ({
+        id, title: `Board ${id}`, url: `https://github.com/users/me/projects/${id.length}`, closed: false, field,
+        items: {totalCount: 3, nodes: [
+            {id: 'PVTI_d1', type: 'DRAFT_ISSUE', isArchived: false, content: {title: 'Draft one'},
+                fieldValueByName: {optionId: 'o2', name: 'Done'}},
+            {id: 'PVTI_d2', type: 'DRAFT_ISSUE', isArchived: true, content: {title: 'Archived'}},
+            {id: 'PVTI_i1', type: 'ISSUE', isArchived: false, content: {}},
+            {id: 'PVTI_d3', type: 'DRAFT_ISSUE', isArchived: false, content: {title: 'No status'}, fieldValueByName: null},
+        ]},
+        ...extra,
+    });
+    const boards = parseViewerBoards({
+        data: {viewer: {
+            projectsV2: {nodes: [board('PVT_a'), board('PVT_closed', {closed: true}), null]},
+            organizations: {nodes: [{projectsV2: {nodes: [board('PVT_a'), board('PVT_b', {url: 'https://evil.example/x'})]}}, null]},
+        }},
+        errors: [{type: 'FORBIDDEN'}],
+    });
+    assert.deepEqual(boards.map(b => b.projectId), ['PVT_a', 'PVT_b']);
+    assert.deepEqual(boards[0].drafts, [
+        {itemId: 'PVTI_d1', title: 'Draft one', optionId: 'o2', status: 'Done'},
+        {itemId: 'PVTI_d3', title: 'No status', optionId: null, status: null},
+    ]);
+    assert.equal(boards[0].truncated, false);
+    assert.equal(boards[1].url, null);
+    assert.deepEqual(parseViewerBoards(null), []);
+    assert.deepEqual(parseViewerBoards({data: {viewer: {}}}), []);
+});
+
+test('groupDraftsByStatus follows column order with No status last', () => {
+    const board = {
+        options: [{id: 'o1', name: 'Todo'}, {id: 'o2', name: 'Doing'}, {id: 'o3', name: 'Done'}],
+        drafts: [{itemId: 'a', optionId: 'o3'}, {itemId: 'b', optionId: null}, {itemId: 'c', optionId: 'o1'}],
+    };
+    assert.deepEqual(groupDraftsByStatus(board).map(g => [g.status, g.drafts.map(d => d.itemId)]),
+        [['Todo', ['c']], ['Done', ['a']], [null, ['b']]]);
+});
+
+test('draftTarget builds an action target that moveStatusRequest accepts', () => {
+    const board = {projectId: 'PVT_a', title: 'Roadmap', fieldId: 'F_1', options: [{id: 'o1', name: 'Todo'}]};
+    const {item, board: target} = draftTarget(board, {itemId: 'PVTI_d1', title: 'Draft', optionId: null, status: null});
+    assert.equal(item.kind, 'draft');
+    assert.equal(itemKey(item), 'project#PVTI_d1');
+    assert.equal(moveStatusRequest(target, 'o1').body.variables.item, 'PVTI_d1');
+});
+
+test('labelOptions counts each label once per item, sorted by name', () => {
+    const item = (...names) => ({labels: names.map(name => ({name, color: null}))});
+    const groups = [
+        {repo: 'a/b', issues: [item('ui', 'bug'), item('bug', 'bug')]},
+        {repo: 'c/d', issues: [item(), item('docs')]},
+    ];
+    assert.deepEqual(labelOptions(groups),
+        [{name: 'bug', count: 2}, {name: 'docs', count: 1}, {name: 'ui', count: 1}]);
+    assert.deepEqual(labelOptions([]), []);
+});
+
+test('filterByLabel keeps matching items and drops emptied repositories', () => {
+    const item = (number, ...names) => ({number, labels: names.map(name => ({name, color: null}))});
+    const groups = [
+        {repo: 'a/b', issues: [item(1, 'bug'), item(2)]},
+        {repo: 'c/d', issues: [item(3, 'docs')]},
+    ];
+    assert.deepEqual(filterByLabel(groups, 'bug'), [{repo: 'a/b', issues: [item(1, 'bug')]}]);
+    assert.equal(filterByLabel(groups, null), groups);
+    assert.deepEqual(filterByLabel(groups, 'none'), []);
+});
+
 test('diffSelection lists additions and removals', () => {
     assert.deepEqual(diffSelection(['a', 'b'], ['b', 'c']), {add: ['c'], remove: ['a']});
     assert.deepEqual(diffSelection([], []), {add: [], remove: []});
@@ -369,4 +486,60 @@ test('classifyDeviceTokenResponse maps every poll outcome', () => {
     assert.deepEqual(classifyDeviceTokenResponse({error: 'device_flow_disabled'}, 5),
         {state: 'error', error: 'device_flow_disabled'});
     assert.deepEqual(classifyDeviceTokenResponse(null, 5), {state: 'error', error: 'unknown'});
+});
+
+test('launcherDesktopEntry runs launcher.js with gjs and quotes the path', () => {
+    const entry = launcherDesktopEntry({
+        launcherPath: '/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js',
+        iconPath: '/home/me/x/icons/sourceglance-app.svg',
+    });
+    assert.ok(entry.startsWith('[Desktop Entry]\nType=Application\nName=sourceglance\n'));
+    assert.ok(entry.includes('\nExec=gjs -m "/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js"\n'));
+    assert.ok(entry.includes('\nIcon=/home/me/x/icons/sourceglance-app.svg\n'));
+    // $, " and \ are escaped for the Exec quoting rules, then backslashes once more for the file.
+    const odd = launcherDesktopEntry({launcherPath: '/a $b"c\\d/launcher.js', iconPath: '/i.svg'});
+    assert.ok(odd.includes('Exec=gjs -m "/a \\\\$b\\\\"c\\\\\\\\d/launcher.js"'));
+    assert.equal(LAUNCHER_ID, 'io.github.omer_gh.sourceglance');
+});
+
+test('assignee and label pickers: choices and change requests', () => {
+    const item = {kind: 'issue', repo: 'a/b', number: 5, assignees: ['ann'], labels: [{name: 'bug', color: null}]};
+    assert.deepEqual(assigneeChoices(item, 'me', ['bob', 'ann']), ['me', 'ann', 'bob']);
+    assert.deepEqual(assigneeChoices(item, null, ['bob']), ['ann', 'bob']);
+    assert.deepEqual(assigneeChangeRequests(item, ['me']).map(r => [r.method, r.body.assignees]),
+        [['POST', ['me']], ['DELETE', ['ann']]]);
+    assert.deepEqual(assigneeChangeRequests(item, ['ann']), []);
+    assert.deepEqual(labelChoices(item, [{name: 'ui'}, {name: 'bug'}]), ['bug', 'ui']);
+    assert.deepEqual(labelChangeRequests(item, ['ui']).map(r => [r.method, r.path]),
+        [['POST', '/repos/a/b/issues/5/labels'], ['DELETE', '/repos/a/b/issues/5/labels/bug']]);
+});
+
+test('listBadge shows counts once loaded, 0 included', () => {
+    const base = {status: 'ready', updatedAt: new Date(), issueTotal: 0, issueShown: 0, prTotal: 30, prShown: 25,
+        boards: [{drafts: [1, 2]}], boardsError: null};
+    assert.equal(listBadge('issues', base), '0');
+    assert.equal(listBadge('prs', base), '25+');
+    assert.equal(listBadge('projects', base), '2');
+    assert.equal(listBadge('projects', {...base, boards: null}), '…');
+    assert.equal(listBadge('projects', {...base, boards: null, boardsError: 'forbidden'}), '');
+    assert.equal(listBadge('issues', {...base, status: 'signed-out'}), '');
+    assert.equal(listBadge('issues', {...base, updatedAt: null}), '');
+});
+
+test('desktop widget ids, default spots and clamping', () => {
+    assert.deepEqual(normalizeWidgets(['projects', 'summary', 'x', 'summary']), ['summary', 'projects']);
+    assert.deepEqual(normalizeWidgets(null), []);
+    const area = {x: 0, y: 32, width: 1280, height: 768};
+    assert.deepEqual(defaultWidgetPosition(area, []), {x: 1280 - WIDGET_WIDTH - 24, y: 56});
+    assert.deepEqual(defaultWidgetPosition(area, [100, 200]), {x: 1280 - WIDGET_WIDTH - 24, y: 56 + 116 + 216});
+    const size = {width: WIDGET_WIDTH, height: 200};
+    assert.deepEqual(clampWidgetPosition({x: 5000, y: -40}, area, size), {x: 1280 - WIDGET_WIDTH, y: 32});
+    assert.deepEqual(clampWidgetPosition({x: 100.4, y: 300.6}, area, size), {x: 100, y: 301});
+});
+
+test('isDoneStatus recognises finished board columns', () => {
+    for (const name of ['Done', 'done', ' Closed ', 'Complete', 'COMPLETED'])
+        assert.ok(isDoneStatus(name), name);
+    for (const name of ['Todo', 'In progress', 'Not done', null, undefined])
+        assert.ok(!isDoneStatus(name), String(name));
 });

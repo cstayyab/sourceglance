@@ -1,3 +1,45 @@
+/* The top-bar buttons read as one tinted block, set apart from other indicators: square
+   corners, no gaps. Selectors are specific enough to beat themes that restyle
+   .panel-button. */
+#panel .panel-button.sourceglance-group {
+    background-color: rgba(88, 166, 255, 0.18);
+    border-radius: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    -natural-hpadding: 8px !important;
+    -minimum-hpadding: 4px !important;
+}
+
+#panel .panel-button.sourceglance-group-app {
+    background-color: rgba(88, 166, 255, 0.32);
+}
+
+#panel .panel-button.sourceglance-group:hover,
+#panel .panel-button.sourceglance-group:focus {
+    background-color: rgba(88, 166, 255, 0.36);
+}
+
+#panel .panel-button.sourceglance-group:active,
+#panel .panel-button.sourceglance-group:checked {
+    background-color: rgba(88, 166, 255, 0.48);
+}
+
+#panel .panel-button.sourceglance-group-first {
+    border-left-width: 3px;
+    -natural-hpadding: 12px !important;
+}
+
+#panel .panel-button.sourceglance-group-last {
+    border-right-width: 3px;
+    -natural-hpadding: 12px !important;
+}
+
+.sourceglance-app-label {
+    padding-left: 6px;
+}
+
 .sourceglance-count {
     padding-left: 4px;
     font-weight: bold;
@@ -11,6 +53,41 @@
     font-size: smaller;
     font-weight: bold;
     padding-top: 8px;
+}
+
+.sourceglance-footer {
+    font-size: smaller;
+}
+
+.sourceglance-tabbar {
+    padding: 4px 8px;
+}
+
+.sourceglance-tabs {
+    spacing: 4px;
+}
+
+.sourceglance-tab {
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+.sourceglance-tab:hover,
+.sourceglance-tab:focus {
+    background-color: rgba(127, 127, 127, 0.15);
+}
+
+.sourceglance-tab:checked {
+    background-color: rgba(127, 127, 127, 0.3);
+}
+
+.sourceglance-tab-content {
+    spacing: 4px;
+}
+
+.sourceglance-filter {
+    font-weight: normal;
+    padding-right: 6px;
 }
 
 .sourceglance-repo {
@@ -46,4 +123,73 @@
 
 .sourceglance-picker-empty {
     font-style: italic;
+}
+
+/* Desktop widgets (lib/widgets.js): dark cards with a header in the top-bar blue. */
+.sourceglance-widget {
+    background-color: rgba(22, 27, 34, 0.9);
+    border: 1px solid rgba(88, 166, 255, 0.35);
+    border-radius: 14px;
+    color: #e6edf3;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.sourceglance-widget-header {
+    background-color: rgba(88, 166, 255, 0.3);
+    border-radius: 13px 13px 0 0;
+    padding: 8px 12px;
+    spacing: 8px;
+    font-weight: bold;
+}
+
+.sourceglance-widget-header:hover {
+    background-color: rgba(88, 166, 255, 0.42);
+}
+
+.sourceglance-widget-body {
+    padding: 6px;
+    spacing: 2px;
+}
+
+.sourceglance-widget-row {
+    padding: 5px 8px;
+    border-radius: 8px;
+    color: #e6edf3;
+}
+
+.sourceglance-widget-row:hover,
+.sourceglance-widget-row:focus {
+    background-color: rgba(88, 166, 255, 0.18);
+}
+
+.sourceglance-widget-row-box {
+    spacing: 8px;
+}
+
+.sourceglance-widget-icon {
+    icon-size: 16px;
+}
+
+.sourceglance-widget-count,
+.sourceglance-widget-detail {
+    font-weight: bold;
+    color: #58a6ff;
+}
+
+.sourceglance-widget-message {
+    padding: 8px;
+    font-style: italic;
+    color: rgba(230, 237, 243, 0.7);
+}
+
+.sourceglance-widget-footer {
+    padding: 2px 14px 10px 14px;
+    font-size: smaller;
+    color: rgba(230, 237, 243, 0.55);
+}
+
+/* GitHub / GitLab section headers in the lists. */
+.sourceglance-platform {
+    font-weight: bold;
+    spacing: 6px;
 }

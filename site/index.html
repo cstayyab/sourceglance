@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sourceglance</title>
+  <meta name="description" content="Your GitHub and GitLab issues, pull requests and project boards, one glance away in the GNOME top bar.">
+  <meta name="theme-color" content="#1f6feb">
+  <meta property="og:title" content="sourceglance">
+  <meta property="og:description" content="Your GitHub and GitLab issues, pull requests and project boards, one glance away in the GNOME top bar.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="#top"><img src="icon.svg" alt="" width="28" height="28"> sourceglance</a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/omer-gh/sourceglance">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">GNOME Shell extension · Ubuntu 24.04+</p>
+          <h1>Your issues, pull requests and boards, one glance away.</h1>
+          <p class="lede">sourceglance puts what's assigned to you on GitHub and GitLab in the top
+            bar. Comment, close, relabel and move cards without opening a browser.</p>
+          <div class="download">
+            <a class="button primary" href="@SETUP_X64@">
+              <span class="button-icon" aria-hidden="true"></span>
+              Download Setup
+              <small>@VERSION@ · Intel/AMD · AppImage</small>
+            </a>
+            <div class="other-downloads">
+              <a href="@SETUP_ARM@">Setup for ARM (aarch64)</a>
+              <a href="@ZIP@">Extension zip</a>
+              <a href="@RELEASE_URL@">Release notes</a>
+            </div>
+          </div>
+        </div>
+
+        <figure class="mock" aria-label="sourceglance in the GNOME top bar">
+          <div class="mock-bar">
+            <span class="mock-clock">Mon 16 · 10:24</span>
+            <span class="mock-group">
+              <span class="seg app"><i class="ic ic-sourceglance"></i>sourceglance</span>
+              <span class="seg on"><i class="ic ic-check"></i>3</span>
+              <span class="seg"><i class="ic ic-pr"></i>2</span>
+              <span class="seg"><i class="ic ic-checklist"></i>4</span>
+            </span>
+          </div>
+          <div class="mock-menu">
+            <div class="menu-head"><b>Issues</b><span><i class="ic ic-label"></i>All labels ›</span></div>
+            <div class="menu-section">GitHub <em>2</em></div>
+            <div class="menu-repo">example/web-app</div>
+            <div class="menu-item"><i class="ic ic-issue"></i><span>#42</span> Fix the login redirect</div>
+            <div class="menu-item"><i class="ic ic-issue"></i><span>#37</span> Dark mode for settings</div>
+            <div class="menu-section">GitLab <em>1</em></div>
+            <div class="menu-repo">acme/api</div>
+            <div class="menu-item"><i class="ic ic-issue"></i><span>#12</span> Retry on rate limits</div>
+            <div class="menu-foot">4 closed issues still assigned to you</div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="wrap">
+        <h2>Everything assigned to you, without the tab hunt</h2>
+        <div class="grid">
+          <article>
+            <i class="feat ic-check"></i>
+            <h3>Top-bar buttons</h3>
+            <p>Issues, Pull requests and Projects as one tinted group or as tabs, each with its
+              live count. Filter by label; closed items are counted at the bottom.</p>
+          </article>
+          <article>
+            <i class="feat ic-pr"></i>
+            <h3>Act from the menu</h3>
+            <p>Comment, close or reopen, edit assignees and labels, and move items between
+              statuses on your project boards.</p>
+          </article>
+          <article>
+            <i class="feat ic-sourceglance"></i>
+            <h3>GitHub and GitLab</h3>
+            <p>gitlab.com issues and merge requests get their own collapsible section in every
+              list, and the counts add up across both.</p>
+          </article>
+          <article>
+            <i class="feat ic-checklist"></i>
+            <h3>Main window</h3>
+            <p>A full window with your lists and settings in a sidebar, opened from the app
+              grid with a splash screen, in the top bar's blue.</p>
+          </article>
+          <article>
+            <i class="feat ic-label"></i>
+            <h3>Desktop widgets</h3>
+            <p>Summary, Issues, Pull requests and Projects cards on your desktop. Drag them
+              anywhere and set their opacity.</p>
+          </article>
+          <article>
+            <i class="feat ic-lock"></i>
+            <h3>Private by design</h3>
+            <p>Signs in through a GitHub App limited to issues, pull requests and projects: no
+              code access. Tokens stay in the GNOME keyring.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="install">
+      <div class="wrap install-grid">
+        <div>
+          <h2>Install in three steps</h2>
+          <ol class="steps">
+            <li>
+              <h3>Download Setup</h3>
+              <p><a href="@SETUP_X64@">sourceglance Setup for Intel/AMD</a> works on most PCs;
+                there's also a <a href="@SETUP_ARM@">build for ARM</a>.</p>
+            </li>
+            <li>
+              <h3>Allow it to run</h3>
+              <p>In Files, right-click the download, choose <b>Properties</b> and turn on
+                <b>Executable as Program</b>.</p>
+            </li>
+            <li>
+              <h3>Run the wizard</h3>
+              <p>Double-click it and follow the steps. Run it again any time to repair or
+                remove sourceglance.</p>
+            </li>
+          </ol>
+          <details class="verify">
+            <summary>Check the download (recommended)</summary>
+            <p>Download <a href="@SUMS@">SHA256SUMS</a> into the same folder and run:</p>
+            <pre><code>sha256sum --check --ignore-missing SHA256SUMS</code></pre>
+            <p>Every release is built by GitHub Actions with a provenance attestation. See the
+              <a href="https://github.com/omer-gh/sourceglance/blob/main/docs/installing.md">install guide</a>.</p>
+          </details>
+          <p class="requirements">Needs GNOME Shell 46–50 (Ubuntu 24.04 or newer) and a GitHub or
+            GitLab account.</p>
+        </div>
+        <figure class="shot">
+          <img src="images/setup-welcome.png" alt="The sourceglance Setup wizard's welcome page" loading="lazy">
+        </figure>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <span>sourceglance @VERSION@ · MIT License</span>
+      <span>
+        <a href="https://github.com/omer-gh/sourceglance">Source</a>
+        <a href="https://github.com/omer-gh/sourceglance/releases">Releases</a>
+        <a href="https://github.com/omer-gh/sourceglance/issues">Report a problem</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>
