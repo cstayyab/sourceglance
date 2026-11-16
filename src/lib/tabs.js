@@ -5,11 +5,13 @@ import St from 'gi://St';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import {gtypeName} from './model.js';
+
 /**
  * `tabs` is [{id, gicon, name, badge}]. Clicking a tab calls onSelect(id); the menu stays
  * open because the row itself is never activated.
  */
-export const TabBar = GObject.registerClass(
+export const TabBar = GObject.registerClass({GTypeName: gtypeName('TabBar', import.meta.url)},
 class TabBar extends PopupMenu.PopupBaseMenuItem {
     _init({tabs, selected, onSelect}) {
         super._init({reactive: false, can_focus: false, style_class: 'sourceglance-tabbar'});

@@ -8,6 +8,7 @@ import St from 'gi://St';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
+import {gtypeName} from './model.js';
 import {TabBar} from './tabs.js';
 import {VIEWS, badgeText} from './views.js';
 
@@ -18,7 +19,7 @@ const NAMES = {
     app: () => 'sourceglance',
 };
 
-export const ToolbarButton = GObject.registerClass(
+export const ToolbarButton = GObject.registerClass({GTypeName: gtypeName('ToolbarButton', import.meta.url)},
 class ToolbarButton extends PanelMenu.Button {
     /**
      * @param {object} params

@@ -7,6 +7,7 @@ import {
     TOOLBAR_LISTS,
     draftTarget,
     groupDraftsByStatus,
+    gtypeName,
     itemKey,
     normalizeButtons,
     parseViewerBoards,
@@ -247,6 +248,13 @@ test('classifyGraphqlErrors maps GraphQL error types', () => {
     assert.equal(classifyGraphqlErrors([{type: 'NOT_FOUND'}]), 'not-found');
     assert.equal(classifyGraphqlErrors([{message: 'x'}]), 'query');
     assert.equal(classifyGraphqlErrors(null), 'query');
+});
+
+test('gtypeName is stable per module URL and differs between builds', () => {
+    const a = gtypeName('TabBar', 'file:///ext/dev/1/lib/tabs.js');
+    assert.equal(a, gtypeName('TabBar', 'file:///ext/dev/1/lib/tabs.js'));
+    assert.notEqual(a, gtypeName('TabBar', 'file:///ext/dev/2/lib/tabs.js'));
+    assert.match(a, /^Sourceglance_TabBar_[0-9a-f]{8}$/);
 });
 
 test('normalizeButtons keeps known lists in toolbar order', () => {

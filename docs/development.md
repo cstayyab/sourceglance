@@ -143,6 +143,30 @@ issues in private repositories, and project boards need `project`. That reaches 
 repository you can, including others' private ones, but allows writing to all of them.
 sourceglance itself only writes to issues, PRs and project items, when you pick an action.
 
+## Reload without logging out
+
+On Wayland, GNOME Shell keeps an extension's code until you log out. To try changes in your
+real session, with your real sign-in, use:
+
+```bash
+make reload
+```
+
+It copies `src/` into a new folder inside the installed extension and switches the
+extension off and on, which takes about a second. A small loader (`tools/dev-loader/`)
+imports each build from its new folder, so GNOME Shell runs the new code. To set up:
+
+1. Run `make reload` once. The first time, your session is still running the code it
+   loaded at login, so **log out and back in once more**. From then on, every
+   `make reload` loads your latest code.
+2. Changes to `metadata.json` still need a login.
+3. `make install` puts the normal extension back. Old builds stay in the extension's `dev/`
+   folder; delete it when you like.
+
+Each GObject class gets a type name that includes a hash of its module's URL
+(`gtypeName()` in `model.js`), because a type name can't be registered twice in one
+session.
+
 ## Run it locally by hand
 
 ```bash

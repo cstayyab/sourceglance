@@ -8,7 +8,7 @@ import {CheckBox} from 'resource:///org/gnome/shell/ui/checkBox.js';
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
-import {MAX_COMMENT_LENGTH, truncate} from './model.js';
+import {MAX_COMMENT_LENGTH, gtypeName, truncate} from './model.js';
 
 // GNOME 48 replaced St.BoxLayout's `vertical` with `orientation`.
 function verticalBox(params) {
@@ -36,7 +36,7 @@ function itemHeading(item) {
 }
 
 /** Comment box. Calls onSubmit(text) with the text as typed; model.js validates it. */
-export const CommentDialog = GObject.registerClass(
+export const CommentDialog = GObject.registerClass({GTypeName: gtypeName('CommentDialog', import.meta.url)},
 class CommentDialog extends ModalDialog.ModalDialog {
     _init(item, onSubmit) {
         super._init({styleClass: 'sourceglance-dialog'});
@@ -76,7 +76,7 @@ class CommentDialog extends ModalDialog.ModalDialog {
 });
 
 /** Close confirmation. Calls onConfirm(reason): 'completed' or 'not_planned' (issues), 'pr'. */
-export const CloseDialog = GObject.registerClass(
+export const CloseDialog = GObject.registerClass({GTypeName: gtypeName('CloseDialog', import.meta.url)},
 class CloseDialog extends ModalDialog.ModalDialog {
     _init(item, onConfirm) {
         super._init({styleClass: 'sourceglance-dialog'});
@@ -106,7 +106,7 @@ class CloseDialog extends ModalDialog.ModalDialog {
  * A checkbox list. `options` is [{id, label}], `selected` the ids checked at first. With
  * single: true at most one box stays checked. Calls onApply(selectedIds).
  */
-export const PickerDialog = GObject.registerClass(
+export const PickerDialog = GObject.registerClass({GTypeName: gtypeName('PickerDialog', import.meta.url)},
 class PickerDialog extends ModalDialog.ModalDialog {
     _init({title, description, options, selected, single = false, emptyText, onApply}) {
         super._init({styleClass: 'sourceglance-dialog'});

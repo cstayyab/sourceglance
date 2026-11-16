@@ -154,6 +154,19 @@ export function classifyDeviceTokenResponse(json, interval) {
     }
 }
 
+/**
+ * A GType name unique to one copy of a module. GTypes can't be registered twice, and
+ * `make reload` loads each build from a new URL, so names include a hash of that URL.
+ */
+export function gtypeName(name, moduleUrl) {
+    let hash = 0x811c9dc5;
+    for (const char of moduleUrl) {
+        hash ^= char.codePointAt(0);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return `Sourceglance_${name}_${hash.toString(16).padStart(8, '0')}`;
+}
+
 /** "https://api.github.com/repos/owner/name" → "owner/name" */
 export function repoFromApiUrl(url) {
     const match = /\/repos\/([^/]+\/[^/]+)$/.exec(url ?? '');

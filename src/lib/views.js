@@ -15,6 +15,7 @@ import {
     draftTarget,
     filterByLabel,
     groupDraftsByStatus,
+    gtypeName,
     isSafeGitHubUrl,
     isValidLogin,
     itemKey,
@@ -62,7 +63,7 @@ function errorText(error, intervalMinutes) {
 
 // A choice in a label dropdown. It doesn't emit 'activate', so picking a label filters the
 // list without closing the menu.
-const FilterItem = GObject.registerClass(
+const FilterItem = GObject.registerClass({GTypeName: gtypeName('FilterItem', import.meta.url)},
 class FilterItem extends PopupMenu.PopupMenuItem {
     _init(text, onPick) {
         super._init(text);
