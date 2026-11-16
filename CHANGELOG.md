@@ -17,9 +17,15 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   small loader, and restarts sourceglance after updating, so the new version runs straight
   away. Coming from v0.2.0 or earlier, log out once after this first update.
 - An **Update, repair or remove** section on the home page.
+- **Search** in the window's title bar: filter Issues, Pull requests and Projects by title,
+  repository, number, label, person or board status. The sidebar counts and the title bar
+  show the matches; clear the box, press Esc or click **Clear search** to see everything
+  again. Start typing on a list, or press Ctrl+F, to search.
 
 ### Changed
 
+- **Accounts** is one page under Settings, with **GitHub** and **GitLab** as its sections,
+  instead of two sidebar entries.
 - When GitHub refuses a change (comment, close, labels, assignees, status), sourceglance now
   says why: the sourceglance app isn't installed on that repository, or you don't have
   permission, and you can make the change on GitHub instead. Public repositories you don't

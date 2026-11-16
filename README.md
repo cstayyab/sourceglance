@@ -190,9 +190,15 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 
 The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
 and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
-Tray**, **Accounts** (GitHub, GitLab) and **System Start** (start at login, app grid icon).
-**About** shows the version and the author, with links to report an issue or fork the
-repository and contribute.
+Tray**, **Accounts** (GitHub and GitLab on one page) and **System Start** (start at login,
+app grid icon). **About** shows the version and the author, with links to report an issue or
+fork the repository and contribute.
+
+**Search** the lists from the box in the title bar (or just start typing on a list; Ctrl+F
+also jumps there). It matches titles, repositories, `#numbers`, labels, people and board
+statuses, across Issues, Pull requests and Projects at once. While you search, the sidebar
+counts and the title bar show how many items match. Clear the box, press Esc or click
+**Clear search** to see your full lists again.
 
 ## Roadmap
 

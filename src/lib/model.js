@@ -788,3 +788,63 @@ export function countLabel(total, shown) {
         return '';
     return total > shown ? `${shown}+` : String(total);
 }
+
+// Search in the window: one query filters Issues, Pull requests and Projects.
+
+/** Search box text → lowercase words; every word has to match. */
+export function searchTerms(query) {
+    return String(query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+function matchesAll(text, terms) {
+    const haystack = text.toLowerCase();
+    return terms.every(term => haystack.includes(term));
+}
+
+/** Does an issue or pull request match? Looks at its title, repository, #number, labels, people and boards. */
+export function itemMatches(item, terms) {
+    if (terms.length === 0)
+        return true;
+    return matchesAll([
+        item.title, item.repo, itemRef(item), item.platform === 'gitlab' ? 'gitlab' : 'github',
+        item.kind === 'pr' && item.reason === 'review' ? 'review' : '',
+        ...(item.labels ?? []).map(label => label.name),
+        ...(item.assignees ?? []).map(login => `@${login}`),
+        ...(item.boards ?? []).flatMap(board => [board.title, board.status ?? '']),
+    ].join('\n'), terms);
+}
+
+/** Repository groups with only the matching items; empty groups are dropped. */
+export function searchGroups(groups, terms) {
+    if (terms.length === 0)
+        return groups;
+    return groups
+        .map(group => ({...group, issues: group.issues.filter(item => itemMatches(item, terms))}))
+        .filter(group => group.issues.length > 0);
+}
+
+/** Boards with only the matching draft items (by title, status or board name). */
+export function searchBoards(boards, terms) {
+    if (terms.length === 0)
+        return boards;
+    return boards.map(board => ({
+        ...board,
+        drafts: board.drafts.filter(draft => matchesAll([draft.title ?? '', draft.status ?? '', board.title].join('\n'), terms)),
+    }));
+}
+
+/** How many loaded items in list `id` ('issues', 'prs', 'projects') match, across GitHub and GitLab. */
+export function searchCount(id, state, terms) {
+    const count = groups => searchGroups(groups ?? [], terms).reduce((sum, group) => sum + group.issues.length, 0);
+    const gitlab = state.gitlab?.status === 'signed-out' ? null : state.gitlab;
+    switch (id) {
+    case 'issues':
+        return count(state.groups) + count(gitlab?.groups);
+    case 'prs':
+        return count(state.prGroups) + count(gitlab?.prGroups);
+    case 'projects':
+        return searchBoards(state.boards ?? [], terms).reduce((sum, board) => sum + board.drafts.length, 0);
+    default:
+        return 0;
+    }
+}

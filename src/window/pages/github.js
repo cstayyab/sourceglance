@@ -1,4 +1,4 @@
-// Accounts → GitHub: sign-in (device flow) and which repositories to watch.
+// Accounts, GitHub section: sign-in (device flow) and which repositories to watch.
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import GLib from 'gi://GLib';
@@ -266,10 +266,7 @@ function buildRepositoriesGroup({settings}) {
     return group;
 }
 
-/** `ctx` is {window, settings, client, toast}. */
-export function buildGithubPage(ctx) {
-    const page = new Adw.PreferencesPage();
-    page.add(buildAccountGroup(ctx));
-    page.add(buildRepositoriesGroup(ctx));
-    return page;
+/** The GitHub section of the Accounts page. `ctx` is {window, settings, client, toast}. */
+export function buildGithubGroups(ctx) {
+    return [buildAccountGroup(ctx), buildRepositoriesGroup(ctx)];
 }

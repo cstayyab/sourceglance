@@ -7,8 +7,8 @@ import Gtk from 'gi://Gtk';
 import {gettext as _, ngettext} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {gitlabClosedPageUrl} from '../../lib/gitlabModel.js';
-import {filterByLabel, itemKey, itemRef, labelOptions, listBadge, searchPageUrl} from '../../lib/model.js';
-import {actionButton, statusText} from './common.js';
+import {filterByLabel, itemKey, itemRef, labelOptions, listBadge, searchGroups, searchPageUrl} from '../../lib/model.js';
+import {actionButton, noMatchesGroup, statusText} from './common.js';
 
 // Built on use: gettext only works once GNOME has registered the extension, not at import.
 function copyFor(key) {
@@ -51,8 +51,11 @@ function itemSubtitle(item) {
 }
 
 export class ListPage {
-    /** `key` is 'issues' or 'prs'; `icons` has issue, pr, label, projects (Gio.Icon). */
-    constructor({key, icons, actions, repos, settings}) {
+    /**
+     * `key` is 'issues' or 'prs'; `icons` has issue, pr, label, projects (Gio.Icon);
+     * `onClearSearch` empties the window's search box.
+     */
+    constructor({key, icons, actions, repos, settings, onClearSearch}) {
         this._key = key;
         this._icons = icons;
         this._actions = actions;
@@ -62,12 +65,24 @@ export class ListPage {
         this._filters = {github: null, gitlab: null};
         this._state = null;
         this._groups = [];
+        this._onClearSearch = onClearSearch;
+        // The window's search: the box's text and its words (searchTerms); [] shows everything.
+        this._query = '';
+        this._terms = [];
 
         this._statusPage = new Adw.StatusPage();
         this._page = new Adw.PreferencesPage();
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');
         this.widget.add_named(this._page, 'list');
+    }
+
+    /** Shows only the items matching `terms`; [] shows the full list again. */
+    setSearch(query, terms) {
+        this._query = query;
+        this._terms = terms;
+        if (this._state)
+            this.update(this._state);
     }
 
     update(state) {
@@ -113,7 +128,10 @@ export class ListPage {
             const collapsed = this._settings.get_strv('collapsed-sections').includes(id);
             const header = new Adw.PreferencesGroup({title: src.platform === 'gitlab' ? 'GitLab' : 'GitHub'});
             const suffix = new Gtk.Box({spacing: 8});
-            const count = listBadge(this._key, src.platform === 'gitlab' ? {status: 'signed-out', gitlab: gl} : {...state, gitlab: null});
+            // While searching, the section counts its matches instead of its total.
+            const count = this._terms.length
+                ? String(searchGroups(src.groups ?? [], this._terms).reduce((sum, group) => sum + group.issues.length, 0))
+                : listBadge(this._key, src.platform === 'gitlab' ? {status: 'signed-out', gitlab: gl} : {...state, gitlab: null});
             if (count)
                 suffix.append(new Gtk.Label({label: count, css_classes: ['sourceglance-count-pill'], valign: Gtk.Align.CENTER}));
             const toggle = new Gtk.Button({icon_name: collapsed ? 'pan-end-symbolic' : 'pan-down-symbolic',
@@ -175,8 +193,10 @@ export class ListPage {
         filterGroup.add(combo);
         add(filterGroup);
 
-        const shown = filterByLabel(src.groups, filter);
-        if (shown.length === 0) {
+        const shown = filterByLabel(searchGroups(src.groups, this._terms), filter);
+        if (shown.length === 0 && this._terms.length) {
+            add(noMatchesGroup(this._query, () => this._onClearSearch()));
+        } else if (shown.length === 0) {
             const empty = new Adw.PreferencesGroup();
             empty.add(new Adw.ActionRow({title: gitlab ? copy.emptyGitLab : copy.empty, use_markup: false, css_classes: ['dim-label']}));
             add(empty);

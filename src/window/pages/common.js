@@ -1,4 +1,5 @@
 // Small pieces shared by the window's list pages.
+import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -20,7 +21,7 @@ export function actionButton({iconName = null, gicon = null, label, onClick}) {
 export function statusText(state) {
     if (state.status === 'signed-out') {
         return {icon: 'avatar-default-symbolic', title: _('Not signed in'),
-            description: _('Sign in under Settings → Accounts → GitHub.')};
+            description: _('Sign in under Settings → Accounts.')};
     }
     if (state.updatedAt === null && state.status !== 'error')
         return {icon: 'content-loading-symbolic', title: _('Loading…'), description: ''};
@@ -31,4 +32,16 @@ export function statusText(state) {
                 : _('GitHub returned an error. sourceglance will try again soon.')};
     }
     return null;
+}
+
+/** "Nothing matches" for a search, with a button that clears it to show the full list again. */
+export function noMatchesGroup(query, onClear) {
+    const group = new Adw.PreferencesGroup();
+    const row = new Adw.ActionRow({title: _('Nothing matches “%s”').format(query), use_markup: false});
+    row.add_prefix(new Gtk.Image({icon_name: 'edit-find-symbolic'}));
+    const clear = new Gtk.Button({label: _('Clear search'), valign: Gtk.Align.CENTER});
+    clear.connect('clicked', onClear);
+    row.add_suffix(clear);
+    group.add(row);
+    return group;
 }
