@@ -6,7 +6,9 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {gtypeName} from './model.js';
 import {TabBar} from './tabs.js';
@@ -123,10 +125,36 @@ class ToolbarButton extends PanelMenu.Button {
         });
     }
 
+    /**
+     * Adds a section that scrolls inside the menu. The shell caps the menu at the screen
+     * height; without a scrollable part, a long list squashes the open item's actions
+     * submenu (the only part that can shrink) to a sliver.
+     */
+    _addScrollingSection() {
+        const section = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(section);
+        const scroll = new St.ScrollView({
+            style_class: 'sourceglance-scroll vfade',
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+        });
+        this.menu.box.replace_child(section.actor, scroll);
+        scroll.child = section.actor;
+        // The menu finds its items through _delegate; removeAll() destroys the section.
+        scroll._delegate = section;
+        section.connect('destroy', () => scroll.destroy());
+        // Keep the item under keyboard focus in view.
+        section.connect('active-changed', (_section, item) => {
+            if (item)
+                ensureActorVisibleInScrollView(scroll, item);
+        });
+        return section;
+    }
+
     _rebuildMenu() {
         this.menu.removeAll();
         const ui = {
-            menu: this.menu,
+            menu: null,
             state: this._state,
             filters: this._filters,
             icons: this._icons,
@@ -142,7 +170,9 @@ class ToolbarButton extends PanelMenu.Button {
         };
 
         if (!this._tabs) {
+            ui.menu = this._addScrollingSection();
             VIEWS[this._id](ui);
+            ui.menu = this.menu;
             if (this._id === 'app')
                 addAppFooter(ui);
             return;
@@ -158,7 +188,9 @@ class ToolbarButton extends PanelMenu.Button {
                 this._scheduleRebuild();
             },
         }));
+        ui.menu = this._addScrollingSection();
         VIEWS[this._tab](ui);
+        ui.menu = this.menu;
         // In the tabs layout the footer stays at the bottom whichever tab is open.
         addAppFooter(ui);
     }

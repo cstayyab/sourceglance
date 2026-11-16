@@ -8,6 +8,7 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {
@@ -126,11 +127,41 @@ function addAction(ui, text, callback, gicon = null) {
     return item;
 }
 
-/** A submenu row with an icon, as used for issues, PRs and drafts. */
+// A row for an issue, PR or draft. Clicking it opens its actions in a menu of their own beside
+// the list, which stays open behind it. Running an action closes both.
+const ItemRow = GObject.registerClass({GTypeName: gtypeName('ItemRow', import.meta.url)},
+class ItemRow extends PopupMenu.PopupImageMenuItem {
+    _init(text, gicon) {
+        super._init(text, gicon);
+        this.add_style_class_name('sourceglance-issue');
+        this.add_child(new St.Icon({icon_name: 'pan-end-symbolic', style_class: 'popup-menu-arrow',
+            x_expand: true, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.CENTER}));
+
+        // St.Side.RIGHT puts the actions to the left of the list; the shell flips it if there's no room.
+        this._actionsMenu = new PopupMenu.PopupMenu(this, 0.5, St.Side.RIGHT);
+        this._actionsMenu.actor.add_style_class_name('sourceglance-actions');
+        this._actionsMenu.actor.hide();
+        Main.uiGroup.add_child(this._actionsMenu.actor);
+        this._manager = new PopupMenu.PopupMenuManager(this);
+        this._manager.addMenu(this._actionsMenu);
+        this.connect('destroy', () => this._actionsMenu.destroy());
+    }
+
+    addAction(text, callback, gicon) {
+        return this._actionsMenu.addAction(text, () => {
+            this._parent?._getTopMenu().close();
+            callback();
+        }, gicon);
+    }
+
+    activate(_event) {
+        this._actionsMenu.toggle();
+    }
+});
+
+/** An issue, PR or draft row; add its actions with row.addAction(). */
 function addItemRow(ui, text, gicon) {
-    const row = new PopupMenu.PopupSubMenuMenuItem(text, true);
-    row.icon.gicon = gicon;
-    row.add_style_class_name('sourceglance-issue');
+    const row = new ItemRow(text, gicon);
     ui.menu.addMenuItem(row);
     return row;
 }
@@ -173,7 +204,7 @@ function addItem(ui, item) {
     const row = addItemRow(ui, busy ? _('%s · working…').format(itemLabel(item)) : itemLabel(item), kindIcon);
 
     const add = (text, gicon, callback) => {
-        const entry = row.menu.addAction(text, callback, gicon);
+        const entry = row.addAction(text, callback, gicon);
         entry.setSensitive(!busy);
         return entry;
     };
@@ -399,10 +430,10 @@ export function renderProjects(ui) {
                 const title = truncate(draft.title || _('Untitled draft'));
                 const row = addItemRow(ui, isBusy ? _('%s · working…').format(title) : title,
                     isDoneStatus(draft.status) ? ui.icons.issueClosed : icon('draft'));
-                const move = row.menu.addAction(_('Move to status…'), () => ui.onAction(item, 'status', target),
+                const move = row.addAction(_('Move to status…'), () => ui.onAction(item, 'status', target),
                     ui.icons.projects);
                 move.setSensitive(!isBusy && Boolean(board.fieldId) && board.options.length > 0);
-                row.menu.addAction(_('Open board'), () => openUri(board.url), icon('open')).setSensitive(Boolean(board.url));
+                row.addAction(_('Open board'), () => openUri(board.url), icon('open')).setSensitive(Boolean(board.url));
             }
         }
         if (board.truncated)

@@ -7,6 +7,13 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- An item's actions in the top-bar lists (Open, Comment, Close, Assignees, Labels, status) no
+  longer get clipped to a sliver when the list is taller than the screen. Clicking an issue,
+  pull request or draft now opens its actions in a menu beside the list, and long lists
+  scroll.
+
 ## [0.4.1] - 2026-11-16
 
 ### Fixed
