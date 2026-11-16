@@ -10,7 +10,7 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {countLabel, relativeTime, truncate} from './model.js';
+import {countLabel, isSafeGitHubUrl, relativeTime, truncate} from './model.js';
 
 const VIEW_ALL_URL = 'https://github.com/issues/assigned';
 
@@ -137,6 +137,10 @@ class Indicator extends PanelMenu.Button {
     }
 
     _openUri(uri) {
+        if (!isSafeGitHubUrl(uri)) {
+            console.warn('sourceglance: refusing to open a non-GitHub link');
+            return;
+        }
         try {
             Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
         } catch (e) {

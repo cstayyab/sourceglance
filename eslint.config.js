@@ -32,6 +32,11 @@ export default [
             'semi': ['error', 'always'],
             'comma-dangle': ['error', 'always-multiline'],
             'no-unused-vars': ['error', {argsIgnorePattern: '^_'}],
+            // Security (docs/security/secure-development.md)
+            'no-eval': 'error',
+            'no-implied-eval': 'error',
+            'no-new-func': 'error',
+            'no-script-url': 'error',
         },
     },
     {

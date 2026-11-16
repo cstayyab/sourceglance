@@ -7,6 +7,7 @@ import {
     classifyHttpError,
     countLabel,
     groupIssues,
+    isSafeGitHubUrl,
     isValidRepo,
     nextRefreshDelaySeconds,
     parseRepoList,
@@ -43,6 +44,25 @@ test('buildSearchPath encodes the query and sorts by update', () => {
     assert.ok(path.startsWith('/search/issues?q=is%3Aopen%20is%3Aissue%20assignee%3A%40me'));
     assert.ok(path.includes('repo%3Aa%2Fb'));
     assert.ok(path.endsWith('&sort=updated&order=desc&per_page=25'));
+});
+
+test('isSafeGitHubUrl only allows https://github.com links', () => {
+    assert.ok(isSafeGitHubUrl('https://github.com/omer-gh/sourceglance/issues/12'));
+    assert.ok(isSafeGitHubUrl('https://github.com/issues/assigned'));
+    assert.ok(!isSafeGitHubUrl('http://github.com/a/b/issues/1'));
+    assert.ok(!isSafeGitHubUrl('https://github.com.evil.example/a'));
+    assert.ok(!isSafeGitHubUrl('https://evil.example/https://github.com/'));
+    assert.ok(!isSafeGitHubUrl('https://user@github.com/a'));
+    assert.ok(!isSafeGitHubUrl('javascript:alert(1)'));
+    assert.ok(!isSafeGitHubUrl('file:///etc/passwd'));
+    assert.ok(!isSafeGitHubUrl('https://github.com/a b'));
+    assert.ok(!isSafeGitHubUrl(null));
+});
+
+test('parseSearchResponse drops unsafe issue links', () => {
+    const {issues} = parseSearchResponse({items: [{number: 1, title: 'x', html_url: 'file:///etc/passwd',
+        repository_url: 'https://api.github.com/repos/a/b', updated_at: '2026-11-01T00:00:00Z'}]});
+    assert.equal(issues[0].url, null);
 });
 
 test('repoFromApiUrl extracts owner/name', () => {

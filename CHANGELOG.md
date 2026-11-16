@@ -22,4 +22,9 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with one-time setup, a risk warning and MIT License agreement.
 - Project docs: contributing guide, issue and PR templates, release process.
 
+### Security
+
+- Only `https://github.com/` links from GitHub data can be opened from the menu.
+- The token lives only in the GNOME keyring and is never logged.
+
 [Unreleased]: https://github.com/omer-gh/sourceglance/commits/main

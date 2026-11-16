@@ -40,6 +40,16 @@ export function buildSearchPath(repos = []) {
     return `/search/issues?q=${q}&sort=updated&order=desc&per_page=${MAX_ISSUES}`;
 }
 
+const GITHUB_URL_RE = /^https:\/\/github\.com\/[A-Za-z0-9._~%/#?=&+-]*$/;
+
+/**
+ * Only plain https://github.com/ links may be opened from the menu (threat model T7):
+ * API data is untrusted, and opening other schemes could launch arbitrary handlers.
+ */
+export function isSafeGitHubUrl(url) {
+    return typeof url === 'string' && GITHUB_URL_RE.test(url);
+}
+
 /** "https://api.github.com/repos/owner/name" → "owner/name" */
 export function repoFromApiUrl(url) {
     const match = /\/repos\/([^/]+\/[^/]+)$/.exec(url ?? '');
@@ -53,7 +63,7 @@ export function parseSearchResponse(json) {
         .map(item => ({
             number: item.number,
             title: item.title ?? '',
-            url: item.html_url,
+            url: isSafeGitHubUrl(item.html_url) ? item.html_url : null,
             repo: repoFromApiUrl(item.repository_url),
             updatedAt: item.updated_at,
         }));
