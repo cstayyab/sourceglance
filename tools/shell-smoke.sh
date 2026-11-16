@@ -17,7 +17,7 @@ glib-compile-schemas "$EXT/schemas"
 cat > "$WORK/run.sh" <<'EOF'
 set -u
 gnome-shell --headless --virtual-monitor 1280x800 --wayland --no-x11 \
-    --wayland-display "sourceglance-smoke-$$" > "$WORK/shell.log" 2>&1 &
+    --wayland-display "$WAYLAND_DISPLAY" > "$WORK/shell.log" 2>&1 &
 PID=$!
 for _ in $(seq 1 30); do gnome-extensions info "$UUID" >/dev/null 2>&1 && break; sleep 1; done
 gnome-extensions enable "$UUID"; sleep 3
@@ -33,10 +33,13 @@ echo "after disable:  $(gnome-extensions info "$UUID" | grep -i state)"
 kill "$PID"; wait "$PID" 2>/dev/null || true
 EOF
 
+# The test Shell gets its own display name, and so does everything it starts (Settings,
+# portals): left unset, apps fall back to your desktop's display and open there.
 env -i HOME="$HOME" PATH="$PATH" USER="$USER" WORK="$WORK" UUID="$UUID" CYCLES="$CYCLES" \
     XDG_DATA_HOME="$WORK/data" XDG_CONFIG_HOME="$WORK/config" \
     XDG_CACHE_HOME="$WORK/cache" XDG_STATE_HOME="$WORK/state" \
     XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" GSETTINGS_BACKEND=memory \
+    WAYLAND_DISPLAY="sourceglance-smoke-$$" \
     timeout 120 dbus-run-session -- bash "$WORK/run.sh" 2>"$WORK/dbus.log"
 
 echo
