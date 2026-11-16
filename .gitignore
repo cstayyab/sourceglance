@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.zip
+src/schemas/gschemas.compiled
+release-notes.md
+.vscode/
+.idea/
+*.swp
+.DS_Store

@@ -1,0 +1,17 @@
+{
+  "name": "sourceglance",
+  "version": "0.1.0",
+  "description": "Your GitHub issues and project boards, one click away in the Ubuntu top bar.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "repository": "github:omer-gh/sourceglance",
+  "scripts": {
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0"
+  }
+}

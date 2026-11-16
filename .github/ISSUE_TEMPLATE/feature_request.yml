@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a new feature or an improvement
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea? Please check the [roadmap](https://github.com/omer-gh/sourceglance#roadmap) and
+        [existing issues](https://github.com/omer-gh/sourceglance/issues) first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation, not the solution. "I keep missing new issues assigned to me because..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like sourceglance to handle it?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on this?
+      options:
+        - "Yes, I'd like to open a PR"
+        - Maybe, with some guidance
+        - "No"
+    validations:
+      required: true

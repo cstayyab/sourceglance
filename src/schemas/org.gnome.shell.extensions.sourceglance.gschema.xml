@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <!-- Non-secret settings only. Tokens belong in the GNOME keyring, never here. -->
+  <schema id="org.gnome.shell.extensions.sourceglance" path="/org/gnome/shell/extensions/sourceglance/">
+    <key name="repositories" type="as">
+      <default>[]</default>
+      <summary>Repositories to watch</summary>
+      <description>List of repositories in owner/name form.</description>
+    </key>
+    <key name="refresh-interval" type="i">
+      <range min="1" max="120"/>
+      <default>10</default>
+      <summary>Refresh interval</summary>
+      <description>Minutes between GitHub checks.</description>
+    </key>
+  </schema>
+</schemalist>

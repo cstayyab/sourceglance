@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches metadata.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          meta=$(jq -r '."version-name"' src/metadata.json)
+          if [ "$tag" != "$meta" ]; then
+            echo "Tag v$tag does not match version-name $meta in src/metadata.json" >&2
+            exit 1
+          fi
+
+      - name: Build extension zip
+        run: make pack
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No CHANGELOG.md section found for $version" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in v0.*|*-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.zip \
+            --title "sourceglance $GITHUB_REF_NAME" \
+            --notes-file release-notes.md $prerelease

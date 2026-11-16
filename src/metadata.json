@@ -1,0 +1,10 @@
+{
+  "uuid": "sourceglance@omer-gh.github.io",
+  "name": "sourceglance",
+  "description": "Your GitHub issues and project boards, one click away in the top bar.",
+  "url": "https://github.com/omer-gh/sourceglance",
+  "settings-schema": "org.gnome.shell.extensions.sourceglance",
+  "shell-version": ["46", "47", "48", "49", "50"],
+  "version": 1,
+  "version-name": "0.1.0"
+}
