@@ -79,6 +79,23 @@ the extension refreshes immediately.
 - All requests go to `https://api.github.com` only; TLS is verified by Soup's defaults.
 - Recommended token: fine-grained, read-only *Issues* and *Metadata*.
 
+## Distribution
+
+```
+ src/ ──make pack──▶ extension zip ─┐
+ tools/installer/ (GJS wizard) ─────┼─▶ appimagetool (pinned) ─▶ sourceglance-Setup-X.Y.Z-<arch>.AppImage
+ LICENSE ───────────────────────────┘    AppRun: exec gjs -m installer/main.js
+                                                          │
+           release.yml on tag vX.Y.Z ─▶ GitHub Release: AppImages, zip, SHA256SUMS,
+                                         build provenance attestation
+```
+
+The setup wizard runs as the user, never root, using the system's GJS, GTK 4 and
+libadwaita. Its decision logic (install vs. upgrade vs. repair, version comparison, checks)
+lives in a pure module tested with Node; file operations go through `gnome-extensions` and
+`Gio`, with the previous version backed up for rollback. See
+[installer design](design/installer.md) and [ADR 0005](adr/0005-self-contained-installer.md).
+
 ## Decisions
 
 Architecture decisions are recorded in [`docs/adr/`](adr/). To propose a new one, copy

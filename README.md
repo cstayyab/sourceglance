@@ -44,6 +44,15 @@ Then log out and back in (on Wayland), and enable the extension:
 gnome-extensions enable sourceglance@omer-gh.github.io
 ```
 
+### Setup wizard (planned for v0.1.0)
+
+Download `sourceglance-Setup-X.Y.Z-x86_64.AppImage` from
+[Releases](https://github.com/omer-gh/sourceglance/releases), allow it to run once
+(**Properties → Executable as Program**), and double-click it. A setup wizard walks you
+through the license, a system check and the install — no admin password, app store or
+apt/snap repository needed. Run it again later to repair or remove sourceglance. See the
+[installer design](docs/design/installer.md).
+
 ### From extensions.gnome.org
 
 Coming with the first stable release.
