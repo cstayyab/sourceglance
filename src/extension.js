@@ -4,16 +4,24 @@ import Gio from 'gi://Gio';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {ActionController} from './lib/actions.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {Indicator} from './lib/indicator.js';
-import {groupIssues, mergeItems, nextRefreshDelaySeconds} from './lib/model.js';
+import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds} from './lib/model.js';
 import {lookupToken} from './lib/tokenStore.js';
+
+// How many items closed from the menu stay under "Recently closed" for a quick reopen.
+const MAX_RECENTLY_CLOSED = 5;
+// Search can list a just-closed item as open for a while; after this, believe the search.
+const REOPENED_ELSEWHERE_MS = 2 * 60 * 1000;
 
 const INITIAL_STATE = {
     status: 'loading',
     login: null,
     groups: [],
     prGroups: [],
+    recentlyClosed: [],
+    busy: [],
     total: 0,
     shown: 0,
     updatedAt: null,
@@ -30,10 +38,26 @@ export default class SourceglanceExtension extends Extension {
         this._login = null;
         this._cancellable = null;
         this._timeoutId = 0;
+        this._results = null;
+        this._closed = new Map();
+        this._busy = new Set();
+
+        this._actions = new ActionController({
+            client: this._client,
+            getToken: () => this._readToken(null),
+            getLogin: () => this._login,
+            setBusy: (item, busy) => this._setBusy(item, busy),
+            onChanged: (item, change) => this._onItemChanged(item, change),
+        });
 
         this._indicator = new Indicator({
             onRefresh: () => this._refresh(),
-            onSettings: () => this.openPreferences(),
+            onSettings: () => {
+                // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
+                Promise.resolve(this.openPreferences()).catch(e =>
+                    console.warn(`sourceglance: could not open Settings: ${e.message}`));
+            },
+            onAction: (item, action) => this._actions.run(item, action),
         });
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
@@ -61,8 +85,14 @@ export default class SourceglanceExtension extends Extension {
         }
         this._settings = null;
 
+        this._actions?.destroy();
+        this._actions = null;
+
         this._client?.destroy();
         this._client = null;
+        this._results = null;
+        this._closed = null;
+        this._busy = null;
 
         this._indicator?.destroy();
         this._indicator = null;
@@ -76,6 +106,56 @@ export default class SourceglanceExtension extends Extension {
             return;
         this._state = {...this._state, ...patch};
         this._indicator.render(this._state);
+    }
+
+    _setBusy(item, busy) {
+        if (!this._busy)
+            return;
+        if (busy)
+            this._busy.add(itemKey(item));
+        else
+            this._busy.delete(itemKey(item));
+        this._setState({busy: [...this._busy]});
+    }
+
+    _onItemChanged(item, change) {
+        if (!this._closed)
+            return;
+        if (change === 'closed') {
+            this._closed.delete(itemKey(item));
+            this._closed.set(itemKey(item), {...item, state: 'closed', closedAt: Date.now()});
+            while (this._closed.size > MAX_RECENTLY_CLOSED)
+                this._closed.delete(this._closed.keys().next().value);
+        } else if (change === 'reopened') {
+            this._closed.delete(itemKey(item));
+        }
+        this._publish();
+        // GitHub's search index lags a few seconds behind writes.
+        this._schedule(3);
+    }
+
+    /** Pushes the latest search results to the menu, hiding items closed from the menu. */
+    _publish() {
+        if (!this._results)
+            return;
+        const {issues, prs, issueTotal, prTotal} = this._results;
+        // Still open in search long after we closed it: it was reopened elsewhere.
+        for (const item of [...issues, ...prs]) {
+            const closed = this._closed.get(itemKey(item));
+            if (closed && Date.now() - closed.closedAt > REOPENED_ELSEWHERE_MS)
+                this._closed.delete(itemKey(item));
+        }
+        const visible = list => list.filter(item => !this._closed.has(itemKey(item)));
+        const shownIssues = visible(issues);
+        const shownPrs = visible(prs);
+        const hidden = issues.length + prs.length - shownIssues.length - shownPrs.length;
+        this._setState({
+            groups: groupIssues(shownIssues),
+            prGroups: groupIssues(shownPrs),
+            recentlyClosed: [...this._closed.values()].reverse(),
+            total: Math.max(0, issueTotal + prTotal - hidden),
+            shown: shownIssues.length + shownPrs.length,
+        });
     }
 
     _schedule(seconds) {
@@ -114,6 +194,8 @@ export default class SourceglanceExtension extends Extension {
             const token = await this._readToken(cancellable);
             if (!token) {
                 this._login = null;
+                this._results = null;
+                this._closed.clear();
                 this._setState({...INITIAL_STATE, status: 'signed-out', intervalMinutes});
                 return;
             }
@@ -130,17 +212,15 @@ export default class SourceglanceExtension extends Extension {
             const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
                 Math.max(0, review.total - review.items.length);
 
+            this._results = {issues: issues.items, prs, issueTotal: issues.total, prTotal};
             this._setState({
                 status: 'ready',
                 login: this._login,
-                groups: groupIssues(issues.items),
-                prGroups: groupIssues(prs),
-                total: issues.total + prTotal,
-                shown: issues.items.length + prs.length,
                 updatedAt: new Date(),
                 error: null,
                 refreshing: false,
             });
+            this._publish();
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;

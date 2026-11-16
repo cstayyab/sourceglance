@@ -10,7 +10,7 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {countLabel, isSafeGitHubUrl, relativeTime, truncate} from './model.js';
+import {countLabel, isSafeGitHubUrl, itemKey, relativeTime, truncate} from './model.js';
 
 const VIEW_ALL_URL = 'https://github.com/issues/assigned';
 
@@ -52,10 +52,11 @@ function errorText(error, intervalMinutes) {
 
 export const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
-    _init({onRefresh, onSettings}) {
+    _init({onRefresh, onSettings, onAction}) {
         super._init(0.0, 'sourceglance');
         this._onRefresh = onRefresh;
         this._onSettings = onSettings;
+        this._onAction = onAction;
         this._state = null;
 
         const box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
@@ -161,11 +162,34 @@ class Indicator extends PanelMenu.Button {
         this._addInfo(title, 'sourceglance-section');
         for (const group of groups) {
             this._addInfo(group.repo, 'sourceglance-repo');
-            for (const item of group.issues) {
-                const row = this._addAction(this._itemLabel(item), () => this._openUri(item.url));
-                row.add_style_class_name('sourceglance-issue');
-            }
+            for (const item of group.issues)
+                this._addItem(item);
         }
+    }
+
+    /** An issue or PR row with its actions in a submenu. */
+    _addItem(item) {
+        const busy = this._state.busy.includes(itemKey(item));
+        const label = busy ? _('%s · working…').format(this._itemLabel(item)) : this._itemLabel(item);
+        const row = new PopupMenu.PopupSubMenuMenuItem(label);
+        row.add_style_class_name('sourceglance-issue');
+        this.menu.addMenuItem(row);
+
+        const add = (text, callback) => {
+            const entry = row.menu.addAction(text, callback);
+            entry.setSensitive(!busy);
+            return entry;
+        };
+        add(_('Open on GitHub'), () => this._openUri(item.url)).setSensitive(Boolean(item.url));
+        if (item.state === 'closed') {
+            add(_('Reopen'), () => this._onAction(item, 'reopen'));
+            return;
+        }
+        add(_('Comment…'), () => this._onAction(item, 'comment'));
+        add(item.kind === 'pr' ? _('Close pull request…') : _('Close issue…'),
+            () => this._onAction(item, 'close'));
+        add(_('Assignees…'), () => this._onAction(item, 'assignees'));
+        add(_('Labels…'), () => this._onAction(item, 'labels'));
     }
 
     _rebuildMenu() {
@@ -187,6 +211,11 @@ class Indicator extends PanelMenu.Button {
                 this._addSection(_('Issues'), state.groups);
                 this._addSection(_('Pull requests'), state.prGroups);
             }
+        }
+        if (signedIn && state.recentlyClosed.length > 0) {
+            this._addInfo(_('Recently closed'), 'sourceglance-section');
+            for (const item of state.recentlyClosed)
+                this._addItem(item);
         }
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());

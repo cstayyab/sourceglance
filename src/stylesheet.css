@@ -29,3 +29,21 @@
 .sourceglance-hint {
     font-size: smaller;
 }
+
+.sourceglance-comment-entry {
+    min-height: 96px;
+    margin-top: 12px;
+}
+
+.sourceglance-picker {
+    max-height: 320px;
+    margin-top: 12px;
+}
+
+.sourceglance-picker-list {
+    spacing: 6px;
+}
+
+.sourceglance-picker-empty {
+    font-style: italic;
+}

@@ -193,11 +193,16 @@ export function parseSearchResponse(json, search = 'issue') {
 export function mergeItems(...lists) {
     const seen = new Map();
     for (const item of lists.flat()) {
-        const key = `${item.repo}#${item.number}`;
+        const key = itemKey(item);
         if (!seen.has(key))
             seen.set(key, item);
     }
     return [...seen.values()];
+}
+
+/** Stable identity of an issue or PR: "owner/name#number". */
+export function itemKey(item) {
+    return `${item.repo}#${item.number}`;
 }
 
 // Write requests. Each builder returns {method, path, body} for GitHubClient.send(), after
