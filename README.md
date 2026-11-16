@@ -21,7 +21,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 
 ![sourceglance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
 
-> **Status: early releases.** v0.4.0 is the latest, published as a pre-release. Try it, and
+> **Status: early releases.** v0.4.1 is the latest, published as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
 ## Features

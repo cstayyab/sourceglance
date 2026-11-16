@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-16
+
 ### Fixed
 
 - Setup no longer tries to restart sourceglance when a development build (`make reload`) was
@@ -120,7 +122,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/omer-gh/sourceglance/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/omer-gh/sourceglance/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/omer-gh/sourceglance/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/omer-gh/sourceglance/compare/v0.1.0...v0.2.0
