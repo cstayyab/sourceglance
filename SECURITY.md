@@ -32,3 +32,12 @@ You can expect:
 - sourceglance stores the token in the GNOME keyring, never in GSettings or plain files.
 - Never paste tokens into issues, logs or screenshots. If you leak one, revoke it right away
   in your GitHub settings.
+
+## How we keep sourceglance secure
+
+- **Threat model:** [docs/security/threat-model.md](docs/security/threat-model.md) lists
+  what we protect, the risks, and how each is handled.
+- **Secure development:** [docs/security/secure-development.md](docs/security/secure-development.md)
+  covers the automated checks (CodeQL, dependency review, Dependabot, secret scanning with
+  push protection) and the review checklist every PR follows.
+- **Release reviews:** each minor release gets a recorded security review before it ships.

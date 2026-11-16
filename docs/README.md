@@ -16,6 +16,12 @@
 - [Architecture overview](architecture.md): processes, modules, state, refresh flow
 - [Architecture decision records](adr/): why things are built the way they are
 
+## Security
+
+- [Security policy and reporting](../SECURITY.md)
+- [Threat model](security/threat-model.md): assets, risks and mitigations
+- [Secure development](security/secure-development.md): automated checks and the review checklist
+
 ## For contributors
 
 - [Development setup](development.md): run, debug and test the extension locally

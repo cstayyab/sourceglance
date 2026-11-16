@@ -55,7 +55,9 @@ Maintainers apply labels during triage:
 2. Follow [docs/development.md](docs/development.md) to run the extension locally.
 3. Keep the change focused. Large features should start as an issue so the design can be
    agreed first.
-4. Run `make lint` and test in a nested GNOME Shell session.
+4. Run `make lint` and test in a nested GNOME Shell session. Go through the security
+   checklist in the PR template
+   ([details](docs/security/secure-development.md#reviewer-checklist)).
 5. Update docs and add a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) for
    any user-visible change.
 6. Open the PR, fill in the template, and link the issue (`Closes #123`).

@@ -32,14 +32,20 @@ Only maintainers with write access. Every release is cut from `main` with CI pas
 
 ## Checklist
 
-1. **Make sure `main` is green** and all PRs for the milestone are merged.
-2. **Update `CHANGELOG.md`**: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`, add a
+1. **Make sure `main` is green** and all PRs for the milestone are merged. No open CodeQL
+   or Dependabot alerts of moderate severity or higher.
+2. **Security review**: close the milestone's `security` issue (review of the diff since the
+   last release, see [secure development](docs/security/secure-development.md#security-reviews))
+   and update "Last reviewed" in the [threat model](docs/security/threat-model.md).
+3. **Docs check**: README, `docs/` and screenshots match the release; the Docs workflow is
+   green.
+4. **Update `CHANGELOG.md`**: rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`, add a
    fresh empty `## [Unreleased]` above it, and update the compare links at the bottom.
-3. **Bump versions** in `src/metadata.json`: set `version-name` to `X.Y.Z` and increase
+5. **Bump versions** in `src/metadata.json`: set `version-name` to `X.Y.Z` and increase
    `version` by 1. Update `shell-version` if support changed. Also set `version` in
    `package.json`.
-4. **Commit and open a PR** titled `chore(release): vX.Y.Z`. Merge it after review.
-5. **Tag the merge commit** on `main`:
+6. **Commit and open a PR** titled `chore(release): vX.Y.Z`. Merge it after review.
+7. **Tag the merge commit** on `main`:
 
    ```bash
    git tag -a vX.Y.Z -m "sourceglance vX.Y.Z"
@@ -49,12 +55,12 @@ Only maintainers with write access. Every release is cut from `main` with CI pas
    git push origin vX.Y.Z
    ```
 
-6. **CI publishes the release.** The `release` workflow builds the extension zip and creates
+8. **CI publishes the release.** The `release` workflow builds the extension zip and creates
    a GitHub Release from the tag, using the matching changelog section as the notes. Check
    the release page once it finishes.
-7. **Upload to extensions.gnome.org** (from `v1.0.0` on): upload the zip from the GitHub
+9. **Upload to extensions.gnome.org** (from `v1.0.0` on): upload the zip from the GitHub
    Release at <https://extensions.gnome.org/upload/>.
-8. **Announce** in Discussions and close the milestone.
+10. **Announce** in Discussions and close the milestone.
 
 ## Release notes
 

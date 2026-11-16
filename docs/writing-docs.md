@@ -26,6 +26,14 @@
    anything personal, and never show a token.
 7. **No secrets, ever** — not even fake-looking ones. Write `<YOUR_TOKEN>` instead.
 
+## Automated checks
+
+The **Docs** workflow runs on every PR that changes Markdown:
+
+- **markdownlint** checks formatting (rules in `.markdownlint-cli2.jsonc`).
+- **lychee** checks that relative links and `#anchors` resolve; a weekly run also checks
+  external links.
+
 ## Style
 
 - Plain English, present tense, second person ("you").
