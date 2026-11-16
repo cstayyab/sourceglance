@@ -4,4 +4,4 @@
 // It is public by design: device flow needs no client secret. Register the app at
 // https://github.com/settings/developers with "Enable Device Flow" checked (see
 // docs/development.md). While empty, Settings offers only the personal access token.
-export const OAUTH_CLIENT_ID = '';
+export const OAUTH_CLIENT_ID = 'Ov23lixibs7UUMrb4f7N';
