@@ -13,5 +13,10 @@
       <summary>Refresh interval</summary>
       <description>Minutes between GitHub checks.</description>
     </key>
+    <key name="token-changed" type="i">
+      <default>0</default>
+      <summary>Token change counter</summary>
+      <description>Internal. Bumped by Settings when the token is saved or removed, so the extension refreshes right away.</description>
+    </key>
   </schema>
 </schemalist>

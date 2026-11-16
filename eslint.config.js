@@ -17,6 +17,8 @@ export default [
                 logError: 'readonly',
                 print: 'readonly',
                 printerr: 'readonly',
+                TextDecoder: 'readonly',
+                TextEncoder: 'readonly',
             },
         },
         rules: {
@@ -30,6 +32,21 @@ export default [
             'semi': ['error', 'always'],
             'comma-dangle': ['error', 'always-multiline'],
             'no-unused-vars': ['error', {argsIgnorePattern: '^_'}],
+        },
+    },
+    {
+        // ADR 0004: the pure core must stay importable from Node.
+        files: ['src/lib/model.js'],
+        rules: {
+            'no-restricted-imports': ['error', {patterns: ['gi://*', 'resource://*']}],
+        },
+    },
+    {
+        files: ['tests/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: globals.node,
         },
     },
 ];

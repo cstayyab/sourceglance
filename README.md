@@ -10,18 +10,17 @@ sourceglance is a GNOME Shell extension for Ubuntu Desktop. It puts a small indi
 top bar; click it to see the issues assigned to you and the cards on your GitHub Projects,
 without opening a browser.
 
-> **Status: early development.** The panel indicator works, but GitHub data isn't wired up
-> yet. See the [roadmap](#roadmap) and the open issues if you want to help.
+> **Status: early development.** v0.1.0 (assigned issues) is in progress; Projects boards
+> come next. See the [roadmap](#roadmap) and the open issues if you want to help.
 
 ## Features
 
-- [x] Top-bar indicator with a dropdown menu
-- [x] Settings window (refresh interval, repositories to watch)
-- [ ] Sign in with a GitHub personal access token (stored in the GNOME keyring)
-- [ ] List issues assigned to you, grouped by repository
+- [x] Top-bar indicator with a count of your open assigned issues
+- [x] Sign in with a GitHub personal access token (stored in the GNOME keyring)
+- [x] List issues assigned to you, grouped by repository, with auto-refresh
+- [x] Filter to specific repositories; open any issue in the browser with one click
 - [ ] Show GitHub Projects (v2) columns and cards
-- [ ] Unread badge and desktop notifications for new assignments
-- [ ] Open any issue or card in the browser with one click
+- [ ] Desktop notifications for new assignments
 
 ## Requirements
 
@@ -50,9 +49,14 @@ Coming with the first stable release.
 
 ## Usage
 
-1. Click the sourceglance icon in the top bar.
-2. Open **Settings** from the menu to choose which repositories to watch.
-3. Click any issue to open it in your browser.
+1. [Create a fine-grained token](https://github.com/settings/personal-access-tokens/new)
+   with read-only **Issues** and **Metadata** access to the repositories you care about.
+2. Click the sourceglance icon in the top bar and choose **Settings**.
+3. Paste the token into **Personal access token** and press the apply button. Settings
+   shows "Signed in as @you".
+4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
+   everything assigned to you.
+5. Click the icon to see your issues; click any issue to open it in your browser.
 
 ## Roadmap
 

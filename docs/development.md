@@ -16,12 +16,35 @@ npm install
 
 ```
 src/
-├── extension.js      # Panel indicator: created in enable(), destroyed in disable()
-├── prefs.js          # Settings window (libadwaita)
+├── extension.js      # Lifecycle and refresh loop: created in enable(), destroyed in disable()
+├── prefs.js          # Settings window (libadwaita): token sign-in, filters
+├── lib/
+│   ├── indicator.js  # Panel button and menu (pure view: render(state))
+│   ├── github.js     # GitHub REST client (Soup 3)
+│   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
+│   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
 ├── stylesheet.css    # Styles for the panel menu
 └── schemas/          # GSettings schema (non-secret settings only)
+tests/                # Node unit tests for lib/model.js
+tools/shell-smoke.sh  # Headless GNOME Shell enable/disable smoke test
 ```
+
+See [architecture.md](architecture.md) for how the pieces fit together.
+
+## Tests
+
+```bash
+make test        # unit tests for src/lib/model.js (Node 20+)
+```
+
+```bash
+make smoke       # enable/disable 10× in an isolated headless GNOME Shell
+```
+
+`make smoke` runs its own D-Bus session with in-memory settings, so it doesn't touch your
+desktop. It checks the extension loads and unloads cleanly in the signed-out state; test
+the signed-in flow by hand in a nested session (below) with your own token.
 
 ## Run it locally
 
@@ -58,6 +81,17 @@ On **X11**, press <kbd>Alt</kbd>+<kbd>F2</kbd>, type `r`, and press Enter to rel
 
 ```bash
 make lint
+```
+
+```bash
+make test
+```
+
+```bash
+make smoke
+```
+
+```bash
 make pack        # builds dist/sourceglance@omer-gh.github.io.shell-extension.zip
 ```
 

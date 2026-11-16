@@ -2,7 +2,7 @@ UUID := sourceglance@omer-gh.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 ZIP := dist/$(UUID).shell-extension.zip
 
-.PHONY: install pack lint
+.PHONY: install pack lint test smoke
 
 install:
 	mkdir -p $(INSTALL_DIR)
@@ -18,4 +18,10 @@ pack:
 	@echo "Built $(ZIP)"
 
 lint:
-	npx eslint src
+	npx eslint src tests
+
+test:
+	node --test tests/*.test.js
+
+smoke:
+	./tools/shell-smoke.sh
