@@ -25,6 +25,7 @@ src/
 │   ├── views.js      # What each list shows: issues, projects, PRs, sourceglance
 │   ├── tabs.js       # The tab row for the "tabs in one menu" layout
 │   ├── appLauncher.js # Writes/removes the app icon's .desktop file
+│   ├── widgets.js    # Desktop widget cards (desktop layer, drag, positions)
 │   ├── actions.js    # Menu actions: dialog → requests → notification
 │   ├── dialogs.js    # Comment, close and picker dialogs (ModalDialog)
 │   ├── github.js     # GitHub REST/GraphQL client and device-flow sign-in (Soup 3)
