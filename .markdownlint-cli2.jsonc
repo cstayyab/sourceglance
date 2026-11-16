@@ -1,0 +1,14 @@
+{
+  "config": {
+    "default": true,
+    // Prose is wrapped by hand; tables and links may be long.
+    "MD013": false,
+    // <kbd> is used for keyboard shortcuts.
+    "MD033": { "allowed_elements": ["kbd"] },
+    // Same subheading (e.g. "Added") under different releases.
+    "MD024": { "siblings_only": true },
+    // Code blocks without a language are used for diagrams.
+    "MD040": false
+  },
+  "ignores": ["node_modules/**"]
+}

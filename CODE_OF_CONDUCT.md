@@ -29,7 +29,7 @@ where someone represents the project.
 
 ## Enforcement
 
-Report problems privately to the maintainer at **hire.umer@gmail.com**. All reports are
+Report problems privately to the maintainer at **<hire.umer@gmail.com>**. All reports are
 reviewed promptly and kept confidential.
 
 Maintainers may respond with a warning, a temporary ban, or a permanent ban, depending on

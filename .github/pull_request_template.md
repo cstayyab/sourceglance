@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 ## What does this change?
 
 <!-- A short summary. The PR title should follow Conventional Commits, e.g. "feat(panel): add unread badge". -->
@@ -19,3 +20,10 @@ Closes #
 - [ ] Everything created in `enable()` is cleaned up in `disable()`
 - [ ] Docs updated (if behaviour, settings or setup changed)
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]` (if user-visible)
+
+### Security (see docs/security/secure-development.md)
+
+- [ ] No tokens or secrets in code, logs, errors, fixtures or screenshots
+- [ ] GitHub data treated as untrusted (plain text, URLs checked); no secrets in GSettings
+- [ ] No new runtime dependencies; network calls only to api.github.com
+- [ ] Threat model updated, or not needed for this change
