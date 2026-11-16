@@ -183,34 +183,36 @@ function addSection(ui, title, groups, key) {
     if (filter !== null && !options.some(option => option.name === filter))
         filter = ui.filters[key] = null;
 
-    if (options.length === 0) {
-        addInfo(ui, title, 'sourceglance-section');
-    } else {
-        const header = new PopupMenu.PopupSubMenuMenuItem(title);
-        header.add_style_class_name('sourceglance-section');
-        const current = new St.Label({
-            text: filter === null ? _('All labels') : truncate(filter, 24),
-            style_class: 'sourceglance-filter',
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        if (header._triangleBin)
-            header.insert_child_below(current, header._triangleBin);
-        else
-            header.add_child(current);
-        ui.menu.addMenuItem(header);
+    // Always shown, so the filter is easy to find even before any item has a label.
+    const header = new PopupMenu.PopupSubMenuMenuItem(title);
+    header.add_style_class_name('sourceglance-section');
+    const current = new St.Label({
+        text: filter === null ? _('All labels') : truncate(filter, 24),
+        style_class: 'sourceglance-filter',
+        y_align: Clutter.ActorAlign.CENTER,
+    });
+    if (header._triangleBin)
+        header.insert_child_below(current, header._triangleBin);
+    else
+        header.add_child(current);
+    ui.menu.addMenuItem(header);
 
-        const pick = name => {
-            ui.filters[key] = name;
-            ui.scheduleRebuild();
-        };
-        const all = new FilterItem(_('All labels'), () => pick(null));
-        all.setOrnament(filter === null ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
-        header.menu.addMenuItem(all);
-        for (const option of options) {
-            const entry = new FilterItem(`${truncate(option.name, 40)} (${option.count})`, () => pick(option.name));
-            entry.setOrnament(filter === option.name ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
-            header.menu.addMenuItem(entry);
-        }
+    const pick = name => {
+        ui.filters[key] = name;
+        ui.scheduleRebuild();
+    };
+    const all = new FilterItem(_('All labels'), () => pick(null));
+    all.setOrnament(filter === null ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+    header.menu.addMenuItem(all);
+    for (const option of options) {
+        const entry = new FilterItem(`${truncate(option.name, 40)} (${option.count})`, () => pick(option.name));
+        entry.setOrnament(filter === option.name ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+        header.menu.addMenuItem(entry);
+    }
+    if (options.length === 0) {
+        const none = new PopupMenu.PopupMenuItem(_('No labels on these items yet'), {reactive: false});
+        none.add_style_class_name('sourceglance-hint');
+        header.menu.addMenuItem(none);
     }
 
     for (const group of filterByLabel(groups, filter)) {
