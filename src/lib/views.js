@@ -110,6 +110,7 @@ const THEMED = {
     settings: 'emblem-system-symbolic',
     profile: 'avatar-default-symbolic',
     signIn: 'dialog-password-symbolic',
+    quit: 'application-exit-symbolic',
 };
 
 function icon(name) {
@@ -381,6 +382,23 @@ export function renderApp(ui) {
         addAction(ui, _('Settings'), () => ui.onSettings(), icon('settings'));
     else
         addAction(ui, _('Sign in…'), () => ui.onSettings(), icon('signIn'));
+}
+
+// A switch row that flips without closing the menu, so you see the new state.
+const ToggleItem = GObject.registerClass({GTypeName: gtypeName('ToggleItem', import.meta.url)},
+class ToggleItem extends PopupMenu.PopupSwitchMenuItem {
+    activate(_event) {
+        this.toggle();
+    }
+});
+
+/** The sourceglance menu's footer: Start automatically and Quit. */
+export function addAppFooter(ui) {
+    ui.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+    const autostart = new ToggleItem(_('Start automatically'), ui.getAutostart());
+    autostart.connect('toggled', (_item, active) => ui.setAutostart(active));
+    ui.menu.addMenuItem(autostart);
+    addAction(ui, _('Quit'), () => ui.onQuit(), icon('quit'));
 }
 
 export const VIEWS = {issues: renderIssues, prs: renderPrs, projects: renderProjects, app: renderApp};

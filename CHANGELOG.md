@@ -20,6 +20,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   by status, with **Move to status…**.
 - The Issues and Pull requests lists always end with how many closed items are still
   assigned to you, linking to them on GitHub.
+- **Start automatically** and **Quit** at the bottom of the sourceglance menu. Quit hides
+  sourceglance and stops refreshing until you choose **Start now** in Settings.
 - **Filter by label**: a dropdown on the Issues and Pull requests headings shows only items
   with the chosen label. The menu stays open while you pick.
 - **Actions from the top bar** on every issue and PR: comment, close (with confirmation)

@@ -10,7 +10,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import {gtypeName} from './model.js';
 import {TabBar} from './tabs.js';
-import {VIEWS, badgeText} from './views.js';
+import {VIEWS, addAppFooter, badgeText} from './views.js';
 
 const NAMES = {
     issues: () => _('Issues'),
@@ -27,13 +27,13 @@ class ToolbarButton extends PanelMenu.Button {
      * @param {object} params.icons Gio.Icon per id
      * @param {string[]|null} params.tabs for the app button in the tabs layout: the lists to show as tabs
      */
-    _init({id, icons, tabs = null, onRefresh, onSettings, onAction, getRepos}) {
+    _init({id, icons, tabs = null, onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit}) {
         super._init(0.0, `sourceglance ${id}`);
         this._id = id;
         this._icons = icons;
         this._tabs = tabs;
         this._tab = tabs?.[0] ?? 'app';
-        this._callbacks = {onRefresh, onSettings, onAction, getRepos};
+        this._callbacks = {onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit};
         this._state = null;
         // Label chosen in each list's dropdown; null shows everything. Kept across refreshes.
         this._filters = {issues: null, prs: null};
@@ -134,6 +134,8 @@ class ToolbarButton extends PanelMenu.Button {
 
         if (!this._tabs) {
             VIEWS[this._id](ui);
+            if (this._id === 'app')
+                addAppFooter(ui);
             return;
         }
         const ids = [...this._tabs, 'app'];
@@ -148,5 +150,7 @@ class ToolbarButton extends PanelMenu.Button {
             },
         }));
         VIEWS[this._tab](ui);
+        // In the tabs layout the footer stays at the bottom whichever tab is open.
+        addAppFooter(ui);
     }
 });

@@ -66,6 +66,12 @@ export class ActionController {
         this._cache = new Map();
     }
 
+    /** Closes any open action dialog (on Quit). */
+    closeDialog() {
+        this._dialog?.close();
+        this._dialog = null;
+    }
+
     destroy() {
         this._dialog?.close();
         this._dialog = null;

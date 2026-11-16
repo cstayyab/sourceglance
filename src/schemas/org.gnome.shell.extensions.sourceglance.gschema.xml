@@ -27,6 +27,16 @@
       <summary>Lists in the top bar</summary>
       <description>Which lists to show: issues, prs, projects. The sourceglance button is always shown.</description>
     </key>
+    <key name="start-automatically" type="b">
+      <default>true</default>
+      <summary>Start automatically</summary>
+      <description>Show sourceglance in the top bar when you log in. When off, it stays hidden until you start it from Settings.</description>
+    </key>
+    <key name="start-request" type="i">
+      <default>0</default>
+      <summary>Start request counter</summary>
+      <description>Internal. Bumped by Settings' "Start now" to show sourceglance again after Quit.</description>
+    </key>
     <key name="token-changed" type="i">
       <default>0</default>
       <summary>Token change counter</summary>

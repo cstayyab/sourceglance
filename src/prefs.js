@@ -94,6 +94,24 @@ export default class SourceglancePreferences extends ExtensionPreferences {
             });
             group.add(row);
         }
+
+        const autostartRow = new Adw.SwitchRow({
+            title: _('Start automatically'),
+            subtitle: _('Show sourceglance in the top bar when you log in'),
+        });
+        settings.bind('start-automatically', autostartRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        group.add(autostartRow);
+
+        // After Quit, this is the way back without logging out.
+        const startRow = new Adw.ActionRow({
+            title: _('Start now'),
+            subtitle: _('Show sourceglance again after you chose Quit'),
+        });
+        const startButton = new Gtk.Button({label: _('Start'), valign: Gtk.Align.CENTER});
+        startButton.connect('clicked', () =>
+            settings.set_int('start-request', settings.get_int('start-request') + 1));
+        startRow.add_suffix(startButton);
+        group.add(startRow);
         return group;
     }
 

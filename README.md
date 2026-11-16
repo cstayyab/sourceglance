@@ -74,7 +74,8 @@ Coming with the first stable release.
 4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
    everything assigned to you.
 5. The top bar shows sourceglance's buttons as one tinted block, each list with its count:
-   - **sourceglance**: who you're signed in as, Refresh and Settings
+   - **sourceglance**: who you're signed in as, Refresh and Settings, plus **Start
+     automatically** and **Quit**. After Quit, start it again from Settings → **Start now**.
    - **Issues** (checkbox): open issues assigned to you
    - **Pull requests** (branches): PRs assigned to you or awaiting your review
    - **Projects** (checklist): draft items on your project boards, grouped by status, with

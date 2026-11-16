@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {ActionController} from './lib/actions.js';
@@ -12,6 +12,13 @@ import {lookupToken} from './lib/tokenStore.js';
 
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
+// Settings that don't need a refresh when they change.
+const UI_ONLY_KEYS = ['start-automatically', 'start-request'];
+
+// Whether sourceglance runs in this session: null until the first enable() after login.
+// Kept at module level because GNOME disables and re-enables extensions around the lock
+// screen, and Quit should survive that.
+let sessionRunning = null;
 
 // How many items closed from the menu stay under "Recently closed" for a quick reopen.
 const MAX_RECENTLY_CLOSED = 5;
@@ -71,10 +78,14 @@ export default class SourceglanceExtension extends Extension {
             label: icon('label'),
         };
         this._buttons = [];
-        this._buildButtons();
+        this._running = false;
 
         // Debounced, so typing in the repositories field doesn't fire a request per keystroke.
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (key === 'start-request')
+                this._start();
+            if (!this._running || UI_ONLY_KEYS.includes(key))
+                return;
             if (key === 'token-changed')
                 this._login = null;
             if (TOOLBAR_KEYS.includes(key)) {
@@ -84,10 +95,42 @@ export default class SourceglanceExtension extends Extension {
             this._schedule(1);
         });
 
+        sessionRunning ??= this._settings.get_boolean('start-automatically');
+        if (sessionRunning)
+            this._start();
+    }
+
+    /** Shows the top-bar buttons and starts refreshing. */
+    _start() {
+        if (this._running)
+            return;
+        this._running = true;
+        sessionRunning = true;
+        this._buildButtons();
         this._refresh();
     }
 
+    /** Quit: hides the buttons and stops all network activity until started again. */
+    _quit() {
+        this._running = false;
+        sessionRunning = false;
+        this._cancellable?.cancel();
+        this._cancellable = null;
+        if (this._timeoutId) {
+            GLib.source_remove(this._timeoutId);
+            this._timeoutId = 0;
+        }
+        this._actions.closeDialog();
+        for (const button of this._buttons)
+            button.destroy();
+        this._buttons = [];
+        Main.notify('sourceglance', _('sourceglance has quit. To start it again, open its Settings ' +
+            'from the Extensions app and choose Start now.'));
+    }
+
     disable() {
+        // sessionRunning is left as is, so the lock screen doesn't undo Quit.
+        this._running = false;
         this._cancellable?.cancel();
         this._cancellable = null;
 
@@ -142,6 +185,9 @@ export default class SourceglanceExtension extends Extension {
             },
             onAction: (item, action, arg) => this._actions.run(item, action, arg),
             getRepos: () => this._settings?.get_strv('repositories') ?? [],
+            getAutostart: () => this._settings?.get_boolean('start-automatically') ?? true,
+            setAutostart: active => this._settings?.set_boolean('start-automatically', active),
+            onQuit: () => this._quit(),
         };
         // The sourceglance button leads the group, followed by the lists.
         const ids = tabs ? ['app'] : ['app', ...lists];
@@ -250,6 +296,8 @@ export default class SourceglanceExtension extends Extension {
     }
 
     _schedule(seconds) {
+        if (!this._running)
+            return;
         if (this._timeoutId)
             GLib.source_remove(this._timeoutId);
         this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
@@ -272,6 +320,8 @@ export default class SourceglanceExtension extends Extension {
     }
 
     async _refresh() {
+        if (!this._running)
+            return;
         // A new refresh replaces any running one.
         this._cancellable?.cancel();
         const cancellable = new Gio.Cancellable();
