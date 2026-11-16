@@ -68,6 +68,11 @@
       <summary>Refresh request counter</summary>
       <description>Internal. Bumped by the sourceglance window after a change, so the top bar refreshes right away.</description>
     </key>
+    <key name="check-updates" type="b">
+      <default>true</default>
+      <summary>Check for updates</summary>
+      <description>When the sourceglance window opens, ask GitHub whether a newer release is out and show "Update available" in its title bar.</description>
+    </key>
     <key name="open-page" type="s">
       <default>''</default>
       <summary>Page to open</summary>

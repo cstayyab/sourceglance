@@ -156,6 +156,13 @@ pre { background: #0d1117; color: #e6edf3; padding: 12px 14px; border-radius: 8p
 .shot { margin: 0; }
 .shot img { width: 100%; height: auto; border-radius: 12px; box-shadow: var(--shadow); border: 1px solid var(--border); }
 
+/* Update */
+.update { background: var(--bg-alt); padding: 72px 0 56px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.update-box { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; }
+.update-box p { color: var(--muted); max-width: 40em; }
+.center { text-align: center; }
+.nowrap { white-space: nowrap; }
+
 /* Get involved */
 .involved { padding: 88px 0; text-align: center; }
 .lede-dark { color: var(--muted); font-size: 1.1rem; max-width: 36em; margin: 0 auto 28px; }
@@ -179,6 +186,7 @@ pre code { background: none; padding: 0; }
   .hero-grid, .install-grid { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(2, 1fr); }
   .shot-pair { grid-template-columns: 1fr; }
+  .update-box { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .hero { padding: 48px 0 64px; }

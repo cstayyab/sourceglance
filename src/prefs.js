@@ -12,6 +12,7 @@ import {listBadge} from './lib/model.js';
 import {WindowActions} from './window/actions.js';
 import {WindowData} from './window/data.js';
 import {buildMainWindow, loadTheme} from './window/mainWindow.js';
+import {UpdateButton} from './window/updateButton.js';
 import {buildAboutPage} from './window/pages/about.js';
 import {buildGithubPage} from './window/pages/github.js';
 import {buildGitlabPage} from './window/pages/gitlab.js';
@@ -58,13 +59,20 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const projectsPage = new ProjectsPage({icons, actions});
         pages.push(issuesPage, prsPage, projectsPage);
 
+        const update = new UpdateButton({window, client, settings, toast, version: this.metadata['version-name'] ?? 'dev'});
         const refresh = new Gtk.Button({icon_name: 'view-refresh-symbolic', tooltip_text: _('Refresh')});
-        refresh.connect('clicked', () => data.refresh());
+        refresh.connect('clicked', () => {
+            data.refresh();
+            update.check();
+        });
+        const headerEnd = new Gtk.Box({spacing: 6});
+        headerEnd.append(update.widget);
+        headerEnd.append(refresh);
 
         const main = buildMainWindow(window, {
             appIcon: icon('sourceglance-app'),
             overlay,
-            headerEnd: refresh,
+            headerEnd,
             entries: [
                 {heading: _('Lists')},
                 {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
@@ -105,6 +113,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         window.connect('close-request', () => {
             settings.disconnect(tokenChangedId);
             settings.disconnect(openPageId);
+            update.destroy();
             data.stop();
             client.destroy();
             gitlabClient.destroy();
@@ -113,5 +122,6 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         for (const page of pages)
             page.update(data.state);
         data.start();
+        update.check();
     }
 }

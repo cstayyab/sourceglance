@@ -20,6 +20,7 @@ import {
     projectItemsRequest,
     viewerBoardsRequest,
 } from './model.js';
+import {DOWNLOAD_PREFIX, RELEASES_PATH} from './updates.js';
 
 Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
 
@@ -143,6 +144,30 @@ export class GitHubClient {
         } catch {
             throw new GitHubError({kind: 'unknown', status, retryAt: null});
         }
+    }
+
+    /** sourceglance's published releases (public, no sign-in), for the update check. */
+    async listReleases(cancellable = null) {
+        return this._get(RELEASES_PATH, null, cancellable);
+    }
+
+    /** Downloads one of sourceglance's release files. Resolves to its GLib.Bytes. */
+    async download(url, cancellable = null) {
+        if (!url.startsWith(DOWNLOAD_PREFIX))
+            throw new TypeError('sourceglance: not a sourceglance release download');
+        const message = Soup.Message.new('GET', url);
+        let bytes;
+        try {
+            bytes = await this._session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, cancellable);
+        } catch (e) {
+            if (isCancelled(e))
+                throw e;
+            throw new GitHubError(classifyHttpError(0));
+        }
+        const status = message.get_status();
+        if (status < 200 || status >= 300)
+            throw new GitHubError(classifyHttpError(status, {}, Date.now()));
+        return bytes;
     }
 
     /** Resolves to the login of the token's owner. */

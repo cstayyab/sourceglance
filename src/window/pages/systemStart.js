@@ -38,5 +38,17 @@ export function buildSystemStartPage({settings, toast}) {
     startRow.add_suffix(startButton);
     group.add(startRow);
 
+    const updates = new Adw.PreferencesGroup({
+        title: _('Updates'),
+        description: _('sourceglance asks GitHub for its newest release; nothing about you is sent. One Setup file installs, updates, repairs and removes sourceglance.'),
+    });
+    const updatesRow = new Adw.SwitchRow({
+        title: _('Check for updates'),
+        subtitle: _('Show “Update available” in the title bar when a newer version is out'),
+    });
+    settings.bind('check-updates', updatesRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+    updates.add(updatesRow);
+    page.add(updates);
+
     return page;
 }
