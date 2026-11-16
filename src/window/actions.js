@@ -14,14 +14,28 @@ function itemText(item) {
     return item.kind === 'draft' ? item.title : `${itemRef(item)} ${item.title}`;
 }
 
-function errorText(error) {
+/**
+ * A refused change. On GitHub that usually means the sourceglance app isn't installed on the
+ * repository: it can read public repositories without that, but not change them.
+ */
+function forbiddenText(item) {
+    if (item?.platform === 'gitlab')
+        return _('Your GitLab account can’t change this in %s.').format(item.repo);
+    if (item?.repo) {
+        return _('sourceglance can’t change %s: the sourceglance app isn’t installed there, or you don’t have permission. Make the change on GitHub, or ask the owner to install the app.')
+            .format(item.repo);
+    }
+    return _('Your sign-in can’t change this.');
+}
+
+function errorText(error, item = null) {
     if (!(error instanceof GitHubError))
         return _('Something went wrong: %s').format(error.message);
     switch (error.kind) {
     case 'auth':
         return _('Your sign-in was rejected. Sign in again under Settings → Accounts.');
     case 'forbidden':
-        return _('Your sign-in can’t change this.');
+        return forbiddenText(item);
     case 'not-found':
         return _('It no longer exists, or your sign-in can’t see it.');
     case 'gone':
@@ -201,7 +215,7 @@ export class WindowActions {
             return await fetch(token);
         } catch (e) {
             if (!isCancelled(e))
-                this._toast(errorText(e));
+                this._toast(errorText(e, item));
             return null;
         } finally {
             this._data.setBusy(itemKey(item), false);
@@ -222,7 +236,7 @@ export class WindowActions {
             this._toast(`${doneText}: ${itemText(item)}`);
         } catch (e) {
             if (!isCancelled(e))
-                this._toast(errorText(e));
+                this._toast(errorText(e, item));
         } finally {
             this._data.setBusy(itemKey(item), false);
             this._data.refreshAfterChange();

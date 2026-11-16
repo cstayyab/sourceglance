@@ -21,14 +21,28 @@ function itemText(item) {
     return item.kind === 'draft' ? item.title : `${itemRef(item)} ${item.title}`;
 }
 
-function actionErrorText(error) {
+/**
+ * A refused change. On GitHub that usually means the sourceglance app isn't installed on the
+ * repository: it can read public repositories without that, but not change them.
+ */
+function forbiddenText(item) {
+    if (item?.platform === 'gitlab')
+        return _('Your GitLab account can’t change this in %s.').format(item.repo);
+    if (item?.repo) {
+        return _('sourceglance can’t change %s: the sourceglance app isn’t installed there, or you don’t have permission. Make the change on GitHub, or ask the owner to install the app.')
+            .format(item.repo);
+    }
+    return _('Your sign-in can’t change this.');
+}
+
+function actionErrorText(error, item = null) {
     if (!(error instanceof GitHubError))
         return _('Something went wrong: %s').format(error.message);
     switch (error.kind) {
     case 'auth':
         return _('Your sign-in was rejected. Sign in again in Settings.');
     case 'forbidden':
-        return _('Your sign-in can’t change this. Check its permissions in Settings.');
+        return forbiddenText(item);
     case 'not-found':
         return _('It no longer exists, or your sign-in can’t see it.');
     case 'gone':
@@ -203,7 +217,7 @@ export class ActionController {
             return await fetch(token);
         } catch (e) {
             if (!isCancelled(e))
-                Main.notify(_('sourceglance'), actionErrorText(e));
+                Main.notify(_('sourceglance'), actionErrorText(e, item));
             return null;
         } finally {
             this._setBusy(item, false);
@@ -225,7 +239,7 @@ export class ActionController {
             this._onChanged(item, change);
         } catch (e) {
             if (!isCancelled(e)) {
-                Main.notify(_('sourceglance'), actionErrorText(e));
+                Main.notify(_('sourceglance'), actionErrorText(e, item));
                 // Part of a multi-request change may have landed; show what's there now.
                 this._onChanged(item, 'updated');
             }

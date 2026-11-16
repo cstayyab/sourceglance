@@ -18,6 +18,13 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   away. Coming from v0.2.0 or earlier, log out once after this first update.
 - An **Update, repair or remove** section on the home page.
 
+### Changed
+
+- When GitHub refuses a change (comment, close, labels, assignees, status), sourceglance now
+  says why: the sourceglance app isn't installed on that repository, or you don't have
+  permission, and you can make the change on GitHub instead. Public repositories you don't
+  own show up without the app; changing them needs the owner to install it.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added

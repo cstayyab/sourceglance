@@ -143,10 +143,17 @@ Open sourceglance from the app grid (or the sourceglance button in the top bar â
 3. **GitLab â†’ Sign in** (optional) and approve on gitlab.com the same way. GitLab sign-ins
    renew themselves in the background.
 
-**Repositories owned by someone else** (including private ones you collaborate on) appear
-once their owner installs the sourceglance app on them: send them
-<https://github.com/apps/sourceglance/installations/new> and ask them to pick the
-repository. Organization repositories need an organization owner to install it.
+**Repositories owned by someone else:**
+
+| Repository | Shows in sourceglance | Comment, close, labels, assignees, status |
+| --- | --- | --- |
+| Yours, with the app installed | Yes | Yes |
+| **Public**, owned by someone else | Yes, without any setup | Only once the owner installs the app; until then, make changes on GitHub |
+| **Private**, owned by someone else | Once the owner installs the app | Once the owner installs the app |
+
+To install the app on a repository, its owner opens
+<https://github.com/apps/sourceglance/installations/new> and picks the repository.
+Organization repositories need an organization owner to install it.
 
 ## Using sourceglance
 
