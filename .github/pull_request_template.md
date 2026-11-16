@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 ## What does this change?
 
 <!-- A short summary. The PR title should follow Conventional Commits, e.g. "feat(panel): add unread badge". -->
