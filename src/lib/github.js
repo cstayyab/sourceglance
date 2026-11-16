@@ -7,13 +7,16 @@ import {
     DEVICE_GRANT_TYPE,
     buildSearchPath,
     classifyDeviceTokenResponse,
+    classifyGraphqlErrors,
     classifyHttpError,
     formEncode,
     isValidRepo,
     parseDeviceCodeResponse,
     parseLabels,
     parseLogins,
+    parseProjectItems,
     parseSearchResponse,
+    projectItemsRequest,
 } from './model.js';
 
 Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
@@ -155,11 +158,31 @@ export class GitHubClient {
         return parseSearchResponse(json, search);
     }
 
-    /** Runs a write request built by model.js (closeRequest(), commentRequest() and so on). */
+    /**
+     * Runs a request built by model.js (closeRequest(), moveStatusRequest() and so on).
+     * GraphQL requests fail on any `errors`, since a write must apply fully.
+     */
     async send(token, request, cancellable = null) {
         if (!request)
             throw new TypeError('sourceglance: empty request');
-        return this._request(request.method, request.path, token, request.body, cancellable);
+        const json = await this._request(request.method, request.path, token, request.body, cancellable);
+        if (request.graphql && json?.errors?.length)
+            throw new GitHubError({kind: classifyGraphqlErrors(json.errors), status: 200, retryAt: null});
+        return json;
+    }
+
+    /**
+     * Resolves to a Map of item node ID → project boards (see parseProjectItems()). Boards the
+     * sign-in can't see are left out instead of failing the whole call.
+     */
+    async getProjectBoards(token, nodeIds, cancellable = null) {
+        const request = projectItemsRequest(nodeIds);
+        if (!request)
+            return new Map();
+        const json = await this._request(request.method, request.path, token, request.body, cancellable);
+        if (!json?.data && json?.errors?.length)
+            throw new GitHubError({kind: classifyGraphqlErrors(json.errors), status: 200, retryAt: null});
+        return parseProjectItems(json);
     }
 
     /** Resolves to the repository's labels, [{name, color}] (first 100). */

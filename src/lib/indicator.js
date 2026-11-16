@@ -190,6 +190,10 @@ class Indicator extends PanelMenu.Button {
             () => this._onAction(item, 'close'));
         add(_('Assignees…'), () => this._onAction(item, 'assignees'));
         add(_('Labels…'), () => this._onAction(item, 'labels'));
+        for (const board of item.boards ?? []) {
+            add(_('%s: %s…').format(truncate(board.title, 30), board.status ?? _('No status')),
+                () => this._onAction(item, 'status', board));
+        }
     }
 
     _rebuildMenu() {

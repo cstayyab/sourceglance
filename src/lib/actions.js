@@ -11,6 +11,7 @@ import {
     closeRequest,
     commentRequest,
     diffSelection,
+    moveStatusRequest,
     removeLabelRequest,
     reopenRequest,
 } from './model.js';
@@ -67,7 +68,8 @@ export class ActionController {
         this._client = null;
     }
 
-    run(item, action) {
+    /** `arg` is the project board for 'status'. */
+    run(item, action, arg = null) {
         switch (action) {
         case 'comment':
             this._open(new CommentDialog(item, text =>
@@ -86,7 +88,28 @@ export class ActionController {
         case 'labels':
             this._pickLabels(item);
             break;
+        case 'status':
+            this._pickStatus(item, arg);
+            break;
         }
+    }
+
+    _pickStatus(item, board) {
+        this._open(new PickerDialog({
+            title: _('Move on %s').format(board.title),
+            description: `#${item.number} ${item.title}`,
+            options: board.options.map(option => ({id: option.id, label: option.name})),
+            selected: board.optionId ? [board.optionId] : [],
+            single: true,
+            emptyText: _('This board’s Status field has no options.'),
+            onApply: ([optionId]) => {
+                if (!optionId || optionId === board.optionId)
+                    return;
+                const name = board.options.find(option => option.id === optionId)?.name ?? '';
+                this._send(item, [moveStatusRequest(board, optionId)],
+                    _('Moved to %s').format(name), 'updated');
+            },
+        }));
     }
 
     _open(dialog) {

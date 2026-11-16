@@ -57,7 +57,7 @@ export default class SourceglanceExtension extends Extension {
                 Promise.resolve(this.openPreferences()).catch(e =>
                     console.warn(`sourceglance: could not open Settings: ${e.message}`));
             },
-            onAction: (item, action) => this._actions.run(item, action),
+            onAction: (item, action, arg) => this._actions.run(item, action, arg),
         });
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
@@ -132,6 +132,26 @@ export default class SourceglanceExtension extends Extension {
         this._publish();
         // GitHub's search index lags a few seconds behind writes.
         this._schedule(3);
+    }
+
+    /**
+     * Adds project board info to the listed items. Optional: if the sign-in can't read
+     * projects, the menu just shows no boards.
+     */
+    async _loadBoards(token, items, cancellable) {
+        try {
+            const boards = await this._client.getProjectBoards(token, items.map(item => item.nodeId), cancellable);
+            for (const item of items)
+                item.boards = boards.get(item.nodeId) ?? [];
+            this._publish();
+        } catch (e) {
+            if (isCancelled(e))
+                throw e;
+            if (!this._boardsWarned) {
+                this._boardsWarned = true;
+                console.warn(`sourceglance: project boards unavailable: ${e.kind ?? e.message}`);
+            }
+        }
     }
 
     /** Pushes the latest search results to the menu, hiding items closed from the menu. */
@@ -212,6 +232,13 @@ export default class SourceglanceExtension extends Extension {
             const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
                 Math.max(0, review.total - review.items.length);
 
+            // Show boards from the last refresh until the new ones arrive.
+            const previous = new Map([...this._results?.issues ?? [], ...this._results?.prs ?? []]
+                .map(item => [itemKey(item), item.boards]));
+            const all = [...issues.items, ...prs];
+            for (const item of all)
+                item.boards = previous.get(itemKey(item)) ?? [];
+
             this._results = {issues: issues.items, prs, issueTotal: issues.total, prTotal};
             this._setState({
                 status: 'ready',
@@ -221,6 +248,7 @@ export default class SourceglanceExtension extends Extension {
                 refreshing: false,
             });
             this._publish();
+            await this._loadBoards(token, all, cancellable);
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;

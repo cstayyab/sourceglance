@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import {
     DEVICE_VERIFICATION_URL,
     MAX_COMMENT_LENGTH,
+    PROJECT_ITEMS_QUERY,
+    classifyGraphqlErrors,
+    moveStatusRequest,
+    parseProjectItems,
+    projectItemsRequest,
     addLabelsRequest,
     appInstallUrl,
     assigneesRequest,
@@ -176,6 +181,63 @@ test('assignee and label requests validate names and encode label paths', () => 
     assert.equal(removeLabelRequest(item, 'needs/triage ?').path,
         '/repos/a/b/issues/3/labels/needs%2Ftriage%20%3F');
     assert.throws(() => removeLabelRequest(item, ''), TypeError);
+});
+
+test('projectItemsRequest dedupes and validates node IDs', () => {
+    const request = projectItemsRequest(['I_1', 'I_1', 'PR_2', 'bad id!', null]);
+    assert.equal(request.path, '/graphql');
+    assert.equal(request.graphql, true);
+    assert.deepEqual(request.body.variables, {ids: ['I_1', 'PR_2']});
+    assert.equal(request.body.query, PROJECT_ITEMS_QUERY);
+    assert.equal(projectItemsRequest([]), null);
+});
+
+test('parseProjectItems keeps open boards with a Status field and tolerates gaps', () => {
+    const board = (id, extra = {}) => ({
+        id: `PVTI_${id}`,
+        project: {id: `PVT_${id}`, title: `Board ${id}`, closed: false,
+            field: {id: `PVTSSF_${id}`, options: [{id: 'a1', name: 'Todo'}, {id: 'b2', name: 'Done'}]}},
+        fieldValueByName: {optionId: 'b2', name: 'Done'},
+        ...extra,
+    });
+    const boards = parseProjectItems({
+        data: {nodes: [
+            {id: 'I_1', projectItems: {nodes: [
+                board('x'),
+                board('closed', {project: {...board('c').project, closed: true}}),
+                board('nostatus', {project: {id: 'PVT_n', title: 'n', closed: false, field: null}}),
+                board('unset', {fieldValueByName: null}),
+                null,
+            ]}},
+            null,
+            {id: 'PR_2', projectItems: null},
+        ]},
+        errors: [{type: 'FORBIDDEN'}],
+    });
+    assert.deepEqual(boards.get('I_1'), [
+        {itemId: 'PVTI_x', projectId: 'PVT_x', title: 'Board x', fieldId: 'PVTSSF_x',
+            options: [{id: 'a1', name: 'Todo'}, {id: 'b2', name: 'Done'}], optionId: 'b2', status: 'Done'},
+        {itemId: 'PVTI_unset', projectId: 'PVT_unset', title: 'Board unset', fieldId: 'PVTSSF_unset',
+            options: [{id: 'a1', name: 'Todo'}, {id: 'b2', name: 'Done'}], optionId: null, status: null},
+    ]);
+    assert.deepEqual(boards.get('PR_2'), []);
+    assert.equal(parseProjectItems(null).size, 0);
+});
+
+test('moveStatusRequest only accepts the board\'s own options', () => {
+    const board = {itemId: 'PVTI_x', projectId: 'PVT_x', fieldId: 'F_x', options: [{id: 'a1', name: 'Todo'}]};
+    assert.deepEqual(moveStatusRequest(board, 'a1').body.variables,
+        {project: 'PVT_x', item: 'PVTI_x', field: 'F_x', option: 'a1'});
+    assert.throws(() => moveStatusRequest(board, 'zz'), TypeError);
+    assert.throws(() => moveStatusRequest({...board, itemId: '"; drop'}, 'a1'), TypeError);
+});
+
+test('classifyGraphqlErrors maps GraphQL error types', () => {
+    assert.equal(classifyGraphqlErrors([{type: 'FORBIDDEN'}]), 'forbidden');
+    assert.equal(classifyGraphqlErrors([{type: 'INSUFFICIENT_SCOPES'}]), 'forbidden');
+    assert.equal(classifyGraphqlErrors([{type: 'NOT_FOUND'}]), 'not-found');
+    assert.equal(classifyGraphqlErrors([{message: 'x'}]), 'query');
+    assert.equal(classifyGraphqlErrors(null), 'query');
 });
 
 test('diffSelection lists additions and removals', () => {

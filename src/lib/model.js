@@ -66,8 +66,9 @@ export function isSafeGitHubUrl(url) {
 // OAuth device flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow).
 // The default sign-in is a GitHub App limited to issues, pull requests and projects; it
 // takes no scope. The opt-in full-access sign-in uses an OAuth App, and reading private
-// issues there needs `repo`: OAuth Apps have no narrower scope for that.
-export const FULL_ACCESS_SCOPE = 'repo';
+// issues there needs `repo`: OAuth Apps have no narrower scope for that. `project` lets it
+// read and move items on project boards.
+export const FULL_ACCESS_SCOPE = 'repo project';
 export const DEVICE_VERIFICATION_URL = 'https://github.com/login/device';
 export const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
@@ -268,6 +269,113 @@ export function removeLabelRequest(item, name) {
     if (!isValidLabelName(name))
         throw new TypeError('sourceglance: not a valid label name');
     return {method: 'DELETE', path: `${path}/labels/${encodeURIComponent(name)}`, body: null};
+}
+
+// Projects (v2) are GraphQL-only. Each issue/PR in the list shows its status on every open
+// board it's on, from the board's single-select "Status" field.
+
+const PROJECT_ITEM_FIELDS = `
+    id
+    project {
+        id
+        title
+        closed
+        field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
+    }
+    fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { optionId name } }`;
+
+export const PROJECT_ITEMS_QUERY = `query($ids: [ID!]!) {
+    nodes(ids: $ids) {
+        ... on Issue { id projectItems(first: 10) { nodes { ${PROJECT_ITEM_FIELDS} } } }
+        ... on PullRequest { id projectItems(first: 10) { nodes { ${PROJECT_ITEM_FIELDS} } } }
+    }
+}`;
+
+const MOVE_STATUS_MUTATION = `mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+    updateProjectV2ItemFieldValue(input: {
+        projectId: $project, itemId: $item, fieldId: $field, value: {singleSelectOptionId: $option}
+    }) { projectV2Item { id } }
+}`;
+
+function isNodeId(id) {
+    return typeof id === 'string' && /^[A-Za-z0-9_=-]{1,100}$/.test(id);
+}
+
+/** GraphQL request for the boards of up to 100 items. Null when there's nothing to ask. */
+export function projectItemsRequest(nodeIds) {
+    const ids = [...new Set(nodeIds)].filter(isNodeId).slice(0, 100);
+    if (ids.length === 0)
+        return null;
+    return {method: 'POST', path: '/graphql', graphql: true, body: {query: PROJECT_ITEMS_QUERY, variables: {ids}}};
+}
+
+/**
+ * Map of item node ID → boards [{itemId, projectId, title, fieldId, options, optionId, status}].
+ * Tolerant: GitHub returns partial data (with `errors`) for boards the sign-in can't see,
+ * and those are simply left out. Closed boards and boards without a Status field are skipped.
+ */
+export function parseProjectItems(json) {
+    const boards = new Map();
+    const nodes = Array.isArray(json?.data?.nodes) ? json.data.nodes : [];
+    for (const node of nodes) {
+        if (!isNodeId(node?.id))
+            continue;
+        const list = [];
+        for (const entry of node.projectItems?.nodes ?? []) {
+            const project = entry?.project;
+            const field = project?.field;
+            if (!isNodeId(entry?.id) || !isNodeId(project?.id) || project.closed || !isNodeId(field?.id))
+                continue;
+            const options = (field.options ?? [])
+                .filter(option => isNodeId(option?.id) && typeof option.name === 'string')
+                .map(option => ({id: option.id, name: cappedString(option.name, 100)}));
+            const value = entry.fieldValueByName;
+            const current = options.find(option => option.id === value?.optionId) ?? null;
+            list.push({
+                itemId: entry.id,
+                projectId: project.id,
+                title: cappedString(project.title, 100),
+                fieldId: field.id,
+                options,
+                optionId: current?.id ?? null,
+                status: current?.name ?? null,
+            });
+        }
+        boards.set(node.id, list);
+    }
+    return boards;
+}
+
+/** Move a board item to another Status option. The option must be one of the board's own. */
+export function moveStatusRequest(board, optionId) {
+    if (!isNodeId(board?.itemId) || !isNodeId(board.projectId) || !isNodeId(board.fieldId) ||
+        !board.options?.some(option => option.id === optionId))
+        throw new TypeError('sourceglance: not a valid project status change');
+    return {
+        method: 'POST',
+        path: '/graphql',
+        graphql: true,
+        body: {
+            query: MOVE_STATUS_MUTATION,
+            variables: {project: board.projectId, item: board.itemId, field: board.fieldId, option: optionId},
+        },
+    };
+}
+
+/** Error kind for a GraphQL `errors` array (GitHub answers HTTP 200 with these). */
+export function classifyGraphqlErrors(errors) {
+    const type = Array.isArray(errors) ? errors[0]?.type : null;
+    switch (type) {
+    case 'FORBIDDEN':
+    case 'INSUFFICIENT_SCOPES':
+        return 'forbidden';
+    case 'NOT_FOUND':
+        return 'not-found';
+    case 'RATE_LIMITED':
+        return 'rate-limit';
+    default:
+        return 'query';
+    }
 }
 
 /**
