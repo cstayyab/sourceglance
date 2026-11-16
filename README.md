@@ -206,7 +206,8 @@ counts and the title bar show how many items match. Clear the box, press Esc or 
 | --- | --- |
 | `v0.1.0` ✅ | Top bar, main window, desktop widgets, GitHub and gitlab.com, setup wizard |
 | `v0.2.0` ✅ | About page: version, author, report an issue, fork and contribute |
-| `v0.3.0` | Desktop notifications for new assignments |
+| `v0.3.0` ✅ | Update button with verified downloads, updates without logging out, search, one Accounts page |
+| `v0.4.0` | Desktop notifications for new assignments |
 | `v1.0.0` | Published on extensions.gnome.org |
 
 Details: [docs/product/roadmap.md](docs/product/roadmap.md).
