@@ -23,3 +23,21 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y libglib2.0-bin
           glib-compile-schemas --strict --dry-run src/schemas
+
+  setup-wizard:
+    runs-on: ubuntu-24.04   # GNOME Shell 46: the oldest supported release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install GNOME Shell, GJS and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gjs gnome-shell gir1.2-secret-1 \
+            libglib2.0-bin squashfs-tools dconf-cli
+      - name: Command-line install, upgrade, repair and remove
+        run: make setup-test
+      - name: Build the AppImage and run it
+        run: |
+          ARCHES=x86_64 make setup
+          app=$(ls dist/sourceglance-Setup-*-x86_64.AppImage)
+          "$app" --appimage-extract-and-run --version
+          GSETTINGS_BACKEND=memory "$app" --appimage-extract-and-run --check

@@ -68,6 +68,23 @@ no-warranty terms, and asks you to type **I agree**. It installs missing package
 (`mutter-dev-bin` on GNOME 49+) with `sudo apt install` only after asking. Run
 `./tools/preview.sh --help` for all options.
 
+## Setup wizard (installer)
+
+The MSI-style installer lives in `tools/installer/` (design:
+[installer.md](design/installer.md); user guide: [installing.md](installing.md)).
+
+| Command | What it does |
+|---------|--------------|
+| `make setup-run` | Stage the payload and open the wizard from source. **It really installs** into your account; pass `ARGS=--check` to only run the checks. |
+| `make setup-test` | Command-line install / upgrade / repair / remove test in an isolated home |
+| `make setup` | Build `dist/sourceglance-Setup-<version>-{x86_64,aarch64}.AppImage` (needs `squashfs-tools`; downloads the pinned AppImage runtime and verifies its SHA-256) |
+
+Decision logic is in `tools/installer/lib/plan.js` (no GNOME imports, tested by
+`tests/setup-plan.test.js`). `tests/setup-screenshots.js` renders every page to PNG when
+run inside a headless GNOME Shell with isolated `HOME`/`XDG_*` directories; use it to
+refresh `docs/images/setup-*.png`. Keep the wizard to GTK 4.14 / libadwaita 1.5 APIs so it
+runs on GNOME 46.
+
 ## Run it locally by hand
 
 ```bash

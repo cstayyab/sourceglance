@@ -7,3 +7,4 @@ release-notes.md
 .idea/
 *.swp
 .DS_Store
+tools/installer/payload/

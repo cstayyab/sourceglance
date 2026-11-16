@@ -4,7 +4,7 @@ import globals from 'globals';
 export default [
     js.configs.recommended,
     {
-        files: ['src/**/*.js'],
+        files: ['src/**/*.js', 'tools/**/*.js'],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'module',
@@ -41,7 +41,7 @@ export default [
     },
     {
         // ADR 0004: the pure core must stay importable from Node.
-        files: ['src/lib/model.js'],
+        files: ['src/lib/model.js', 'tools/installer/lib/plan.js'],
         rules: {
             'no-restricted-imports': ['error', {patterns: ['gi://*', 'resource://*']}],
         },

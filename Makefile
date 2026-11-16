@@ -2,7 +2,7 @@ UUID := sourceglance@omer-gh.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 ZIP := dist/$(UUID).shell-extension.zip
 
-.PHONY: install pack lint test smoke preview
+.PHONY: install pack lint test smoke preview setup setup-payload setup-run setup-test
 
 install:
 	mkdir -p $(INSTALL_DIR)
@@ -18,7 +18,7 @@ pack:
 	@echo "Built $(ZIP)"
 
 lint:
-	npx eslint src tests
+	npx eslint src tests tools
 
 test:
 	node --test tests/*.test.js
@@ -28,3 +28,16 @@ smoke:
 
 preview:
 	./tools/preview.sh
+
+# MSI-style setup wizard (docs/design/installer.md)
+setup:
+	./tools/build-setup.sh
+
+setup-payload:
+	./tools/build-setup.sh payload tools/installer/payload
+
+setup-run: setup-payload
+	gjs -m tools/installer/main.js $(ARGS)
+
+setup-test: setup-payload
+	./tests/setup-cli.sh
