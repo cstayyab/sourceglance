@@ -21,3 +21,9 @@ export const OAUTH_CLIENT_ID = '';
 // The sourceglance GitLab application (gitlab.com → Preferences → Applications): not
 // confidential, scope `api`, Device authorization grant enabled. Public by design.
 export const GITLAB_CLIENT_ID = 'b21497a4740f5b6acda34fd45ac48f42529611120e526a55ce85b505bbdf19f3';
+
+// Project links and author, shown on the About page.
+export const AUTHOR_NAME = 'Mohammad Omer';
+export const AUTHOR_GITHUB = 'omer-gh';
+export const REPO_URL = 'https://github.com/omer-gh/sourceglance';
+export const HOME_URL = 'https://omer-gh.github.io/sourceglance/';
