@@ -261,7 +261,7 @@ test('normalizeButtons keeps known lists in toolbar order', () => {
     assert.deepEqual(normalizeButtons(['prs', 'issues', 'prs', 'evil', 'app']), ['issues', 'prs']);
     assert.deepEqual(normalizeButtons([]), []);
     assert.deepEqual(normalizeButtons(null), []);
-    assert.deepEqual(normalizeButtons(TOOLBAR_LISTS), ['issues', 'projects', 'prs']);
+    assert.deepEqual(normalizeButtons(TOOLBAR_LISTS), ['issues', 'prs', 'projects']);
 });
 
 test('closed searches count closed items still assigned to you', () => {

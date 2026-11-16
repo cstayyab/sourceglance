@@ -1,5 +1,5 @@
 // What each top-bar list shows. Each view fills a PopupMenu from the state (see indicator.js).
-// `ui` is {menu, state, filters, scheduleRebuild, onAction, onRefresh, onSettings, repos}.
+// `ui` is {menu, state, filters, icons, scheduleRebuild, onAction, onRefresh, onSettings, repos}.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -96,11 +96,40 @@ function addInfo(ui, text, styleClass) {
     return item;
 }
 
-function addAction(ui, text, callback) {
-    const item = new PopupMenu.PopupMenuItem(text);
+// Icons for menu rows, from the icon theme. Each exists in both Adwaita and Yaru; the ones
+// that don't (issue, label) ship in icons/ and come in through ui.icons.
+const THEMED = {
+    open: 'web-browser-symbolic',
+    comment: 'chat-message-new-symbolic',
+    complete: 'object-select-symbolic',
+    closePr: 'window-close-symbolic',
+    reopen: 'edit-undo-symbolic',
+    assignees: 'system-users-symbolic',
+    draft: 'document-edit-symbolic',
+    refresh: 'view-refresh-symbolic',
+    settings: 'emblem-system-symbolic',
+    profile: 'avatar-default-symbolic',
+    signIn: 'dialog-password-symbolic',
+};
+
+function icon(name) {
+    return Gio.ThemedIcon.new(THEMED[name]);
+}
+
+function addAction(ui, text, callback, gicon = null) {
+    const item = gicon ? new PopupMenu.PopupImageMenuItem(text, gicon) : new PopupMenu.PopupMenuItem(text);
     item.connect('activate', callback);
     ui.menu.addMenuItem(item);
     return item;
+}
+
+/** A submenu row with an icon, as used for issues, PRs and drafts. */
+function addItemRow(ui, text, gicon) {
+    const row = new PopupMenu.PopupSubMenuMenuItem(text, true);
+    row.icon.gicon = gicon;
+    row.add_style_class_name('sourceglance-issue');
+    ui.menu.addMenuItem(row);
+    return row;
 }
 
 function signedIn(state) {
@@ -123,19 +152,20 @@ function listReady(ui) {
     return state.status === 'ready' || state.updatedAt !== null;
 }
 
-// Badge text for a list's top-bar button or tab: '' hides it.
+// Badge text for a list's top-bar button or tab, '0' included once known; '' hides it
+// (signed out, or not loaded yet).
 export function badgeText(id, state) {
-    if (!signedIn(state))
+    if (!signedIn(state) || state.updatedAt === null)
         return '';
     switch (id) {
     case 'issues':
-        return countLabel(state.issueTotal, state.issueShown);
+        return countLabel(state.issueTotal, state.issueShown) || '0';
     case 'prs':
-        return countLabel(state.prTotal, state.prShown);
-    case 'projects': {
-        const drafts = (state.boards ?? []).reduce((sum, board) => sum + board.drafts.length, 0);
-        return drafts > 0 ? String(drafts) : '';
-    }
+        return countLabel(state.prTotal, state.prShown) || '0';
+    case 'projects':
+        if (state.boards === null)
+            return state.boardsError ? '' : '…';
+        return String(state.boards.reduce((sum, board) => sum + board.drafts.length, 0));
     default:
         return '';
     }
@@ -151,27 +181,31 @@ function itemLabel(item) {
 /** An issue or PR row with its actions in a submenu. */
 function addItem(ui, item) {
     const busy = ui.state.busy.includes(itemKey(item));
-    const row = new PopupMenu.PopupSubMenuMenuItem(busy ? _('%s · working…').format(itemLabel(item)) : itemLabel(item));
-    row.add_style_class_name('sourceglance-issue');
-    ui.menu.addMenuItem(row);
+    let kindIcon = item.kind === 'pr' ? ui.icons.prs : ui.icons.issue;
+    if (item.state === 'closed')
+        kindIcon = icon('complete');
+    const row = addItemRow(ui, busy ? _('%s · working…').format(itemLabel(item)) : itemLabel(item), kindIcon);
 
-    const add = (text, callback) => {
-        const entry = row.menu.addAction(text, callback);
+    const add = (text, gicon, callback) => {
+        const entry = row.menu.addAction(text, callback, gicon);
         entry.setSensitive(!busy);
         return entry;
     };
-    add(_('Open on GitHub'), () => openUri(item.url)).setSensitive(Boolean(item.url));
+    add(_('Open on GitHub'), icon('open'), () => openUri(item.url)).setSensitive(Boolean(item.url));
     if (item.state === 'closed') {
-        add(_('Reopen'), () => ui.onAction(item, 'reopen'));
+        add(_('Reopen'), icon('reopen'), () => ui.onAction(item, 'reopen'));
         return;
     }
-    add(_('Comment…'), () => ui.onAction(item, 'comment'));
-    add(item.kind === 'pr' ? _('Close pull request…') : _('Close issue…'), () => ui.onAction(item, 'close'));
-    add(_('Assignees…'), () => ui.onAction(item, 'assignees'));
-    add(_('Labels…'), () => ui.onAction(item, 'labels'));
+    add(_('Comment…'), icon('comment'), () => ui.onAction(item, 'comment'));
+    if (item.kind === 'pr')
+        add(_('Close pull request…'), icon('closePr'), () => ui.onAction(item, 'close'));
+    else
+        add(_('Close issue…'), icon('complete'), () => ui.onAction(item, 'close'));
+    add(_('Assignees…'), icon('assignees'), () => ui.onAction(item, 'assignees'));
+    add(_('Labels…'), ui.icons.label, () => ui.onAction(item, 'labels'));
     for (const board of item.boards ?? []) {
         add(_('%s: %s…').format(truncate(board.title, 30), board.status ?? _('No status')),
-            () => ui.onAction(item, 'status', board));
+            ui.icons.projects, () => ui.onAction(item, 'status', board));
     }
 }
 
@@ -226,7 +260,7 @@ function addSection(ui, title, groups, key) {
 function addClosedFooter(ui, count, search, text) {
     ui.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
     const label = count === null ? text(null) : text(count);
-    const row = addAction(ui, label, () => openUri(searchPageUrl(search, ui.repos)));
+    const row = addAction(ui, label, () => openUri(searchPageUrl(search, ui.repos)), icon('complete'));
     row.add_style_class_name('sourceglance-footer');
 }
 
@@ -296,7 +330,7 @@ export function renderProjects(ui) {
         return;
     }
     for (const board of withDrafts) {
-        const header = addAction(ui, truncate(board.title, 48), () => openUri(board.url));
+        const header = addAction(ui, truncate(board.title, 48), () => openUri(board.url), ui.icons.projects);
         header.add_style_class_name('sourceglance-section');
         header.setSensitive(Boolean(board.url));
         for (const group of groupDraftsByStatus(board)) {
@@ -305,16 +339,15 @@ export function renderProjects(ui) {
                 const {item, board: target} = draftTarget(board, draft);
                 const isBusy = busy.includes(itemKey(item));
                 const title = truncate(draft.title || _('Untitled draft'));
-                const row = new PopupMenu.PopupSubMenuMenuItem(isBusy ? _('%s · working…').format(title) : title);
-                row.add_style_class_name('sourceglance-issue');
-                ui.menu.addMenuItem(row);
-                const move = row.menu.addAction(_('Move to status…'), () => ui.onAction(item, 'status', target));
+                const row = addItemRow(ui, isBusy ? _('%s · working…').format(title) : title, icon('draft'));
+                const move = row.menu.addAction(_('Move to status…'), () => ui.onAction(item, 'status', target),
+                    ui.icons.projects);
                 move.setSensitive(!isBusy && Boolean(board.fieldId) && board.options.length > 0);
-                row.menu.addAction(_('Open board'), () => openUri(board.url)).setSensitive(Boolean(board.url));
+                row.menu.addAction(_('Open board'), () => openUri(board.url), icon('open')).setSensitive(Boolean(board.url));
             }
         }
         if (board.truncated)
-            addAction(ui, _('More on GitHub'), () => openUri(board.url)).setSensitive(Boolean(board.url));
+            addAction(ui, _('More on GitHub'), () => openUri(board.url), icon('open')).setSensitive(Boolean(board.url));
     }
 }
 
@@ -341,10 +374,13 @@ export function renderApp(ui) {
 
     if (signedIn(state)) {
         if (isValidLogin(state.login))
-            addAction(ui, _('Your GitHub profile'), () => openUri(`https://github.com/${state.login}`));
-        addAction(ui, _('Refresh'), () => ui.onRefresh()).setSensitive(!state.refreshing);
+            addAction(ui, _('Your GitHub profile'), () => openUri(`https://github.com/${state.login}`), icon('profile'));
+        addAction(ui, _('Refresh'), () => ui.onRefresh(), icon('refresh')).setSensitive(!state.refreshing);
     }
-    addAction(ui, signedIn(state) ? _('Settings') : _('Sign in…'), () => ui.onSettings());
+    if (signedIn(state))
+        addAction(ui, _('Settings'), () => ui.onSettings(), icon('settings'));
+    else
+        addAction(ui, _('Sign in…'), () => ui.onSettings(), icon('signIn'));
 }
 
-export const VIEWS = {issues: renderIssues, projects: renderProjects, prs: renderPrs, app: renderApp};
+export const VIEWS = {issues: renderIssues, prs: renderPrs, projects: renderProjects, app: renderApp};

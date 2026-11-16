@@ -78,8 +78,8 @@ export default class SourceglancePreferences extends ExtensionPreferences {
 
         const lists = [
             ['issues', _('Issues'), _('Open issues assigned to you')],
-            ['projects', _('Projects'), _('Draft items on your project boards')],
             ['prs', _('Pull requests'), _('Assigned to you or awaiting your review')],
+            ['projects', _('Projects'), _('Draft items on your project boards')],
         ];
         for (const [id, title, subtitle] of lists) {
             const row = new Adw.SwitchRow({

@@ -1,6 +1,6 @@
-/* The top-bar buttons read as one tinted group, set apart from other indicators: square
-   inner corners, no gaps, rounded ends. Selectors are specific enough to beat themes that
-   restyle .panel-button. */
+/* The top-bar buttons read as one tinted block, set apart from other indicators: square
+   corners, no gaps. Selectors are specific enough to beat themes that restyle
+   .panel-button. */
 #panel .panel-button.sourceglance-group {
     background-color: rgba(88, 166, 255, 0.18);
     border-radius: 0;
@@ -27,19 +27,13 @@
 }
 
 #panel .panel-button.sourceglance-group-first {
-    border-radius: 999px 0 0 999px;
     border-left-width: 3px;
     -natural-hpadding: 12px !important;
 }
 
 #panel .panel-button.sourceglance-group-last {
-    border-radius: 0 999px 999px 0;
     border-right-width: 3px;
     -natural-hpadding: 12px !important;
-}
-
-#panel .panel-button.sourceglance-group-first.sourceglance-group-last {
-    border-radius: 999px;
 }
 
 .sourceglance-app-label {

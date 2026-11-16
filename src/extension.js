@@ -66,6 +66,9 @@ export default class SourceglanceExtension extends Extension {
             projects: icon('checklist'),
             prs: icon('git-pull-request'),
             app: icon('sourceglance'),
+            // Used inside the menus.
+            issue: icon('issue'),
+            label: icon('label'),
         };
         this._buttons = [];
         this._buildButtons();

@@ -66,7 +66,7 @@ export function searchPageUrl(search, repos = []) {
 
 // The lists that can have a top-bar button, in their fixed order. The sourceglance button
 // (status and settings) is always shown and isn't part of this setting.
-export const TOOLBAR_LISTS = ['issues', 'projects', 'prs'];
+export const TOOLBAR_LISTS = ['issues', 'prs', 'projects'];
 
 /** Known list ids from the `toolbar-buttons` setting, in toolbar order, without duplicates. */
 export function normalizeButtons(ids) {

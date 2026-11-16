@@ -73,12 +73,12 @@ Coming with the first stable release.
    another person's private repository, its owner has to install the app there.
 4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
    everything assigned to you.
-5. The top bar shows a button per list, each with its count:
+5. The top bar shows sourceglance's buttons as one tinted block, each list with its count:
+   - **sourceglance**: who you're signed in as, Refresh and Settings
    - **Issues** (checkbox): open issues assigned to you
+   - **Pull requests** (branches): PRs assigned to you or awaiting your review
    - **Projects** (checklist): draft items on your project boards, grouped by status, with
      **Move to status…**
-   - **Pull requests** (branches): PRs assigned to you or awaiting your review
-   - **sourceglance**: who you're signed in as, Refresh and Settings
 
    In **Settings → Top bar** you choose which lists to show, and whether they're separate
    icons or **tabs in one menu**. The Issues and Pull requests lists can be filtered by label,

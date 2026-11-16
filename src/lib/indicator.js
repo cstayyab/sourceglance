@@ -23,7 +23,7 @@ export const ToolbarButton = GObject.registerClass({GTypeName: gtypeName('Toolba
 class ToolbarButton extends PanelMenu.Button {
     /**
      * @param {object} params
-     * @param {string} params.id 'issues', 'projects', 'prs' or 'app'
+     * @param {string} params.id 'issues', 'prs', 'projects' or 'app'
      * @param {object} params.icons Gio.Icon per id
      * @param {string[]|null} params.tabs for the app button in the tabs layout: the lists to show as tabs
      */
@@ -86,7 +86,8 @@ class ToolbarButton extends PanelMenu.Button {
         if (!this._tabs)
             return '';
         // Tabs layout: the one button counts every list.
-        const counts = this._tabs.map(id => badgeText(id, this._state)).filter(Boolean);
+        // Only numbers ('7', '25+'); skips '' and the '…' shown while projects load.
+        const counts = this._tabs.map(id => badgeText(id, this._state)).filter(text => /^\d+\+?$/.test(text));
         if (counts.length === 0)
             return '';
         const total = counts.reduce((sum, text) => sum + Number.parseInt(text, 10), 0);
@@ -125,6 +126,7 @@ class ToolbarButton extends PanelMenu.Button {
             menu: this.menu,
             state: this._state,
             filters: this._filters,
+            icons: this._icons,
             scheduleRebuild: () => this._scheduleRebuild(),
             repos: this._callbacks.getRepos(),
             ...this._callbacks,
