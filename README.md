@@ -16,11 +16,12 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 
 - **Top-bar buttons** for Issues, Pull requests and Projects, each with a live count.
 - **Desktop widgets**: cards with your lists, pinned to the desktop under your windows.
-- **A main window** with every list and all settings in one place.
+- **A main window** with every list, a search box, and all settings in one place.
+- **One-click updates**: a verified download, applied without logging out.
 
 ![sourceglance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
 
-> **Status: first release.** v0.1.0 is out as a pre-release. Try it, and
+> **Status: early releases.** v0.3.0 is the latest, published as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
 ## Features
@@ -34,13 +35,23 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **GitHub and GitLab**: gitlab.com issues and merge requests get their own collapsible
   section in every list, menu and widget; counts add up across both.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
+- **Search** from the window's title bar: one box filters Issues, Pull requests and Projects
+  by title, repository, number, label, person or board status, with match counts. Clear it
+  to see everything again.
 - **Filter by label**, and see how many closed or merged items are still assigned to you.
-- **Main window** with a sidebar for your lists and settings, a splash screen, and an app
-  grid icon, all in the top bar's blue.
+- **Main window** with a sidebar for your lists and settings (Desktop Widgets, System Tray,
+  Accounts, System Start, About), a splash screen, and an app grid icon, all in the top
+  bar's blue.
+- **Public repositories** you don't own show up without any setup; private ones appear once
+  their owner installs the sourceglance app.
 - **Limited access**: signs in through a GitHub App that can only see issues, pull requests
   and projects (no code). Tokens stay in the GNOME keyring.
 - **Start automatically** at login, or **Quit** and start it again from the app grid.
-- **One-file installer**: a setup wizard with repair, upgrade and remove.
+- **One-file installer**: a setup wizard that installs, updates, repairs and removes
+  sourceglance.
+- **Update available** in the window when a new version is out: one click downloads the new
+  Setup, checks its SHA-256 checksum, and updates sourceglance without logging out.
+- **About** page with the version, the author, and links to report an issue or contribute.
 
 Planned: desktop notifications for new assignments.
 
@@ -134,13 +145,13 @@ Coming with the first stable release.
 Open sourceglance from the app grid (or the sourceglance button in the top bar →
 **Settings**), then go to **Accounts**:
 
-1. **GitHub → Sign in.** sourceglance copies a short code and opens GitHub; paste it and
+1. In the **GitHub** section, click **Sign in**. sourceglance copies a short code and opens GitHub; paste it and
    approve. This gives access to issues, pull requests and project boards only: no code,
    settings or admin access.
 2. **Choose repositories** to pick which repositories sourceglance may see. Optionally list
    repositories to watch (`owner/name, owner/other`); leave it empty to see everything
    assigned to you.
-3. **GitLab → Sign in** (optional) and approve on gitlab.com the same way. GitLab sign-ins
+3. In the **GitLab** section (optional), click **Sign in** and approve on gitlab.com the same way. GitLab sign-ins
    renew themselves in the background.
 
 **Repositories owned by someone else:**
