@@ -9,6 +9,6 @@ export const GITHUB_APP_CLIENT_ID = '';
 // The app's URL name, from https://github.com/apps/<slug>, for "Choose repositories".
 export const GITHUB_APP_SLUG = '';
 
-// The sourceglance OAuth App: the opt-in "Sign in with full access". It needs the `repo`
-// scope, which also allows writes, but reaches private repositories owned by others.
+// The sourceglance OAuth App: the opt-in "Sign in with full access". It needs the `repo` and
+// `project` scopes, which allow writes everywhere, but reaches private repos owned by others.
 export const OAUTH_CLIENT_ID = 'Ov23lixibs7UUMrb4f7N';

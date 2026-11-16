@@ -129,8 +129,8 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const fullAccessRow = new Adw.ActionRow({
             title: _('Sign in with full access'),
             subtitle: OAUTH_CLIENT_ID
-                ? _('Also sees private repositories owned by others. Grants read and write ' +
-                    'access to all your repositories, though sourceglance only reads.')
+                ? _('Also sees private repositories owned by others. Grants write access to ' +
+                    'all your repositories and project boards.')
                 : _('Not available in this build.'),
         });
         const fullAccessButton = new Gtk.Button({
@@ -149,7 +149,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
 
         const linkRow = new Adw.ActionRow({
             title: _('Create a token'),
-            subtitle: _('Fine-grained token with read-only “Issues” and “Metadata” access'),
+            subtitle: _('Fine-grained token with “Issues” and “Metadata” access'),
             activatable: true,
         });
         linkRow.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));

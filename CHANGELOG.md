@@ -13,8 +13,12 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and opens GitHub, you approve, done. It uses a GitHub App limited to issues, pull
   requests and project boards, on the repositories you choose: no code or settings access.
 - Opt-in **Sign in with full access** under **More sign-in options**, for other people's
-  private repositories you collaborate on. It needs GitHub's `repo` scope, which also
-  allows writes; sourceglance only reads.
+  private repositories you collaborate on. It needs GitHub's `repo` and `project` scopes,
+  which allow writing to all your repositories.
+- **Pull requests** in the menu: open PRs assigned to you or awaiting your review.
+- **Actions from the top bar** on every issue and PR: comment, close (with confirmation)
+  and reopen from **Recently closed**, edit assignees and labels, and move it between
+  statuses on its project boards.
 - Sign in with a GitHub personal access token in Settings; the token is validated and
   stored in the GNOME keyring. Sign out removes it.
 - When no issues are found, the menu hints that a token may not reach every repository.
@@ -36,6 +40,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Security
 
 - Only `https://github.com/` links from GitHub data can be opened from the menu.
+- Writes only happen from a menu action. Repository names, numbers, logins, label names
+  and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
 [Unreleased]: https://github.com/omer-gh/sourceglance/commits/main
