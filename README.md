@@ -72,7 +72,7 @@ Coming with the first stable release.
 
 ## Usage
 
-1. Click the sourceglance icon in the top bar and choose **Settings**.
+1. Click the sourceglance icon (a branch with an eye) in the top bar and choose **Sign in…**.
 2. Click **Sign in with GitHub**. sourceglance copies a short code and opens GitHub in your
    browser; paste the code and approve. Settings shows "Signed in as @you".
 
@@ -82,8 +82,20 @@ Coming with the first stable release.
    another person's private repository, its owner has to install the app there.
 4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
    everything assigned to you.
-5. Click the icon to see your open issues and pull requests (assigned to you or awaiting
-   your review). Click any of them for its actions:
+5. The top bar shows sourceglance's buttons as one tinted block, each list with its count:
+   - **sourceglance**: who you're signed in as, Refresh and Settings, plus **Start
+     automatically** and **Quit**. After Quit, start it again from the **sourceglance app
+     icon** in the app grid, or Settings → **Start now**.
+   - **Issues** (checkbox): open issues assigned to you
+   - **Pull requests** (branches): PRs assigned to you or awaiting your review
+   - **Projects** (checklist): draft items on your project boards, grouped by status, with
+     **Move to status…**
+
+   In **Settings → Top bar** you choose which lists to show, and whether they're separate
+   icons or **tabs in one menu**. The Issues and Pull requests lists can be filtered by label,
+   and always end with how many closed items are still assigned to you.
+
+   Click any issue or PR for its actions:
    - **Open on GitHub**
    - **Comment…**
    - **Close…**: issues close as completed or not planned; you confirm first. Closed items

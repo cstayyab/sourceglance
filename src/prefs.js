@@ -8,7 +8,7 @@ import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Ex
 
 import {GITHUB_APP_CLIENT_ID, GITHUB_APP_SLUG, OAUTH_CLIENT_ID, SHOW_OTHER_SIGN_IN_OPTIONS} from './lib/config.js';
 import {DeviceFlowError, GitHubClient, GitHubError, isCancelled} from './lib/github.js';
-import {FULL_ACCESS_SCOPE, appInstallUrl, parseRepoList} from './lib/model.js';
+import {FULL_ACCESS_SCOPE, appInstallUrl, normalizeButtons, parseRepoList} from './lib/model.js';
 import {clearToken, lookupToken, storeToken} from './lib/tokenStore.js';
 
 const NEW_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
@@ -56,7 +56,70 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         window.add(page);
 
         page.add(this._buildAccountGroup(window, settings, client));
+        page.add(this._buildTopBarGroup(settings));
         page.add(this._buildIssuesGroup(settings));
+    }
+
+    _buildTopBarGroup(settings) {
+        const group = new Adw.PreferencesGroup({
+            title: _('Top bar'),
+            description: _('The sourceglance button, with status and Settings, is always shown.'),
+        });
+
+        const layouts = ['separate', 'tabs'];
+        const layoutRow = new Adw.ComboRow({
+            title: _('Layout'),
+            model: Gtk.StringList.new([_('Separate top-bar icons'), _('Tabs in one menu')]),
+            selected: Math.max(0, layouts.indexOf(settings.get_string('layout'))),
+        });
+        layoutRow.connect('notify::selected', () =>
+            settings.set_string('layout', layouts[layoutRow.selected] ?? 'separate'));
+        group.add(layoutRow);
+
+        const lists = [
+            ['issues', _('Issues'), _('Open issues assigned to you')],
+            ['prs', _('Pull requests'), _('Assigned to you or awaiting your review')],
+            ['projects', _('Projects'), _('Draft items on your project boards')],
+        ];
+        for (const [id, title, subtitle] of lists) {
+            const row = new Adw.SwitchRow({
+                title,
+                subtitle,
+                active: normalizeButtons(settings.get_strv('toolbar-buttons')).includes(id),
+            });
+            row.connect('notify::active', () => {
+                const current = normalizeButtons(settings.get_strv('toolbar-buttons'));
+                const next = row.active ? [...current, id] : current.filter(other => other !== id);
+                settings.set_strv('toolbar-buttons', normalizeButtons(next));
+            });
+            group.add(row);
+        }
+
+        const autostartRow = new Adw.SwitchRow({
+            title: _('Start automatically'),
+            subtitle: _('Show sourceglance in the top bar when you log in'),
+        });
+        settings.bind('start-automatically', autostartRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        group.add(autostartRow);
+
+        const launcherRow = new Adw.SwitchRow({
+            title: _('Show in app grid'),
+            subtitle: _('An app icon that starts sourceglance and opens these Settings'),
+        });
+        settings.bind('app-launcher', launcherRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        group.add(launcherRow);
+
+        // After Quit, this is the way back without logging out.
+        const startRow = new Adw.ActionRow({
+            title: _('Start now'),
+            subtitle: _('Show sourceglance again after you chose Quit'),
+        });
+        const startButton = new Gtk.Button({label: _('Start'), valign: Gtk.Align.CENTER});
+        startButton.connect('clicked', () =>
+            settings.set_int('start-request', settings.get_int('start-request') + 1));
+        startRow.add_suffix(startButton);
+        group.add(startRow);
+        return group;
     }
 
     _buildAccountGroup(window, settings, client) {

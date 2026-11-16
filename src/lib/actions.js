@@ -19,6 +19,11 @@ import {
 // Repository labels and assignable users change rarely; refetch after this long.
 const LIST_CACHE_MS = 5 * 60 * 1000;
 
+// "#12 Title" for issues and PRs; project drafts have no number.
+function itemText(item) {
+    return item.kind === 'draft' ? item.title : `#${item.number} ${item.title}`;
+}
+
 function actionErrorText(error) {
     if (!(error instanceof GitHubError))
         return _('Something went wrong: %s').format(error.message);
@@ -61,6 +66,12 @@ export class ActionController {
         this._cache = new Map();
     }
 
+    /** Closes any open action dialog (on Quit). */
+    closeDialog() {
+        this._dialog?.close();
+        this._dialog = null;
+    }
+
     destroy() {
         this._dialog?.close();
         this._dialog = null;
@@ -97,7 +108,7 @@ export class ActionController {
     _pickStatus(item, board) {
         this._open(new PickerDialog({
             title: _('Move on %s').format(board.title),
-            description: `#${item.number} ${item.title}`,
+            description: itemText(item),
             options: board.options.map(option => ({id: option.id, label: option.name})),
             selected: board.optionId ? [board.optionId] : [],
             single: true,
@@ -142,7 +153,7 @@ export class ActionController {
         const all = [...new Set([...(me ? [me] : []), ...item.assignees, ...logins])];
         this._open(new PickerDialog({
             title: _('Assignees'),
-            description: `#${item.number} ${item.title}`,
+            description: itemText(item),
             options: all.map(login => ({id: login, label: login === me ? _('%s (you)').format(login) : login})),
             selected: item.assignees,
             emptyText: _('Nobody can be assigned in this repository.'),
@@ -166,7 +177,7 @@ export class ActionController {
         const names = [...new Set([...current, ...labels.map(label => label.name)])];
         this._open(new PickerDialog({
             title: _('Labels'),
-            description: `#${item.number} ${item.title}`,
+            description: itemText(item),
             options: names.map(name => ({id: name, label: name})),
             selected: current,
             emptyText: _('This repository has no labels.'),
@@ -209,7 +220,7 @@ export class ActionController {
                 throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
             for (const request of requests)
                 await this._client.send(token, request);
-            Main.notify(_('sourceglance'), _('%s: #%d %s').format(doneText, item.number, item.title));
+            Main.notify(_('sourceglance'), _('%s: %s').format(doneText, itemText(item)));
             this._onChanged(item, change);
         } catch (e) {
             if (!isCancelled(e)) {

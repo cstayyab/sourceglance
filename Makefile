@@ -2,7 +2,7 @@ UUID := sourceglance@omer-gh.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 ZIP := dist/$(UUID).shell-extension.zip
 
-.PHONY: install pack lint test smoke preview setup setup-payload setup-run setup-test
+.PHONY: install reload pack lint test smoke preview setup setup-payload setup-run setup-test
 
 install:
 	mkdir -p $(INSTALL_DIR)
@@ -10,6 +10,10 @@ install:
 	glib-compile-schemas $(INSTALL_DIR)/schemas
 	@echo "Installed to $(INSTALL_DIR). Log out and back in on Wayland, then run:"
 	@echo "  gnome-extensions enable $(UUID)"
+
+# Load the current code into your running session without logging out (development only).
+reload:
+	./tools/dev-reload.sh
 
 # GNOME Shell 45+ compiles schemas itself, so the zip ships only the XML.
 pack:

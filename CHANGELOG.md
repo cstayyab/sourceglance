@@ -13,6 +13,17 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and opens GitHub, you approve, done. It uses a GitHub App limited to issues, pull
   requests and project boards, on the repositories you choose: no code or settings access.
 - **Pull requests** in the menu: open PRs assigned to you or awaiting your review.
+- **Top-bar buttons** for Issues, Projects, Pull requests and sourceglance, each with its own
+  count, as separate icons or as tabs in one menu (Settings → Top bar), where you also choose
+  which lists to show.
+- **Projects list**: draft items on your personal and organization project boards, grouped
+  by status, with **Move to status…**.
+- The Issues and Pull requests lists always end with how many closed items are still
+  assigned to you, linking to them on GitHub.
+- **Start automatically** and **Quit** at the bottom of the sourceglance menu. Quit hides
+  sourceglance and stops refreshing until you choose **Start now** in Settings.
+- **App icon** in the app grid and dock: starts sourceglance (also after Quit) and opens its
+  Settings. Turn it off with Settings → Top bar → Show in app grid.
 - **Filter by label**: a dropdown on the Issues and Pull requests headings shows only items
   with the chosen label. The menu stays open while you pick.
 - **Actions from the top bar** on every issue and PR: comment, close (with confirmation)

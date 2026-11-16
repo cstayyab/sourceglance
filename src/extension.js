@@ -1,14 +1,25 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {ActionController} from './lib/actions.js';
+import {installLauncher, removeLauncher} from './lib/appLauncher.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
-import {Indicator} from './lib/indicator.js';
-import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds} from './lib/model.js';
+import {ToolbarButton} from './lib/indicator.js';
+import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons} from './lib/model.js';
 import {lookupToken} from './lib/tokenStore.js';
+
+// Settings that change which top-bar buttons exist.
+const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
+// Settings that don't need a refresh when they change.
+const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher'];
+
+// Whether sourceglance runs in this session: null until the first enable() after login.
+// Kept at module level because GNOME disables and re-enables extensions around the lock
+// screen, and Quit should survive that.
+let sessionRunning = null;
 
 // How many items closed from the menu stay under "Recently closed" for a quick reopen.
 const MAX_RECENTLY_CLOSED = 5;
@@ -22,8 +33,15 @@ const INITIAL_STATE = {
     prGroups: [],
     recentlyClosed: [],
     busy: [],
-    total: 0,
-    shown: 0,
+    issueTotal: 0,
+    issueShown: 0,
+    prTotal: 0,
+    prShown: 0,
+    // Closed items still assigned to you; null until counted.
+    closedCounts: {issues: null, prs: null},
+    // Your project boards with their draft items; null until loaded.
+    boards: null,
+    boardsError: null,
     updatedAt: null,
     error: null,
     refreshing: false,
@@ -50,28 +68,81 @@ export default class SourceglanceExtension extends Extension {
             onChanged: (item, change) => this._onItemChanged(item, change),
         });
 
-        this._indicator = new Indicator({
-            onRefresh: () => this._refresh(),
-            onSettings: () => {
-                // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
-                Promise.resolve(this.openPreferences()).catch(e =>
-                    console.warn(`sourceglance: could not open Settings: ${e.message}`));
-            },
-            onAction: (item, action, arg) => this._actions.run(item, action, arg),
-        });
-        Main.panel.addToStatusArea(this.uuid, this._indicator);
+        const icon = name => Gio.FileIcon.new(this.dir.get_child('icons').get_child(`${name}-symbolic.svg`));
+        this._icons = {
+            issues: Gio.ThemedIcon.new('checkbox-checked-symbolic'),
+            projects: icon('checklist'),
+            prs: icon('git-pull-request'),
+            app: icon('sourceglance'),
+            // Used inside the menus.
+            issue: icon('issue'),
+            label: icon('label'),
+        };
+        this._buttons = [];
+        this._running = false;
 
         // Debounced, so typing in the repositories field doesn't fire a request per keystroke.
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (key === 'start-request')
+                this._start();
+            if (key === 'app-launcher')
+                this._syncLauncher();
+            if (!this._running || UI_ONLY_KEYS.includes(key))
+                return;
             if (key === 'token-changed')
                 this._login = null;
+            if (TOOLBAR_KEYS.includes(key)) {
+                this._buildButtons();
+                this._setState({});
+            }
             this._schedule(1);
         });
 
+        this._syncLauncher();
+        sessionRunning ??= this._settings.get_boolean('start-automatically');
+        if (sessionRunning)
+            this._start();
+    }
+
+    /** Adds or removes the app grid icon, following the "Show in app grid" setting. */
+    _syncLauncher() {
+        if (this._settings.get_boolean('app-launcher'))
+            installLauncher(this.dir);
+        else
+            removeLauncher();
+    }
+
+    /** Shows the top-bar buttons and starts refreshing. */
+    _start() {
+        if (this._running)
+            return;
+        this._running = true;
+        sessionRunning = true;
+        this._buildButtons();
         this._refresh();
     }
 
+    /** Quit: hides the buttons and stops all network activity until started again. */
+    _quit() {
+        this._running = false;
+        sessionRunning = false;
+        this._cancellable?.cancel();
+        this._cancellable = null;
+        if (this._timeoutId) {
+            GLib.source_remove(this._timeoutId);
+            this._timeoutId = 0;
+        }
+        this._actions.closeDialog();
+        for (const button of this._buttons)
+            button.destroy();
+        this._buttons = [];
+        Main.notify('sourceglance', _('sourceglance has quit. To start it again, open its Settings ' +
+            'from the Extensions app and choose Start now.'));
+    }
+
     disable() {
+        // sessionRunning is left as is, so the lock screen doesn't undo Quit.
+        this._running = false;
         this._cancellable?.cancel();
         this._cancellable = null;
 
@@ -94,18 +165,62 @@ export default class SourceglanceExtension extends Extension {
         this._closed = null;
         this._busy = null;
 
-        this._indicator?.destroy();
-        this._indicator = null;
+        for (const button of this._buttons ?? [])
+            button.destroy();
+        this._buttons = null;
+        this._icons = null;
 
         this._state = null;
         this._login = null;
     }
 
+    /** The lists shown in the top bar, from Settings. */
+    _lists() {
+        return normalizeButtons(this._settings.get_strv('toolbar-buttons'));
+    }
+
+    /**
+     * (Re)creates the top-bar buttons: one per list plus the sourceglance button ("separate"),
+     * or only the sourceglance button with a tab per list ("tabs").
+     */
+    _buildButtons() {
+        for (const button of this._buttons)
+            button.destroy();
+        const lists = this._lists();
+        const tabs = this._settings.get_string('layout') === 'tabs';
+        const callbacks = {
+            onRefresh: () => this._refresh(),
+            onSettings: () => {
+                // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
+                Promise.resolve(this.openPreferences()).catch(e =>
+                    console.warn(`sourceglance: could not open Settings: ${e.message}`));
+            },
+            onAction: (item, action, arg) => this._actions.run(item, action, arg),
+            getRepos: () => this._settings?.get_strv('repositories') ?? [],
+            getAutostart: () => this._settings?.get_boolean('start-automatically') ?? true,
+            setAutostart: active => this._settings?.set_boolean('start-automatically', active),
+            onQuit: () => this._quit(),
+        };
+        // The sourceglance button leads the group, followed by the lists.
+        const ids = tabs ? ['app'] : ['app', ...lists];
+        this._buttons = ids.map(id => new ToolbarButton({
+            id, icons: this._icons, tabs: id === 'app' && tabs ? lists : null, ...callbacks,
+        }));
+        this._buttons[0].add_style_class_name('sourceglance-group-first');
+        this._buttons.at(-1).add_style_class_name('sourceglance-group-last');
+        // Each button is inserted at the same position, so add them right to left.
+        for (let i = ids.length - 1; i >= 0; i--)
+            Main.panel.addToStatusArea(`${this.uuid}-${ids[i]}`, this._buttons[i]);
+        if (this._state)
+            this._buttons.forEach(button => button.render(this._state));
+    }
+
     _setState(patch) {
-        if (!this._indicator)
+        if (!this._buttons)
             return;
         this._state = {...this._state, ...patch};
-        this._indicator.render(this._state);
+        for (const button of this._buttons)
+            button.render(this._state);
     }
 
     _setBusy(item, busy) {
@@ -154,6 +269,19 @@ export default class SourceglanceExtension extends Extension {
         }
     }
 
+    /** Loads your boards and their draft items for the Projects list. Optional, like _loadBoards(). */
+    async _loadViewerBoards(token, cancellable) {
+        try {
+            const boards = await this._client.getViewerBoards(token, cancellable);
+            this._setState({boards, boardsError: null});
+        } catch (e) {
+            if (isCancelled(e))
+                throw e;
+            console.warn(`sourceglance: project boards unavailable: ${e.kind ?? e.message}`);
+            this._setState({boardsError: e.kind ?? 'unknown'});
+        }
+    }
+
     /** Pushes the latest search results to the menu, hiding items closed from the menu. */
     _publish() {
         if (!this._results)
@@ -168,17 +296,20 @@ export default class SourceglanceExtension extends Extension {
         const visible = list => list.filter(item => !this._closed.has(itemKey(item)));
         const shownIssues = visible(issues);
         const shownPrs = visible(prs);
-        const hidden = issues.length + prs.length - shownIssues.length - shownPrs.length;
         this._setState({
             groups: groupIssues(shownIssues),
             prGroups: groupIssues(shownPrs),
             recentlyClosed: [...this._closed.values()].reverse(),
-            total: Math.max(0, issueTotal + prTotal - hidden),
-            shown: shownIssues.length + shownPrs.length,
+            issueTotal: Math.max(0, issueTotal - (issues.length - shownIssues.length)),
+            issueShown: shownIssues.length,
+            prTotal: Math.max(0, prTotal - (prs.length - shownPrs.length)),
+            prShown: shownPrs.length,
         });
     }
 
     _schedule(seconds) {
+        if (!this._running)
+            return;
         if (this._timeoutId)
             GLib.source_remove(this._timeoutId);
         this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
@@ -201,6 +332,8 @@ export default class SourceglanceExtension extends Extension {
     }
 
     async _refresh() {
+        if (!this._running)
+            return;
         // A new refresh replaces any running one.
         this._cancellable?.cancel();
         const cancellable = new Gio.Cancellable();
@@ -224,9 +357,19 @@ export default class SourceglanceExtension extends Extension {
 
             this._login ??= await this._client.getViewer(token, cancellable);
             const repos = this._settings.get_strv('repositories');
-            const [issues, assigned, review] = await Promise.all(
-                ['issue', 'pr-assigned', 'pr-review'].map(search =>
-                    this._client.search(token, repos, search, cancellable)));
+            // The closed counts only fill the list footers, so a failure there isn't fatal.
+            const count = search => this._client.countSearch(token, repos, search, cancellable)
+                .catch(e => {
+                    if (isCancelled(e))
+                        throw e;
+                    return null;
+                });
+            const [issues, assigned, review, closedIssues, closedPrs] = await Promise.all([
+                ...['issue', 'pr-assigned', 'pr-review'].map(search =>
+                    this._client.search(token, repos, search, cancellable)),
+                count('issue-closed'),
+                count('pr-closed'),
+            ]);
             const prs = mergeItems(assigned.items, review.items);
             // Results past the first page of either PR search aren't in `prs`.
             const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
@@ -243,12 +386,15 @@ export default class SourceglanceExtension extends Extension {
             this._setState({
                 status: 'ready',
                 login: this._login,
+                closedCounts: {issues: closedIssues, prs: closedPrs},
                 updatedAt: new Date(),
                 error: null,
                 refreshing: false,
             });
             this._publish();
             await this._loadBoards(token, all, cancellable);
+            if (this._lists().includes('projects'))
+                await this._loadViewerBoards(token, cancellable);
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;
