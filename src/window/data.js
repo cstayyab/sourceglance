@@ -4,14 +4,16 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
 import {GitHubError, isCancelled} from '../lib/github.js';
+import {loadGitLab} from '../lib/gitlabLoader.js';
 import {loadLists} from '../lib/loader.js';
 import {groupIssues} from '../lib/model.js';
 import {lookupToken} from '../lib/tokenStore.js';
 
 export class WindowData {
     /** onChange(state) runs after every change; state is shaped like the extension's. */
-    constructor({client, settings, onChange}) {
+    constructor({client, gitlabClient, settings, onChange}) {
         this._client = client;
+        this._gitlabClient = gitlabClient;
         this._settings = settings;
         this._onChange = onChange;
         this._cancellable = null;
@@ -19,7 +21,7 @@ export class WindowData {
         this._afterChangeId = 0;
         this.state = {status: 'loading', login: null, updatedAt: null, groups: [], prGroups: [],
             issueTotal: 0, issueShown: 0, prTotal: 0, prShown: 0, closedCounts: {issues: null, prs: null},
-            boards: null, boardsError: null, error: null, busy: []};
+            boards: null, boardsError: null, error: null, busy: [], gitlab: {status: 'signed-out'}};
     }
 
     start() {
@@ -78,6 +80,24 @@ export class WindowData {
         });
     }
 
+    /** Loads GitLab next to GitHub; its errors only mark the GitLab sections. */
+    async _loadGitLab(cancellable) {
+        try {
+            const gl = await loadGitLab(this._gitlabClient, cancellable);
+            this._set({gitlab: gl.status === 'signed-out' ? gl : {
+                ...gl,
+                groups: groupIssues(gl.issues),
+                prGroups: groupIssues(gl.prs),
+                issueShown: gl.issues.length,
+                prShown: gl.prs.length,
+            }});
+        } catch (e) {
+            if (isCancelled(e) || cancellable.is_cancelled())
+                return;
+            this._set({gitlab: {...this.state.gitlab, status: 'error', error: {kind: e.kind ?? 'unknown'}}});
+        }
+    }
+
     /** Reloads everything. `nudge` also asks the top bar to refresh (after a change). */
     async refresh({nudge = false} = {}) {
         this._cancellable?.cancel();
@@ -94,6 +114,7 @@ export class WindowData {
             this._cancellable = null;
             return;
         }
+        const gitlabDone = this._loadGitLab(cancellable);
         try {
             const token = await lookupToken(cancellable);
             if (!token) {
@@ -129,6 +150,7 @@ export class WindowData {
             this._set({status: 'error', refreshing: false,
                 error: {kind: e instanceof GitHubError ? e.kind : 'unknown', retryAt: e.retryAt ?? null}});
         } finally {
+            await gitlabDone;
             if (this._cancellable === cancellable) {
                 this._cancellable = null;
                 this._schedule();

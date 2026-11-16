@@ -17,3 +17,7 @@ export const SHOW_OTHER_SIGN_IN_OPTIONS = false;
 // `project` scopes, which allow writes everywhere, but reaches private repos owned by others.
 // Empty: no OAuth App is registered, so this option stays unavailable even when shown.
 export const OAUTH_CLIENT_ID = '';
+
+// The sourceglance GitLab application (gitlab.com → Preferences → Applications): not
+// confidential, scope `api`, Device authorization grant enabled. Public by design.
+export const GITLAB_CLIENT_ID = 'b21497a4740f5b6acda34fd45ac48f42529611120e526a55ce85b505bbdf19f3';

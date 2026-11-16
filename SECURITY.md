@@ -34,6 +34,9 @@ You can expect:
 - sourceglance only changes issues, pull requests (comments, state, assignees, labels) and
   project item status, and only when you pick an action in the menu. Closing asks for
   confirmation first. It never touches code, branches or repository settings.
-- sourceglance stores the token in the GNOME keyring, never in GSettings or plain files.
+- **Sign in with GitLab** uses a GitLab application with the `api` scope (GitLab has no
+  narrower scope that allows comments and closing). Revoke it on gitlab.com under
+  **Preferences → Applications → Authorized applications**.
+- sourceglance stores sign-ins in the GNOME keyring, never in GSettings or plain files.
 - Never paste tokens into issues, logs or screenshots. If you leak one, revoke it right away
   in your GitHub settings.

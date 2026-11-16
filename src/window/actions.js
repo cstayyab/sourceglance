@@ -6,21 +6,12 @@ import Gtk from 'gi://Gtk';
 import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {GitHubError, isCancelled} from '../lib/github.js';
-import {
-    assigneeChangeRequests,
-    assigneeChoices,
-    closeRequest,
-    commentRequest,
-    isSafeGitHubUrl,
-    itemKey,
-    labelChangeRequests,
-    labelChoices,
-    moveStatusRequest,
-    reopenRequest,
-} from '../lib/model.js';
+import {GITLAB_CLIENT_ID} from '../lib/config.js';
+import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest} from '../lib/model.js';
+import {assigneeRequests, closeReasons, closeRequests, commentRequests, isSafeLink, labelRequests, reopenRequests} from '../lib/requests.js';
 
 function itemText(item) {
-    return item.kind === 'draft' ? item.title : `#${item.number} ${item.title}`;
+    return item.kind === 'draft' ? item.title : `${itemRef(item)} ${item.title}`;
 }
 
 function errorText(error) {
@@ -28,7 +19,7 @@ function errorText(error) {
         return _('Something went wrong: %s').format(error.message);
     switch (error.kind) {
     case 'auth':
-        return _('Your sign-in was rejected. Sign in again under Accounts → GitHub.');
+        return _('Your sign-in was rejected. Sign in again under Settings → Accounts.');
     case 'forbidden':
         return _('Your sign-in can’t change this.');
     case 'not-found':
@@ -48,15 +39,24 @@ function errorText(error) {
 
 export class WindowActions {
     /** `data` is the WindowData; `window` parents the dialogs. */
-    constructor({window, client, data, toast}) {
+    constructor({window, client, gitlabClient, data, toast}) {
         this._window = window;
         this._client = client;
+        this._gitlabClient = gitlabClient;
         this._data = data;
         this._toast = toast;
     }
 
+    _clientFor(item) {
+        return item.platform === 'gitlab' ? this._gitlabClient : this._client;
+    }
+
+    _tokenFor(item) {
+        return item.platform === 'gitlab' ? this._gitlabClient.accessToken(GITLAB_CLIENT_ID) : this._data.token();
+    }
+
     open(url) {
-        if (isSafeGitHubUrl(url))
+        if (isSafeLink(url))
             new Gtk.UriLauncher({uri: url}).launch(this._window, null, null);
     }
 
@@ -76,54 +76,59 @@ export class WindowActions {
             dialog.set_response_enabled('post', view.buffer.text.trim().length > 0));
         dialog.connect('response', (_dialog, response) => {
             if (response === 'post')
-                this._send(item, [commentRequest(item, view.buffer.text)], _('Comment posted'));
+                this._send(item, commentRequests(item, view.buffer.text), _('Comment posted'));
         });
         dialog.present(this._window);
     }
 
     close(item) {
-        const dialog = new Adw.AlertDialog({
-            heading: item.kind === 'pr' ? _('Close pull request #%d?').format(item.number)
-                : _('Close issue #%d?').format(item.number),
-            body: `${item.title}\n${item.repo}`,
-        });
+        const ref = itemRef(item);
+        const gitlab = item.platform === 'gitlab';
+        const heading = item.kind !== 'pr' ? _('Close issue %s?').format(ref)
+            : gitlab ? _('Close merge request %s?').format(ref) : _('Close pull request %s?').format(ref);
+        const dialog = new Adw.AlertDialog({heading, body: `${item.title}\n${item.repo}`});
         dialog.add_response('cancel', _('Cancel'));
-        if (item.kind === 'pr') {
-            dialog.add_response('pr', _('Close pull request'));
-            dialog.set_response_appearance('pr', Adw.ResponseAppearance.DESTRUCTIVE);
-        } else {
-            dialog.add_response('not_planned', _('Not planned'));
-            dialog.add_response('completed', _('Completed'));
-            dialog.set_response_appearance('completed', Adw.ResponseAppearance.SUGGESTED);
-        }
+        // GitHub issues: completed or not planned. Everything else just closes.
+        const labels = {not_planned: _('Not planned'), completed: _('Completed'), close: _('Close')};
+        for (const reason of closeReasons(item))
+            dialog.add_response(reason, labels[reason]);
+        dialog.set_response_appearance(closeReasons(item).at(-1), item.kind === 'pr'
+            ? Adw.ResponseAppearance.DESTRUCTIVE : Adw.ResponseAppearance.SUGGESTED);
         dialog.connect('response', (_dialog, response) => {
             if (response !== 'cancel')
-                this._send(item, [closeRequest(item, response)], _('Closed'));
+                this._send(item, closeRequests(item, response), _('Closed'));
         });
         dialog.present(this._window);
     }
 
     reopen(item) {
-        this._send(item, [reopenRequest(item)], _('Reopened'));
+        this._send(item, reopenRequests(item), _('Reopened'));
     }
 
     async assignees(item) {
-        const logins = await this._fetch(item, token => this._client.listAssignable(token, item.repo));
-        if (!logins)
+        // GitLab assigns by user id, so keep its members ({id, username}) for the request.
+        const gitlab = item.platform === 'gitlab';
+        const members = await this._fetch(item, token => gitlab
+            ? this._gitlabClient.listMembers(token, item.projectId)
+            : this._client.listAssignable(token, item.repo).then(names => names.map(username => ({username}))));
+        if (!members)
             return;
-        const me = this._data.state.login;
+        const logins = members.map(member => member.username);
+        const me = gitlab ? this._data.state.gitlab?.login : this._data.state.login;
         this._pick({
             heading: _('Assignees'),
             item,
             options: assigneeChoices(item, me, logins).map(login => ({id: login, label: login === me ? _('%s (you)').format(login) : login})),
             selected: item.assignees,
             empty: _('Nobody can be assigned in this repository.'),
-            onApply: wanted => this._send(item, assigneeChangeRequests(item, wanted), _('Assignees updated')),
+            onApply: wanted => this._send(item, assigneeRequests(item, wanted, members), _('Assignees updated')),
         });
     }
 
     async labels(item) {
-        const labels = await this._fetch(item, token => this._client.listLabels(token, item.repo));
+        const labels = await this._fetch(item, token => item.platform === 'gitlab'
+            ? this._gitlabClient.listLabels(token, item.projectId)
+            : this._client.listLabels(token, item.repo));
         if (!labels)
             return;
         this._pick({
@@ -132,7 +137,7 @@ export class WindowActions {
             options: labelChoices(item, labels).map(name => ({id: name, label: name})),
             selected: item.labels.map(label => label.name),
             empty: _('This repository has no labels.'),
-            onApply: wanted => this._send(item, labelChangeRequests(item, wanted), _('Labels updated')),
+            onApply: wanted => this._send(item, labelRequests(item, wanted), _('Labels updated')),
         });
     }
 
@@ -190,7 +195,7 @@ export class WindowActions {
     async _fetch(item, fetch) {
         this._data.setBusy(itemKey(item), true);
         try {
-            const token = await this._data.token();
+            const token = await this._tokenFor(item);
             if (!token)
                 throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
             return await fetch(token);
@@ -209,11 +214,11 @@ export class WindowActions {
             return;
         this._data.setBusy(itemKey(item), true);
         try {
-            const token = await this._data.token();
+            const token = await this._tokenFor(item);
             if (!token)
                 throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
             for (const request of requests)
-                await this._client.send(token, request);
+                await this._clientFor(item).send(token, request);
             this._toast(`${doneText}: ${itemText(item)}`);
         } catch (e) {
             if (!isCancelled(e))

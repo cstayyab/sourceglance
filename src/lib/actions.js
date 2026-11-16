@@ -6,22 +6,19 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {CloseDialog, CommentDialog, PickerDialog} from './dialogs.js';
 import {GitHubError, isCancelled} from './github.js';
 import {
-    assigneeChangeRequests,
     assigneeChoices,
-    closeRequest,
-    commentRequest,
-    labelChangeRequests,
+    itemRef,
     labelChoices,
     moveStatusRequest,
-    reopenRequest,
 } from './model.js';
+import {assigneeRequests, closeRequests, commentRequests, labelRequests, reopenRequests} from './requests.js';
 
 // Repository labels and assignable users change rarely; refetch after this long.
 const LIST_CACHE_MS = 5 * 60 * 1000;
 
 // "#12 Title" for issues and PRs; project drafts have no number.
 function itemText(item) {
-    return item.kind === 'draft' ? item.title : `#${item.number} ${item.title}`;
+    return item.kind === 'draft' ? item.title : `${itemRef(item)} ${item.title}`;
 }
 
 function actionErrorText(error) {
@@ -51,14 +48,18 @@ export class ActionController {
     /**
      * @param {object} params
      * @param {GitHubClient} params.client
-     * @param {() => Promise<string|null>} params.getToken
-     * @param {() => string|null} params.getLogin
+     * @param {GitLabClient} params.gitlabClient
+     * @param {() => Promise<string|null>} params.getToken GitHub
+     * @param {() => Promise<string|null>} params.getGitlabToken
+     * @param {(platform: string) => string|null} params.getLogin
      * @param {(item, busy: boolean) => void} params.setBusy
      * @param {(item, change: 'closed'|'reopened'|'updated') => void} params.onChanged
      */
-    constructor({client, getToken, getLogin, setBusy, onChanged}) {
+    constructor({client, gitlabClient, getToken, getGitlabToken, getLogin, setBusy, onChanged}) {
         this._client = client;
+        this._gitlabClient = gitlabClient;
         this._getToken = getToken;
+        this._getGitlabToken = getGitlabToken;
         this._getLogin = getLogin;
         this._setBusy = setBusy;
         this._onChanged = onChanged;
@@ -77,6 +78,15 @@ export class ActionController {
         this._dialog = null;
         this._cache.clear();
         this._client = null;
+        this._gitlabClient = null;
+    }
+
+    _clientFor(item) {
+        return item.platform === 'gitlab' ? this._gitlabClient : this._client;
+    }
+
+    _tokenFor(item) {
+        return item.platform === 'gitlab' ? this._getGitlabToken() : this._getToken();
     }
 
     /** `arg` is the project board for 'status'. */
@@ -84,14 +94,14 @@ export class ActionController {
         switch (action) {
         case 'comment':
             this._open(new CommentDialog(item, text =>
-                this._send(item, [commentRequest(item, text)], _('Comment posted'), 'updated')));
+                this._send(item, commentRequests(item, text), _('Comment posted'), 'updated')));
             break;
         case 'close':
             this._open(new CloseDialog(item, reason =>
-                this._send(item, [closeRequest(item, reason)], _('Closed'), 'closed')));
+                this._send(item, closeRequests(item, reason), _('Closed'), 'closed')));
             break;
         case 'reopen':
-            this._send(item, [reopenRequest(item)], _('Reopened'), 'reopened');
+            this._send(item, reopenRequests(item), _('Reopened'), 'reopened');
             break;
         case 'assignees':
             this._pickAssignees(item);
@@ -144,25 +154,31 @@ export class ActionController {
     }
 
     async _pickAssignees(item) {
-        const logins = await this._load(item, token => this._cachedList('assignees', item.repo,
-            () => this._client.listAssignable(token, item.repo)));
-        if (!logins)
+        // GitLab assigns by user id, so keep its members ({id, username}) for the request.
+        const gitlab = item.platform === 'gitlab';
+        const members = await this._load(item, token => this._cachedList(`assignees:${item.platform ?? 'github'}`, item.repo,
+            () => gitlab
+                ? this._gitlabClient.listMembers(token, item.projectId)
+                : this._client.listAssignable(token, item.repo).then(logins => logins.map(username => ({username})))));
+        if (!members)
             return;
-        const me = this._getLogin();
-        const all = assigneeChoices(item, me, logins);
+        const me = this._getLogin(item.platform ?? 'github');
+        const all = assigneeChoices(item, me, members.map(member => member.username));
         this._open(new PickerDialog({
             title: _('Assignees'),
             description: itemText(item),
             options: all.map(login => ({id: login, label: login === me ? _('%s (you)').format(login) : login})),
             selected: item.assignees,
             emptyText: _('Nobody can be assigned in this repository.'),
-            onApply: wanted => this._send(item, assigneeChangeRequests(item, wanted), _('Assignees updated'), 'updated'),
+            onApply: wanted => this._send(item, assigneeRequests(item, wanted, members), _('Assignees updated'), 'updated'),
         }));
     }
 
     async _pickLabels(item) {
-        const labels = await this._load(item, token => this._cachedList('labels', item.repo,
-            () => this._client.listLabels(token, item.repo)));
+        const labels = await this._load(item, token => this._cachedList(`labels:${item.platform ?? 'github'}`, item.repo,
+            () => item.platform === 'gitlab'
+                ? this._gitlabClient.listLabels(token, item.projectId)
+                : this._client.listLabels(token, item.repo)));
         if (!labels)
             return;
         const current = item.labels.map(label => label.name);
@@ -173,7 +189,7 @@ export class ActionController {
             options: names.map(name => ({id: name, label: name})),
             selected: current,
             emptyText: _('This repository has no labels.'),
-            onApply: wanted => this._send(item, labelChangeRequests(item, wanted), _('Labels updated'), 'updated'),
+            onApply: wanted => this._send(item, labelRequests(item, wanted), _('Labels updated'), 'updated'),
         }));
     }
 
@@ -181,7 +197,7 @@ export class ActionController {
     async _load(item, fetch) {
         this._setBusy(item, true);
         try {
-            const token = await this._getToken();
+            const token = await this._tokenFor(item);
             if (!token)
                 throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
             return await fetch(token);
@@ -200,17 +216,17 @@ export class ActionController {
             return;
         this._setBusy(item, true);
         try {
-            const token = await this._getToken();
+            const token = await this._tokenFor(item);
             if (!token)
                 throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
             for (const request of requests)
-                await this._client.send(token, request);
+                await this._clientFor(item).send(token, request);
             Main.notify(_('sourceglance'), _('%s: %s').format(doneText, itemText(item)));
             this._onChanged(item, change);
         } catch (e) {
             if (!isCancelled(e)) {
                 Main.notify(_('sourceglance'), actionErrorText(e));
-                // Part of a multi-request change may have landed; show what GitHub has now.
+                // Part of a multi-request change may have landed; show what's there now.
                 this._onChanged(item, 'updated');
             }
         } finally {

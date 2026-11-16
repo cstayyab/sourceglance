@@ -25,6 +25,9 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **sourceglance window** (the app icon, or Settings): a sidebar with your Issues, Pull
   requests and Projects, with counts and the same actions as the menus, and the settings
   pages (Desktop Widgets, System Tray, Accounts, System Start), in the top-bar blue.
+- **GitLab (gitlab.com)**: sign in from the window (Settings → Accounts → GitLab, device
+  flow). Your GitLab issues and merge requests appear in their own collapsible section of
+  each list, menu and widget, with the same actions; counts add up across both.
 - **Desktop widgets**: Summary, Issues, Pull requests and Projects cards on the desktop,
   below your windows and above desktop icons. Drag them by their header; choose cards and
   opacity in Settings → Desktop Widgets.

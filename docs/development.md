@@ -29,6 +29,9 @@ src/
 │   ├── actions.js    # Menu actions: dialog → requests → notification
 │   ├── dialogs.js    # Comment, close and picker dialogs (ModalDialog)
 │   ├── github.js     # GitHub REST/GraphQL client and device-flow sign-in (Soup 3)
+│   ├── gitlab.js     # gitlab.com client: device flow, token refresh, lists, writes
+│   ├── gitlabModel.js # Pure GitLab parsing and request builders (unit-tested)
+│   ├── requests.js   # Write requests for either platform
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
