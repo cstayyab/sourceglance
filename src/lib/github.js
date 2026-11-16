@@ -5,7 +5,6 @@ import Soup from 'gi://Soup?version=3.0';
 
 import {
     DEVICE_GRANT_TYPE,
-    DEVICE_SCOPE,
     buildSearchPath,
     classifyDeviceTokenResponse,
     classifyHttpError,
@@ -139,8 +138,9 @@ export class GitHubClient {
     }
 
     /** Starts device-flow sign-in. Resolves to {deviceCode, userCode, verificationUri, expiresIn, interval}. */
-    async requestDeviceCode(clientId, cancellable = null) {
-        const json = await this._postForm(DEVICE_CODE_URL, {client_id: clientId, scope: DEVICE_SCOPE}, cancellable);
+    async requestDeviceCode(clientId, scope = null, cancellable = null) {
+        const fields = scope ? {client_id: clientId, scope} : {client_id: clientId};
+        const json = await this._postForm(DEVICE_CODE_URL, fields, cancellable);
         const code = parseDeviceCodeResponse(json);
         if (!code)
             throw new DeviceFlowError('error', json?.error ?? 'bad device code response');

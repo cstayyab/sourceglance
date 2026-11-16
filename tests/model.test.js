@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
     DEVICE_VERIFICATION_URL,
+    appInstallUrl,
     buildSearchPath,
     buildSearchQuery,
     classifyDeviceTokenResponse,
@@ -149,6 +150,15 @@ test('countLabel hides zero and marks truncation', () => {
     assert.equal(countLabel(0, 0), '');
     assert.equal(countLabel(7, 7), '7');
     assert.equal(countLabel(31, 25), '25+');
+});
+
+test('appInstallUrl builds the install page only for valid slugs', () => {
+    assert.equal(appInstallUrl('sourceglance'), 'https://github.com/apps/sourceglance/installations/new');
+    assert.equal(appInstallUrl('git-glance-2'), 'https://github.com/apps/git-glance-2/installations/new');
+    assert.equal(appInstallUrl(''), null);
+    assert.equal(appInstallUrl(null), null);
+    assert.equal(appInstallUrl('../evil'), null);
+    assert.equal(appInstallUrl('Bad Slug'), null);
 });
 
 test('formEncode builds a form body', () => {

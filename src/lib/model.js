@@ -51,11 +51,20 @@ export function isSafeGitHubUrl(url) {
 }
 
 // OAuth device flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow).
-// Reading issues in private repos needs `repo`: OAuth Apps have no read-only scope for that.
-// sourceglance only ever sends GET requests to the API.
-export const DEVICE_SCOPE = 'repo';
+// The default sign-in is a GitHub App limited to issues, pull requests and projects; it
+// takes no scope. The opt-in full-access
+// sign-in uses an OAuth App, and reading private issues there needs `repo`: OAuth Apps have
+// no read-only scope for that. sourceglance only ever sends GET requests to the API.
+export const FULL_ACCESS_SCOPE = 'repo';
 export const DEVICE_VERIFICATION_URL = 'https://github.com/login/device';
 export const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
+
+/** Page where the user picks which repositories a GitHub App may read, or null for a bad slug. */
+export function appInstallUrl(slug) {
+    return /^[a-z0-9](?:[a-z0-9-]{0,33}[a-z0-9])?$/.test(slug ?? '')
+        ? `https://github.com/apps/${slug}/installations/new`
+        : null;
+}
 
 /** application/x-www-form-urlencoded body from a plain object. */
 export function formEncode(fields) {

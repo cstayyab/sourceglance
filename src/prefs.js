@@ -6,9 +6,9 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {OAUTH_CLIENT_ID} from './lib/config.js';
+import {GITHUB_APP_CLIENT_ID, GITHUB_APP_SLUG, OAUTH_CLIENT_ID} from './lib/config.js';
 import {DeviceFlowError, GitHubClient, GitHubError, isCancelled} from './lib/github.js';
-import {parseRepoList} from './lib/model.js';
+import {FULL_ACCESS_SCOPE, appInstallUrl, parseRepoList} from './lib/model.js';
 import {clearToken, lookupToken, storeToken} from './lib/tokenStore.js';
 
 const NEW_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
@@ -73,20 +73,35 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         group.add(statusRow);
 
         // Device flow: the user approves a short code on github.com while we poll for the token.
+        // The default sign-in uses the GitHub App, limited to issues, pull requests and projects;
+        // full access is an explicit opt-in.
         const signInRow = new Adw.ActionRow({
             title: _('Sign in with GitHub'),
-            subtitle: OAUTH_CLIENT_ID
-                ? _('Approve sourceglance in your browser. Sees every repository you can see.')
+            subtitle: GITHUB_APP_CLIENT_ID
+                ? _('Access to issues, pull requests and projects only, in the repositories you choose')
                 : _('Not available in this build. Use a personal access token.'),
         });
         const signInButton = new Gtk.Button({
             label: _('Sign in'),
             valign: Gtk.Align.CENTER,
             css_classes: ['suggested-action'],
-            sensitive: Boolean(OAUTH_CLIENT_ID),
+            sensitive: Boolean(GITHUB_APP_CLIENT_ID),
         });
         signInRow.add_suffix(signInButton);
         group.add(signInRow);
+
+        const installUrl = appInstallUrl(GITHUB_APP_SLUG);
+        const reposRow = new Adw.ActionRow({
+            title: _('Choose repositories'),
+            subtitle: _('Pick which repositories sourceglance can access on GitHub'),
+            activatable: true,
+            visible: Boolean(GITHUB_APP_CLIENT_ID && installUrl),
+        });
+        reposRow.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
+        reposRow.connect('activated', () => {
+            new Gtk.UriLauncher({uri: installUrl}).launch(window, null, null);
+        });
+        group.add(reposRow);
 
         const codeRow = new Adw.ActionRow({
             subtitle: _('Code copied. Paste it on GitHub and approve. Waiting…'),
@@ -105,18 +120,32 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         codeRow.add_suffix(cancelButton);
         group.add(codeRow);
 
-        const tokenExpander = new Adw.ExpanderRow({
-            title: _('Use a personal access token instead'),
-            subtitle: _('Fine-grained tokens only see the repositories they were granted'),
-            expanded: !OAUTH_CLIENT_ID,
+        const moreExpander = new Adw.ExpanderRow({
+            title: _('More sign-in options'),
+            expanded: !GITHUB_APP_CLIENT_ID,
         });
-        group.add(tokenExpander);
+        group.add(moreExpander);
+
+        const fullAccessRow = new Adw.ActionRow({
+            title: _('Sign in with full access'),
+            subtitle: OAUTH_CLIENT_ID
+                ? _('Also sees private repositories owned by others. Grants read and write ' +
+                    'access to all your repositories, though sourceglance only reads.')
+                : _('Not available in this build.'),
+        });
+        const fullAccessButton = new Gtk.Button({
+            label: _('Sign in'),
+            valign: Gtk.Align.CENTER,
+            sensitive: Boolean(OAUTH_CLIENT_ID),
+        });
+        fullAccessRow.add_suffix(fullAccessButton);
+        moreExpander.add_row(fullAccessRow);
 
         const tokenRow = new Adw.PasswordEntryRow({
             title: _('Personal access token'),
             show_apply_button: true,
         });
-        tokenExpander.add_row(tokenRow);
+        moreExpander.add_row(tokenRow);
 
         const linkRow = new Adw.ActionRow({
             title: _('Create a token'),
@@ -127,7 +156,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         linkRow.connect('activated', () => {
             new Gtk.UriLauncher({uri: NEW_TOKEN_URL}).launch(window, null, null);
         });
-        tokenExpander.add_row(linkRow);
+        moreExpander.add_row(linkRow);
 
         const setLogin = login => {
             statusRow.subtitle = login ? _('Signed in as @%s').format(login) : _('Not signed in');
@@ -158,12 +187,13 @@ export default class SourceglancePreferences extends ExtensionPreferences {
             return false;
         });
 
-        signInButton.connect('clicked', async () => {
+        const deviceSignIn = async (clientId, scope) => {
             const cancellable = new Gio.Cancellable();
             deviceCancellable = cancellable;
             signInButton.sensitive = false;
+            fullAccessButton.sensitive = false;
             try {
-                const code = await client.requestDeviceCode(OAUTH_CLIENT_ID, cancellable);
+                const code = await client.requestDeviceCode(clientId, scope, cancellable);
                 verificationUri = code.verificationUri;
                 codeRow.title = code.userCode;
                 codeRow.visible = true;
@@ -171,7 +201,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
                     'text/plain;charset=utf-8', new GLib.Bytes(new TextEncoder().encode(code.userCode))));
                 openVerification();
 
-                const token = await client.waitForDeviceToken(OAUTH_CLIENT_ID, code, cancellable);
+                const token = await client.waitForDeviceToken(clientId, code, cancellable);
                 await signInWith(token, cancellable);
             } catch (e) {
                 if (!isCancelled(e))
@@ -181,10 +211,14 @@ export default class SourceglancePreferences extends ExtensionPreferences {
                     deviceCancellable = null;
                     verificationUri = null;
                     codeRow.visible = false;
-                    signInButton.sensitive = true;
+                    signInButton.sensitive = Boolean(GITHUB_APP_CLIENT_ID);
+                    fullAccessButton.sensitive = Boolean(OAUTH_CLIENT_ID);
                 }
             }
-        });
+        };
+        // GitHub Apps ignore scopes: their permissions are fixed in the app's settings.
+        signInButton.connect('clicked', () => deviceSignIn(GITHUB_APP_CLIENT_ID, null));
+        fullAccessButton.connect('clicked', () => deviceSignIn(OAUTH_CLIENT_ID, FULL_ACCESS_SCOPE));
         openButton.connect('clicked', openVerification);
         cancelButton.connect('clicked', () => deviceCancellable?.cancel());
 
