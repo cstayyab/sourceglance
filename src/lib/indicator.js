@@ -44,6 +44,11 @@ class ToolbarButton extends PanelMenu.Button {
             this._rebuildId = 0;
         });
 
+        // All sourceglance buttons share a tinted group look (see stylesheet.css).
+        this.add_style_class_name('sourceglance-group');
+        if (id === 'app')
+            this.add_style_class_name('sourceglance-group-app');
+
         const box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
         this._icon = new St.Icon({gicon: icons[id], style_class: 'system-status-icon'});
         this._count = new St.Label({
@@ -52,6 +57,13 @@ class ToolbarButton extends PanelMenu.Button {
             visible: false,
         });
         box.add_child(this._icon);
+        if (id === 'app') {
+            box.add_child(new St.Label({
+                text: 'sourceglance',
+                style_class: 'sourceglance-app-label',
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        }
         box.add_child(this._count);
         this.add_child(box);
 

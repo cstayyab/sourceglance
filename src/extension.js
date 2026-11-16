@@ -140,10 +140,13 @@ export default class SourceglanceExtension extends Extension {
             onAction: (item, action, arg) => this._actions.run(item, action, arg),
             getRepos: () => this._settings?.get_strv('repositories') ?? [],
         };
-        const ids = tabs ? ['app'] : [...lists, 'app'];
+        // The sourceglance button leads the group, followed by the lists.
+        const ids = tabs ? ['app'] : ['app', ...lists];
         this._buttons = ids.map(id => new ToolbarButton({
             id, icons: this._icons, tabs: id === 'app' && tabs ? lists : null, ...callbacks,
         }));
+        this._buttons[0].add_style_class_name('sourceglance-group-first');
+        this._buttons.at(-1).add_style_class_name('sourceglance-group-last');
         // Each button is inserted at the same position, so add them right to left.
         for (let i = ids.length - 1; i >= 0; i--)
             Main.panel.addToStatusArea(`${this.uuid}-${ids[i]}`, this._buttons[i]);
