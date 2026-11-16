@@ -122,7 +122,11 @@ The app's token can never do more than these permissions, and only on repositori
 the app is installed. A collaborator's private repository needs its owner to install the
 app.
 
-### OAuth App: "Sign in with full access" (opt-in)
+### OAuth App: "Sign in with full access" (hidden)
+
+This option and the personal access token are hidden in Settings: the GitHub App is the
+only sign-in. Set `SHOW_OTHER_SIGN_IN_OPTIONS` in `src/lib/config.js` to `true` to show
+them under **More sign-in options**, for example to compare during evaluation.
 
 1. Go to [github.com/settings/developers](https://github.com/settings/developers) →
    **OAuth Apps** → **New OAuth App**.

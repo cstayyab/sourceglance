@@ -31,11 +31,6 @@ You can expect:
   (read and write) plus read-only Metadata, on the repositories you install it on. It has
   no access to code, settings or administration. Revoke it under
   **GitHub Settings → Applications → Authorized GitHub Apps**.
-- **Sign in with full access** is opt-in. It grants the `repo` and `project` scopes, which
-  allow writing to all your repositories and boards, because GitHub has no narrower scope
-  for private issues. Revoke it under **Authorized OAuth Apps**.
-- A **fine-grained** personal access token is also supported. It only sees the
-  repositories you grant it; with read-only permissions, menu actions are refused.
 - sourceglance only changes issues, pull requests (comments, state, assignees, labels) and
   project item status, and only when you pick an action in the menu. Closing asks for
   confirmation first. It never touches code, branches or repository settings.

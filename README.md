@@ -82,15 +82,10 @@ Coming with the first stable release.
    - **Assignees…** and **Labels…**
    - **Board: Status…** for each project board it's on, to move it to another status
 
-**More sign-in options** in Settings:
-
-- **Sign in with full access** reaches every repository you can, including other people's
-  private repositories, without anyone installing anything. GitHub has no narrower option
-  for this, so it grants write access to all your repositories; sourceglance itself only
-  changes issues, PRs and project items, when you pick an action.
-- **Personal access token**: paste a
-  [fine-grained token](https://github.com/settings/personal-access-tokens/new) with
-  **Issues** and **Metadata** access (read and write to use the actions).
+**Repositories owned by someone else** (including private ones you collaborate on) appear
+once their owner installs the sourceglance app on them: send them
+`https://github.com/apps/<app>/installations/new` and ask them to pick the repository.
+Organization repositories need an organization owner to install it.
 
 ## Roadmap
 
