@@ -33,14 +33,17 @@ export function isValidLogin(login) {
 }
 
 // What each search lists. PRs come from two searches: assigned to you, and awaiting your review.
+// The closed searches only count what's closed but still assigned to you (the list footers).
 const SEARCH_QUALIFIERS = {
-    'issue': ['is:issue', 'assignee:@me'],
-    'pr-assigned': ['is:pr', 'assignee:@me'],
-    'pr-review': ['is:pr', 'review-requested:@me'],
+    'issue': ['is:open', 'is:issue', 'assignee:@me'],
+    'pr-assigned': ['is:open', 'is:pr', 'assignee:@me'],
+    'pr-review': ['is:open', 'is:pr', 'review-requested:@me'],
+    'issue-closed': ['is:closed', 'is:issue', 'assignee:@me'],
+    'pr-closed': ['is:closed', 'is:pr', 'assignee:@me'],
 };
 
 export function buildSearchQuery(repos = [], search = 'issue') {
-    const parts = ['is:open', ...SEARCH_QUALIFIERS[search], 'archived:false'];
+    const parts = [...SEARCH_QUALIFIERS[search], 'archived:false'];
     for (const repo of repos) {
         if (isValidRepo(repo))
             parts.push(`repo:${repo}`);
@@ -50,7 +53,25 @@ export function buildSearchQuery(repos = [], search = 'issue') {
 
 export function buildSearchPath(repos = [], search = 'issue') {
     const q = encodeURIComponent(buildSearchQuery(repos, search));
-    return `/search/issues?q=${q}&sort=updated&order=desc&per_page=${MAX_ISSUES}`;
+    // Count-only searches need no items, just total_count.
+    const perPage = search.endsWith('-closed') ? 1 : MAX_ISSUES;
+    return `/search/issues?q=${q}&sort=updated&order=desc&per_page=${perPage}`;
+}
+
+/** github.com page listing what a search finds, for "View on GitHub" links and list footers. */
+export function searchPageUrl(search, repos = []) {
+    const page = search.startsWith('pr') ? 'pulls' : 'issues';
+    return `https://github.com/${page}?q=${encodeURIComponent(buildSearchQuery(repos, search))}`;
+}
+
+// The lists that can have a top-bar button, in their fixed order. The sourceglance button
+// (status and settings) is always shown and isn't part of this setting.
+export const TOOLBAR_LISTS = ['issues', 'prs', 'projects'];
+
+/** Known list ids from the `toolbar-buttons` setting, in toolbar order, without duplicates. */
+export function normalizeButtons(ids) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    return TOOLBAR_LISTS.filter(id => wanted.has(id));
 }
 
 const GITHUB_URL_RE = /^https:\/\/github\.com\/[A-Za-z0-9._~%/#?=&+-]*$/;
@@ -133,6 +154,79 @@ export function classifyDeviceTokenResponse(json, interval) {
     }
 }
 
+// Desktop widgets (lib/widgets.js): which cards, and where they go.
+export const WIDGET_IDS = ['summary', 'issues', 'prs', 'projects'];
+export const WIDGET_WIDTH = 320;
+const WIDGET_MARGIN = 24;
+const WIDGET_GAP = 16;
+
+/** Known card ids from the `widgets` setting, in display order, without duplicates. */
+export function normalizeWidgets(ids) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    return WIDGET_IDS.filter(id => wanted.has(id));
+}
+
+/**
+ * Default spot for the index-th card: a column at the right edge of the work area, top down.
+ * `area` is {x, y, width, height}; `heights` are the heights of the cards above it.
+ */
+export function defaultWidgetPosition(area, heights) {
+    const y = area.y + WIDGET_MARGIN + heights.reduce((sum, h) => sum + h + WIDGET_GAP, 0);
+    return {x: area.x + area.width - WIDGET_WIDTH - WIDGET_MARGIN, y};
+}
+
+/** Keeps a card fully inside the work area (a saved spot may be off a now-smaller screen). */
+export function clampWidgetPosition({x, y}, area, size) {
+    const maxX = area.x + Math.max(0, area.width - size.width);
+    const maxY = area.y + Math.max(0, area.height - size.height);
+    return {
+        x: Math.round(Math.min(Math.max(x, area.x), maxX)),
+        y: Math.round(Math.min(Math.max(y, area.y), maxY)),
+    };
+}
+
+// The app grid launcher ("Open sourceglance"), written by the extension (appLauncher.js).
+export const LAUNCHER_ID = 'io.github.omer_gh.sourceglance';
+
+/** Quotes a path for a desktop entry's Exec key (Desktop Entry spec, "Exec key"). */
+function quoteExecArg(arg) {
+    return `"${arg.replace(/[\\"`$]/g, char => `\\${char}`)}"`;
+}
+
+/**
+ * The launcher's .desktop file. It runs launcher.js with gjs, which starts sourceglance (also
+ * after Quit) and opens its Settings. Desktop entry values escape backslashes once more.
+ */
+export function launcherDesktopEntry({launcherPath, iconPath}) {
+    const exec = ['gjs', '-m', quoteExecArg(launcherPath)].join(' ').replace(/\\/g, '\\\\');
+    return [
+        '[Desktop Entry]',
+        'Type=Application',
+        'Name=sourceglance',
+        'Comment=Your GitHub issues, pull requests and project boards in the top bar',
+        `Exec=${exec}`,
+        `Icon=${iconPath}`,
+        'Terminal=false',
+        'Categories=Development;',
+        'Keywords=GitHub;issues;pull requests;projects;',
+        'StartupNotify=false',
+        '',
+    ].join('\n');
+}
+
+/**
+ * A GType name unique to one copy of a module. GTypes can't be registered twice, and
+ * `make reload` loads each build from a new URL, so names include a hash of that URL.
+ */
+export function gtypeName(name, moduleUrl) {
+    let hash = 0x811c9dc5;
+    for (const char of moduleUrl) {
+        hash ^= char.codePointAt(0);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return `Sourceglance_${name}_${hash.toString(16).padStart(8, '0')}`;
+}
+
 /** "https://api.github.com/repos/owner/name" → "owner/name" */
 export function repoFromApiUrl(url) {
     const match = /\/repos\/([^/]+\/[^/]+)$/.exec(url ?? '');
@@ -203,7 +297,15 @@ export function mergeItems(...lists) {
 
 /** Stable identity of an issue or PR: "owner/name#number". */
 export function itemKey(item) {
+    // GitLab paths can match GitHub ones, and issue #3 and merge request !3 differ.
+    if (item.platform === 'gitlab')
+        return `gitlab:${item.repo}${item.kind === 'pr' ? '!' : '#'}${item.number}`;
     return `${item.repo}#${item.number}`;
+}
+
+/** "#12" for issues and GitHub PRs, "!12" for GitLab merge requests. */
+export function itemRef(item) {
+    return `${item.platform === 'gitlab' && item.kind === 'pr' ? '!' : '#'}${item.number}`;
 }
 
 // Write requests. Each builder returns {method, path, body} for GitHubClient.send(), after
@@ -346,6 +448,130 @@ export function parseProjectItems(json) {
     return boards;
 }
 
+// The Projects list: your boards (personal and from your organizations) and their draft
+// items, i.e. cards that are neither issues nor PRs (those have their own lists).
+
+export const MAX_BOARD_ITEMS = 50;
+
+const BOARD_FIELDS = `
+    id
+    title
+    url
+    closed
+    field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
+    items(first: ${MAX_BOARD_ITEMS}) {
+        totalCount
+        nodes {
+            id
+            type
+            isArchived
+            content { ... on DraftIssue { title } }
+            fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { optionId name } }
+        }
+    }`;
+
+export const VIEWER_BOARDS_QUERY = `query {
+    viewer {
+        projectsV2(first: 20) { nodes { ${BOARD_FIELDS} } }
+        organizations(first: 20) { nodes { projectsV2(first: 20) { nodes { ${BOARD_FIELDS} } } } }
+    }
+}`;
+
+export function viewerBoardsRequest() {
+    return {method: 'POST', path: '/graphql', graphql: true, body: {query: VIEWER_BOARDS_QUERY, variables: {}}};
+}
+
+function parseBoard(project) {
+    const field = project?.field;
+    if (!isNodeId(project?.id) || project.closed)
+        return null;
+    const options = isNodeId(field?.id)
+        ? (field.options ?? [])
+            .filter(option => isNodeId(option?.id) && typeof option.name === 'string')
+            .map(option => ({id: option.id, name: cappedString(option.name, 100)}))
+        : [];
+    const title = cappedString(project.title, 100);
+    const drafts = [];
+    for (const node of project.items?.nodes ?? []) {
+        if (node?.type !== 'DRAFT_ISSUE' || node.isArchived || !isNodeId(node.id))
+            continue;
+        const current = options.find(option => option.id === node.fieldValueByName?.optionId) ?? null;
+        drafts.push({
+            itemId: node.id,
+            title: cappedString(node.content?.title, 300),
+            optionId: current?.id ?? null,
+            status: current?.name ?? null,
+        });
+    }
+    return {
+        projectId: project.id,
+        title,
+        url: isSafeGitHubUrl(project.url) ? project.url : null,
+        fieldId: isNodeId(field?.id) ? field.id : null,
+        options,
+        drafts,
+        // Items past the first page (of any kind) may hide more drafts.
+        truncated: (project.items?.totalCount ?? 0) > MAX_BOARD_ITEMS,
+    };
+}
+
+/**
+ * Boards from VIEWER_BOARDS_QUERY: open boards with their non-archived draft items. Tolerant of
+ * partial data (`errors` for boards the sign-in can't read); duplicates are dropped.
+ */
+export function parseViewerBoards(json) {
+    const viewer = json?.data?.viewer;
+    const projects = [
+        ...(viewer?.projectsV2?.nodes ?? []),
+        ...(viewer?.organizations?.nodes ?? []).flatMap(org => org?.projectsV2?.nodes ?? []),
+    ];
+    const seen = new Set();
+    const boards = [];
+    for (const project of projects) {
+        const board = parseBoard(project);
+        if (board && !seen.has(board.projectId)) {
+            seen.add(board.projectId);
+            boards.push(board);
+        }
+    }
+    return boards;
+}
+
+/**
+ * A draft item as an action target, plus the board shape moveStatusRequest() takes. Drafts
+ * have no repository or number; their item ID stands in for both in itemKey().
+ */
+export function draftTarget(board, draft) {
+    return {
+        item: {kind: 'draft', repo: 'project', number: draft.itemId, title: draft.title, labels: [], assignees: []},
+        board: {
+            itemId: draft.itemId,
+            projectId: board.projectId,
+            fieldId: board.fieldId,
+            options: board.options,
+            optionId: draft.optionId,
+            status: draft.status,
+            title: board.title,
+        },
+    };
+}
+
+/** True for a board column that means finished (Done, Closed, Complete, Completed). */
+export function isDoneStatus(name) {
+    return typeof name === 'string' && /^\s*(done|closed|complete|completed)\s*$/i.test(name);
+}
+
+/** Draft items of a board grouped by status, in the board's column order; "No status" last. */
+export function groupDraftsByStatus(board) {
+    const groups = board.options
+        .map(option => ({status: option.name, drafts: board.drafts.filter(d => d.optionId === option.id)}))
+        .filter(group => group.drafts.length > 0);
+    const unset = board.drafts.filter(d => d.optionId === null);
+    if (unset.length > 0)
+        groups.push({status: null, drafts: unset});
+    return groups;
+}
+
 /** Move a board item to another Status option. The option must be one of the board's own. */
 export function moveStatusRequest(board, optionId) {
     if (!isNodeId(board?.itemId) || !isNodeId(board.projectId) || !isNodeId(board.fieldId) ||
@@ -389,6 +615,62 @@ export function diffSelection(current, wanted) {
         add: [...after].filter(name => !before.has(name)),
         remove: [...before].filter(name => !after.has(name)),
     };
+}
+
+/** Labels used by the grouped items, as [{name, count}] sorted by name, for the label filter. */
+export function labelOptions(groups) {
+    const counts = new Map();
+    for (const group of groups) {
+        for (const item of group.issues) {
+            for (const name of new Set(item.labels.map(label => label.name)))
+                counts.set(name, (counts.get(name) ?? 0) + 1);
+        }
+    }
+    return [...counts]
+        .map(([name, count]) => ({name, count}))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Keeps only items with the label (null keeps everything), dropping repositories left empty. */
+export function filterByLabel(groups, label) {
+    if (label === null)
+        return groups;
+    return groups
+        .map(group => ({...group, issues: group.issues.filter(item => item.labels.some(l => l.name === label))}))
+        .filter(group => group.issues.length > 0);
+}
+
+// Picker flows shared by the top-bar menus (lib/actions.js) and the window (window/actions.js).
+
+/**
+ * Logins to offer in the Assignees picker: you first (you can always assign yourself), then
+ * current assignees, then the repository's assignable users.
+ */
+export function assigneeChoices(item, me, assignable) {
+    return [...new Set([...(isValidLogin(me) ? [me] : []), ...item.assignees, ...assignable])];
+}
+
+/** Requests that change the item's assignees to `wanted` (additions first). */
+export function assigneeChangeRequests(item, wanted) {
+    const {add, remove} = diffSelection(item.assignees, wanted);
+    return [
+        add.length ? assigneesRequest(item, add, true) : null,
+        remove.length ? assigneesRequest(item, remove, false) : null,
+    ].filter(Boolean);
+}
+
+/** Label names to offer: the item's current labels, then the repository's. */
+export function labelChoices(item, repoLabels) {
+    return [...new Set([...item.labels.map(label => label.name), ...repoLabels.map(label => label.name)])];
+}
+
+/** Requests that change the item's labels to `wanted` (one add, then one remove per label). */
+export function labelChangeRequests(item, wanted) {
+    const {add, remove} = diffSelection(item.labels.map(label => label.name), wanted);
+    return [
+        add.length ? addLabelsRequest(item, add) : null,
+        ...remove.map(name => removeLabelRequest(item, name)),
+    ].filter(Boolean);
 }
 
 /**
@@ -468,6 +750,36 @@ export function relativeTime(date, nowMs = Date.now()) {
 export function truncate(text, max = 48) {
     const chars = [...text];
     return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : text;
+}
+
+/**
+ * Count for a list's top-bar button, tab or sidebar row: '0' included once loaded; ''
+ * hides it (signed out, or not loaded yet). `state` has status, updatedAt, issueTotal/Shown,
+ * prTotal/Shown, boards and boardsError.
+ */
+export function listBadge(id, state) {
+    const github = (state.status === 'ready' || state.status === 'error') && state.updatedAt !== null;
+    // GitLab counts are added once loaded (state.gitlab, same field names).
+    const gl = state.gitlab?.status === 'ready' || (state.gitlab?.status === 'error' && state.gitlab.updatedAt)
+        ? state.gitlab : null;
+    if (!github && !gl)
+        return '';
+    const sum = (total, shown) => countLabel((github ? state[total] : 0) + (gl ? gl[total] : 0),
+        (github ? state[shown] : 0) + (gl ? gl[shown] : 0)) || '0';
+    switch (id) {
+    case 'issues':
+        return sum('issueTotal', 'issueShown');
+    case 'prs':
+        return sum('prTotal', 'prShown');
+    case 'projects':
+        if (!github)
+            return '';
+        if (state.boards === null)
+            return state.boardsError ? '' : '…';
+        return String(state.boards.reduce((sum, board) => sum + board.drafts.length, 0));
+    default:
+        return '';
+    }
 }
 
 /** Text for the panel badge: '' (hidden), '7', or '25+' when results were cut off. */

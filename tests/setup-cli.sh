@@ -75,10 +75,14 @@ setup --quiet --accept-license --repair >/dev/null
 [[ $(installed_version) == "$VERSION" && $(backups) -eq 2 ]] || fail "repair"
 ok "repair: reinstalled, backup kept"
 
+# The extension writes an app grid icon when it runs; uninstall takes it away too.
+LAUNCHER="$WORK/data/applications/io.github.omer_gh.sourceglance.desktop"
+mkdir -p "$(dirname "$LAUNCHER")" && printf '[Desktop Entry]\n' > "$LAUNCHER"
 setup --quiet --uninstall >/dev/null
 [[ ! -e $EXT && $(backups) -eq 3 ]] || fail "uninstall: files"
 enabled | grep -q "$UUID" && fail "uninstall: still enabled"
-ok "uninstall: removed (backup kept), turned off"
+[[ ! -e $LAUNCHER ]] || fail "uninstall: app icon left behind"
+ok "uninstall: removed (backup kept), turned off, app icon gone"
 
 setup --quiet --uninstall | grep -q "not installed" || fail "second uninstall"
 ok "uninstall when not installed is a no-op"

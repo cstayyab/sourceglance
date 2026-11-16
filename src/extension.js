@@ -1,14 +1,30 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {ActionController} from './lib/actions.js';
+import {installLauncher, removeLauncher} from './lib/appLauncher.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
-import {Indicator} from './lib/indicator.js';
-import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds} from './lib/model.js';
+import {GitLabClient} from './lib/gitlab.js';
+import {loadGitLab} from './lib/gitlabLoader.js';
+import {ToolbarButton} from './lib/indicator.js';
+import {DesktopWidgets} from './lib/widgets.js';
+import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
+import {GITLAB_CLIENT_ID} from './lib/config.js';
 import {lookupToken} from './lib/tokenStore.js';
+
+// Settings that change which top-bar buttons exist.
+const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
+// Settings that don't need a refresh when they change.
+const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
+    'collapsed-sections'];
+
+// Whether sourceglance runs in this session: null until the first enable() after login.
+// Kept at module level because GNOME disables and re-enables extensions around the lock
+// screen, and Quit should survive that.
+let sessionRunning = null;
 
 // How many items closed from the menu stay under "Recently closed" for a quick reopen.
 const MAX_RECENTLY_CLOSED = 5;
@@ -22,8 +38,17 @@ const INITIAL_STATE = {
     prGroups: [],
     recentlyClosed: [],
     busy: [],
-    total: 0,
-    shown: 0,
+    issueTotal: 0,
+    issueShown: 0,
+    prTotal: 0,
+    prShown: 0,
+    // Closed items still assigned to you; null until counted.
+    closedCounts: {issues: null, prs: null},
+    // Your project boards with their draft items; null until loaded.
+    boards: null,
+    boardsError: null,
+    // GitLab's lists, with the same field names; 'signed-out' shows no GitLab sections.
+    gitlab: {status: 'signed-out'},
     updatedAt: null,
     error: null,
     refreshing: false,
@@ -34,6 +59,8 @@ export default class SourceglanceExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._client = new GitHubClient(this.metadata['version-name'] ?? 'dev');
+        this._gitlab = new GitLabClient(this.metadata['version-name'] ?? 'dev');
+        this._glResults = null;
         this._state = {...INITIAL_STATE};
         this._login = null;
         this._cancellable = null;
@@ -44,34 +71,100 @@ export default class SourceglanceExtension extends Extension {
 
         this._actions = new ActionController({
             client: this._client,
+            gitlabClient: this._gitlab,
             getToken: () => this._readToken(null),
-            getLogin: () => this._login,
+            getGitlabToken: () => this._gitlab.accessToken(GITLAB_CLIENT_ID),
+            getLogin: platform => platform === 'gitlab' ? this._state?.gitlab?.login ?? null : this._login,
             setBusy: (item, busy) => this._setBusy(item, busy),
             onChanged: (item, change) => this._onItemChanged(item, change),
         });
 
-        this._indicator = new Indicator({
-            onRefresh: () => this._refresh(),
-            onSettings: () => {
-                // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
-                Promise.resolve(this.openPreferences()).catch(e =>
-                    console.warn(`sourceglance: could not open Settings: ${e.message}`));
-            },
-            onAction: (item, action, arg) => this._actions.run(item, action, arg),
-        });
-        Main.panel.addToStatusArea(this.uuid, this._indicator);
+        const icon = name => Gio.FileIcon.new(this.dir.get_child('icons').get_child(`${name}-symbolic.svg`));
+        this._icons = {
+            issues: Gio.ThemedIcon.new('checkbox-checked-symbolic'),
+            projects: icon('checklist'),
+            prs: icon('git-pull-request'),
+            app: icon('sourceglance'),
+            // Used inside the menus.
+            issue: icon('issue'),
+            issueClosed: icon('issue-closed'),
+            prMerged: icon('git-merge'),
+            prClosed: icon('pr-closed'),
+            label: icon('label'),
+        };
+        this._buttons = [];
+        this._running = false;
 
         // Debounced, so typing in the repositories field doesn't fire a request per keystroke.
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (key === 'start-request')
+                this._start();
+            if (key === 'app-launcher')
+                this._syncLauncher();
+            if (!this._running || UI_ONLY_KEYS.includes(key))
+                return;
             if (key === 'token-changed')
                 this._login = null;
+            if (TOOLBAR_KEYS.includes(key)) {
+                this._buildButtons();
+                this._setState({});
+            }
             this._schedule(1);
         });
 
+        this._syncLauncher();
+        sessionRunning ??= this._settings.get_boolean('start-automatically');
+        if (sessionRunning)
+            this._start();
+    }
+
+    /** Adds or removes the app grid icon, following the "Show in app grid" setting. */
+    _syncLauncher() {
+        if (this._settings.get_boolean('app-launcher'))
+            installLauncher(this.dir);
+        else
+            removeLauncher();
+    }
+
+    /** Shows the top-bar buttons and starts refreshing. */
+    _start() {
+        if (this._running)
+            return;
+        this._running = true;
+        sessionRunning = true;
+        this._buildButtons();
+        this._widgets = new DesktopWidgets({
+            settings: this._settings,
+            icons: this._icons,
+            getRepos: () => this._settings?.get_strv('repositories') ?? [],
+        });
+        this._widgets.update(this._state);
         this._refresh();
     }
 
+    /** Quit: hides the buttons and stops all network activity until started again. */
+    _quit() {
+        this._running = false;
+        sessionRunning = false;
+        this._cancellable?.cancel();
+        this._cancellable = null;
+        if (this._timeoutId) {
+            GLib.source_remove(this._timeoutId);
+            this._timeoutId = 0;
+        }
+        this._actions.closeDialog();
+        for (const button of this._buttons)
+            button.destroy();
+        this._buttons = [];
+        this._widgets?.destroy();
+        this._widgets = null;
+        Main.notify('sourceglance', _('sourceglance has quit. To start it again, open its Settings ' +
+            'from the Extensions app and choose Start now.'));
+    }
+
     disable() {
+        // sessionRunning is left as is, so the lock screen doesn't undo Quit.
+        this._running = false;
         this._cancellable?.cancel();
         this._cancellable = null;
 
@@ -90,22 +183,74 @@ export default class SourceglanceExtension extends Extension {
 
         this._client?.destroy();
         this._client = null;
+        this._gitlab?.destroy();
+        this._gitlab = null;
+        this._glResults = null;
         this._results = null;
         this._closed = null;
         this._busy = null;
 
-        this._indicator?.destroy();
-        this._indicator = null;
+        for (const button of this._buttons ?? [])
+            button.destroy();
+        this._buttons = null;
+        this._widgets?.destroy();
+        this._widgets = null;
+        this._icons = null;
 
         this._state = null;
         this._login = null;
     }
 
+    /** The lists shown in the top bar, from Settings. */
+    _lists() {
+        return normalizeButtons(this._settings.get_strv('toolbar-buttons'));
+    }
+
+    /**
+     * (Re)creates the top-bar buttons: one per list plus the sourceglance button ("separate"),
+     * or only the sourceglance button with a tab per list ("tabs").
+     */
+    _buildButtons() {
+        for (const button of this._buttons)
+            button.destroy();
+        const lists = this._lists();
+        const tabs = this._settings.get_string('layout') === 'tabs';
+        const callbacks = {
+            onRefresh: () => this._refresh(),
+            onSettings: () => {
+                // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
+                Promise.resolve(this.openPreferences()).catch(e =>
+                    console.warn(`sourceglance: could not open Settings: ${e.message}`));
+            },
+            onAction: (item, action, arg) => this._actions.run(item, action, arg),
+            getRepos: () => this._settings?.get_strv('repositories') ?? [],
+            getAutostart: () => this._settings?.get_boolean('start-automatically') ?? true,
+            getCollapsed: () => this._settings?.get_strv('collapsed-sections') ?? [],
+            setCollapsed: ids => this._settings?.set_strv('collapsed-sections', ids),
+            setAutostart: active => this._settings?.set_boolean('start-automatically', active),
+            onQuit: () => this._quit(),
+        };
+        // The sourceglance button leads the group, followed by the lists.
+        const ids = tabs ? ['app'] : ['app', ...lists];
+        this._buttons = ids.map(id => new ToolbarButton({
+            id, icons: this._icons, tabs: id === 'app' && tabs ? lists : null, ...callbacks,
+        }));
+        this._buttons[0].add_style_class_name('sourceglance-group-first');
+        this._buttons.at(-1).add_style_class_name('sourceglance-group-last');
+        // Each button is inserted at the same position, so add them right to left.
+        for (let i = ids.length - 1; i >= 0; i--)
+            Main.panel.addToStatusArea(`${this.uuid}-${ids[i]}`, this._buttons[i]);
+        if (this._state)
+            this._buttons.forEach(button => button.render(this._state));
+    }
+
     _setState(patch) {
-        if (!this._indicator)
+        if (!this._buttons)
             return;
         this._state = {...this._state, ...patch};
-        this._indicator.render(this._state);
+        for (const button of this._buttons)
+            button.render(this._state);
+        this._widgets?.update(this._state);
     }
 
     _setBusy(item, busy) {
@@ -154,8 +299,36 @@ export default class SourceglanceExtension extends Extension {
         }
     }
 
+    /** Loads your boards and their draft items for the Projects list. Optional, like _loadBoards(). */
+    async _loadViewerBoards(token, cancellable) {
+        try {
+            const boards = await this._client.getViewerBoards(token, cancellable);
+            this._setState({boards, boardsError: null});
+        } catch (e) {
+            if (isCancelled(e))
+                throw e;
+            console.warn(`sourceglance: project boards unavailable: ${e.kind ?? e.message}`);
+            this._setState({boardsError: e.kind ?? 'unknown'});
+        }
+    }
+
     /** Pushes the latest search results to the menu, hiding items closed from the menu. */
     _publish() {
+        if (this._glResults) {
+            const gl = this._glResults;
+            const shownIssues = gl.issues.filter(item => !this._closed.has(itemKey(item)));
+            const shownPrs = gl.prs.filter(item => !this._closed.has(itemKey(item)));
+            this._setState({gitlab: {
+                status: 'ready', login: gl.login, updatedAt: gl.updatedAt, error: null,
+                closedCounts: gl.closedCounts,
+                groups: groupIssues(shownIssues),
+                prGroups: groupIssues(shownPrs),
+                issueTotal: Math.max(0, gl.issueTotal - (gl.issues.length - shownIssues.length)),
+                issueShown: shownIssues.length,
+                prTotal: Math.max(0, gl.prTotal - (gl.prs.length - shownPrs.length)),
+                prShown: shownPrs.length,
+            }});
+        }
         if (!this._results)
             return;
         const {issues, prs, issueTotal, prTotal} = this._results;
@@ -168,17 +341,40 @@ export default class SourceglanceExtension extends Extension {
         const visible = list => list.filter(item => !this._closed.has(itemKey(item)));
         const shownIssues = visible(issues);
         const shownPrs = visible(prs);
-        const hidden = issues.length + prs.length - shownIssues.length - shownPrs.length;
         this._setState({
             groups: groupIssues(shownIssues),
             prGroups: groupIssues(shownPrs),
             recentlyClosed: [...this._closed.values()].reverse(),
-            total: Math.max(0, issueTotal + prTotal - hidden),
-            shown: shownIssues.length + shownPrs.length,
+            issueTotal: Math.max(0, issueTotal - (issues.length - shownIssues.length)),
+            issueShown: shownIssues.length,
+            prTotal: Math.max(0, prTotal - (prs.length - shownPrs.length)),
+            prShown: shownPrs.length,
         });
     }
 
+    /** Loads GitLab next to GitHub; its errors only mark the GitLab sections. */
+    async _loadGitLab(cancellable) {
+        try {
+            const gl = await loadGitLab(this._gitlab, cancellable);
+            if (gl.status === 'signed-out') {
+                this._glResults = null;
+                this._setState({gitlab: {status: 'signed-out'}});
+            } else {
+                this._glResults = gl;
+                this._publish();
+            }
+        } catch (e) {
+            if (isCancelled(e) || cancellable.is_cancelled())
+                return;
+            console.warn(`sourceglance: GitLab refresh failed: ${e.kind ?? e.message}`);
+            this._setState({gitlab: {...this._state.gitlab, status: 'error',
+                error: {kind: e.kind ?? 'unknown', retryAt: e.retryAt ?? null}}});
+        }
+    }
+
     _schedule(seconds) {
+        if (!this._running)
+            return;
         if (this._timeoutId)
             GLib.source_remove(this._timeoutId);
         this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
@@ -201,6 +397,8 @@ export default class SourceglanceExtension extends Extension {
     }
 
     async _refresh() {
+        if (!this._running)
+            return;
         // A new refresh replaces any running one.
         this._cancellable?.cancel();
         const cancellable = new Gio.Cancellable();
@@ -208,6 +406,7 @@ export default class SourceglanceExtension extends Extension {
 
         const intervalMinutes = this._settings.get_int('refresh-interval');
         this._setState({refreshing: true, intervalMinutes});
+        const gitlabDone = this._loadGitLab(cancellable);
 
         let error = null;
         try {
@@ -216,7 +415,7 @@ export default class SourceglanceExtension extends Extension {
                 this._login = null;
                 this._results = null;
                 this._closed.clear();
-                this._setState({...INITIAL_STATE, status: 'signed-out', intervalMinutes});
+                this._setState({...INITIAL_STATE, gitlab: this._state.gitlab, status: 'signed-out', intervalMinutes});
                 return;
             }
             if (this._state.status === 'signed-out')
@@ -224,9 +423,19 @@ export default class SourceglanceExtension extends Extension {
 
             this._login ??= await this._client.getViewer(token, cancellable);
             const repos = this._settings.get_strv('repositories');
-            const [issues, assigned, review] = await Promise.all(
-                ['issue', 'pr-assigned', 'pr-review'].map(search =>
-                    this._client.search(token, repos, search, cancellable)));
+            // The closed counts only fill the list footers, so a failure there isn't fatal.
+            const count = search => this._client.countSearch(token, repos, search, cancellable)
+                .catch(e => {
+                    if (isCancelled(e))
+                        throw e;
+                    return null;
+                });
+            const [issues, assigned, review, closedIssues, closedPrs] = await Promise.all([
+                ...['issue', 'pr-assigned', 'pr-review'].map(search =>
+                    this._client.search(token, repos, search, cancellable)),
+                count('issue-closed'),
+                count('pr-closed'),
+            ]);
             const prs = mergeItems(assigned.items, review.items);
             // Results past the first page of either PR search aren't in `prs`.
             const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
@@ -243,12 +452,17 @@ export default class SourceglanceExtension extends Extension {
             this._setState({
                 status: 'ready',
                 login: this._login,
+                closedCounts: {issues: closedIssues, prs: closedPrs},
                 updatedAt: new Date(),
                 error: null,
                 refreshing: false,
             });
             this._publish();
             await this._loadBoards(token, all, cancellable);
+            // Boards feed the Projects list and the projects and summary widgets.
+            const widgets = normalizeWidgets(this._settings.get_strv('widgets'));
+            if (this._lists().includes('projects') || widgets.includes('projects') || widgets.includes('summary'))
+                await this._loadViewerBoards(token, cancellable);
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;
@@ -262,6 +476,7 @@ export default class SourceglanceExtension extends Extension {
             }
             this._setState({status: 'error', login: this._login, error, refreshing: false});
         } finally {
+            await gitlabDone;
             if (this._cancellable === cancellable) {
                 this._cancellable = null;
                 this._schedule(nextRefreshDelaySeconds(intervalMinutes, error));

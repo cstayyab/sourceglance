@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Project boards: a checklist -->
+  <path d="M.8 2.6 1.7 1.7l1.2 1.2L5.4.4l.9.9-3.4 3.4Z"/>
+  <rect x="8" y="1.6" width="8" height="1.8" rx=".9"/>
+  <path d="M.8 7.6 1.7 6.7l1.2 1.2 2.5-2.5.9.9-3.4 3.4Z"/>
+  <rect x="8" y="6.6" width="8" height="1.8" rx=".9"/>
+  <path fill-rule="evenodd" d="M1.2 11.2h4.6v4.6H1.2Zm1.2 1.2v2.2h2.2v-2.2Z"/>
+  <rect x="8" y="12.6" width="8" height="1.8" rx=".9"/>
+</svg>

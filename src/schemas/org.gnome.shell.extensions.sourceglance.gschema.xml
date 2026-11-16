@@ -13,6 +13,61 @@
       <summary>Refresh interval</summary>
       <description>Minutes between GitHub checks.</description>
     </key>
+    <key name="layout" type="s">
+      <choices>
+        <choice value="separate"/>
+        <choice value="tabs"/>
+      </choices>
+      <default>'separate'</default>
+      <summary>Top bar layout</summary>
+      <description>"separate": one top-bar icon per list. "tabs": one icon whose menu has a tab per list.</description>
+    </key>
+    <key name="toolbar-buttons" type="as">
+      <default>['issues', 'prs', 'projects']</default>
+      <summary>Lists in the top bar</summary>
+      <description>Which lists to show: issues, prs, projects. The sourceglance button is always shown.</description>
+    </key>
+    <key name="collapsed-sections" type="as">
+      <default>[]</default>
+      <summary>Collapsed sections</summary>
+      <description>GitHub or GitLab sections collapsed in the lists, as list:platform (e.g. issues:gitlab).</description>
+    </key>
+    <key name="widgets" type="as">
+      <default>['summary']</default>
+      <summary>Desktop widgets</summary>
+      <description>Cards to show on the desktop: summary, issues, prs, projects.</description>
+    </key>
+    <key name="widget-positions" type="a{s(ii)}">
+      <default>{}</default>
+      <summary>Desktop widget positions</summary>
+      <description>Where each card was dragged to, in screen coordinates. Empty: default places.</description>
+    </key>
+    <key name="widget-opacity" type="i">
+      <range min="30" max="100"/>
+      <default>92</default>
+      <summary>Desktop widget opacity</summary>
+      <description>How opaque the cards are, in percent.</description>
+    </key>
+    <key name="start-automatically" type="b">
+      <default>true</default>
+      <summary>Start automatically</summary>
+      <description>Show sourceglance in the top bar when you log in. When off, it stays hidden until you start it from Settings.</description>
+    </key>
+    <key name="app-launcher" type="b">
+      <default>true</default>
+      <summary>Show in app grid</summary>
+      <description>Add a sourceglance icon to the app grid and dock that starts sourceglance and opens its Settings.</description>
+    </key>
+    <key name="start-request" type="i">
+      <default>0</default>
+      <summary>Start request counter</summary>
+      <description>Internal. Bumped by Settings' "Start now" to show sourceglance again after Quit.</description>
+    </key>
+    <key name="refresh-request" type="i">
+      <default>0</default>
+      <summary>Refresh request counter</summary>
+      <description>Internal. Bumped by the sourceglance window after a change, so the top bar refreshes right away.</description>
+    </key>
     <key name="token-changed" type="i">
       <default>0</default>
       <summary>Token change counter</summary>

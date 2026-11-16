@@ -135,6 +135,15 @@ async function clearToken(log) {
     });
 }
 
+// The app grid icon the extension writes; it points into the extension folder, so it goes
+// with it. Must match LAUNCHER_ID in src/lib/model.js.
+function removeAppLauncher(log) {
+    const path = GLib.build_filenamev([GLib.get_user_data_dir(), 'applications',
+        'io.github.omer_gh.sourceglance.desktop']);
+    if (GLib.file_test(path, GLib.FileTest.EXISTS) && GLib.unlink(path) === 0)
+        log.write(`Removed the app icon ${tildify(path)}`);
+}
+
 /** Remove sourceglance, keeping a backup copy. Token and settings removal are opt-in. */
 export async function remove({deleteToken = false, reset = false, log, progress = () => {}}) {
     const target = extensionDir();
@@ -151,6 +160,7 @@ export async function remove({deleteToken = false, reset = false, log, progress 
             await move(target, backup);
             log.write(`Moved ${tildify(target)} to ${tildify(backup)}`);
         }
+        removeAppLauncher(log);
         if (deleteToken) {
             progress(0.7, 'Deleting saved token…');
             await clearToken(log);
