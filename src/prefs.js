@@ -102,6 +102,13 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         settings.bind('start-automatically', autostartRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         group.add(autostartRow);
 
+        const launcherRow = new Adw.SwitchRow({
+            title: _('Show in app grid'),
+            subtitle: _('An app icon that starts sourceglance and opens these Settings'),
+        });
+        settings.bind('app-launcher', launcherRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        group.add(launcherRow);
+
         // After Quit, this is the way back without logging out.
         const startRow = new Adw.ActionRow({
             title: _('Start now'),

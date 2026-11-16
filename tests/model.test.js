@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
     DEVICE_VERIFICATION_URL,
+    LAUNCHER_ID,
     MAX_COMMENT_LENGTH,
     TOOLBAR_LISTS,
     draftTarget,
@@ -35,6 +36,7 @@ import {
     isValidLogin,
     isValidRepo,
     labelOptions,
+    launcherDesktopEntry,
     mergeItems,
     nextRefreshDelaySeconds,
     parseDeviceCodeResponse,
@@ -474,4 +476,18 @@ test('classifyDeviceTokenResponse maps every poll outcome', () => {
     assert.deepEqual(classifyDeviceTokenResponse({error: 'device_flow_disabled'}, 5),
         {state: 'error', error: 'device_flow_disabled'});
     assert.deepEqual(classifyDeviceTokenResponse(null, 5), {state: 'error', error: 'unknown'});
+});
+
+test('launcherDesktopEntry runs launcher.js with gjs and quotes the path', () => {
+    const entry = launcherDesktopEntry({
+        launcherPath: '/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js',
+        iconPath: '/home/me/x/icons/sourceglance-app.svg',
+    });
+    assert.ok(entry.startsWith('[Desktop Entry]\nType=Application\nName=sourceglance\n'));
+    assert.ok(entry.includes('\nExec=gjs -m "/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js"\n'));
+    assert.ok(entry.includes('\nIcon=/home/me/x/icons/sourceglance-app.svg\n'));
+    // $, " and \ are escaped for the Exec quoting rules, then backslashes once more for the file.
+    const odd = launcherDesktopEntry({launcherPath: '/a $b"c\\d/launcher.js', iconPath: '/i.svg'});
+    assert.ok(odd.includes('Exec=gjs -m "/a \\\\$b\\\\"c\\\\\\\\d/launcher.js"'));
+    assert.equal(LAUNCHER_ID, 'io.github.omer_gh.sourceglance');
 });

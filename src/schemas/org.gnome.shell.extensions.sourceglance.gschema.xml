@@ -32,6 +32,11 @@
       <summary>Start automatically</summary>
       <description>Show sourceglance in the top bar when you log in. When off, it stays hidden until you start it from Settings.</description>
     </key>
+    <key name="app-launcher" type="b">
+      <default>true</default>
+      <summary>Show in app grid</summary>
+      <description>Add a sourceglance icon to the app grid and dock that starts sourceglance and opens its Settings.</description>
+    </key>
     <key name="start-request" type="i">
       <default>0</default>
       <summary>Start request counter</summary>

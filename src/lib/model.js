@@ -154,6 +154,35 @@ export function classifyDeviceTokenResponse(json, interval) {
     }
 }
 
+// The app grid launcher ("Open sourceglance"), written by the extension (appLauncher.js).
+export const LAUNCHER_ID = 'io.github.omer_gh.sourceglance';
+
+/** Quotes a path for a desktop entry's Exec key (Desktop Entry spec, "Exec key"). */
+function quoteExecArg(arg) {
+    return `"${arg.replace(/[\\"`$]/g, char => `\\${char}`)}"`;
+}
+
+/**
+ * The launcher's .desktop file. It runs launcher.js with gjs, which starts sourceglance (also
+ * after Quit) and opens its Settings. Desktop entry values escape backslashes once more.
+ */
+export function launcherDesktopEntry({launcherPath, iconPath}) {
+    const exec = ['gjs', '-m', quoteExecArg(launcherPath)].join(' ').replace(/\\/g, '\\\\');
+    return [
+        '[Desktop Entry]',
+        'Type=Application',
+        'Name=sourceglance',
+        'Comment=Your GitHub issues, pull requests and project boards in the top bar',
+        `Exec=${exec}`,
+        `Icon=${iconPath}`,
+        'Terminal=false',
+        'Categories=Development;',
+        'Keywords=GitHub;issues;pull requests;projects;',
+        'StartupNotify=false',
+        '',
+    ].join('\n');
+}
+
 /**
  * A GType name unique to one copy of a module. GTypes can't be registered twice, and
  * `make reload` loads each build from a new URL, so names include a hash of that URL.

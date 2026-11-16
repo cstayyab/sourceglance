@@ -5,6 +5,7 @@ import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/ex
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {ActionController} from './lib/actions.js';
+import {installLauncher, removeLauncher} from './lib/appLauncher.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {ToolbarButton} from './lib/indicator.js';
 import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons} from './lib/model.js';
@@ -13,7 +14,7 @@ import {lookupToken} from './lib/tokenStore.js';
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
-const UI_ONLY_KEYS = ['start-automatically', 'start-request'];
+const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -84,6 +85,8 @@ export default class SourceglanceExtension extends Extension {
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'start-request')
                 this._start();
+            if (key === 'app-launcher')
+                this._syncLauncher();
             if (!this._running || UI_ONLY_KEYS.includes(key))
                 return;
             if (key === 'token-changed')
@@ -95,9 +98,18 @@ export default class SourceglanceExtension extends Extension {
             this._schedule(1);
         });
 
+        this._syncLauncher();
         sessionRunning ??= this._settings.get_boolean('start-automatically');
         if (sessionRunning)
             this._start();
+    }
+
+    /** Adds or removes the app grid icon, following the "Show in app grid" setting. */
+    _syncLauncher() {
+        if (this._settings.get_boolean('app-launcher'))
+            installLauncher(this.dir);
+        else
+            removeLauncher();
     }
 
     /** Shows the top-bar buttons and starts refreshing. */

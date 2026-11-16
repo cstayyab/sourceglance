@@ -18,11 +18,13 @@ npm install
 src/
 ├── extension.js      # Lifecycle and refresh loop: created in enable(), destroyed in disable()
 ├── prefs.js          # Settings window (libadwaita): GitHub / token sign-in, filters
+├── launcher.js       # Run by the app icon (gjs): start sourceglance, open Settings
 ├── lib/
 │   ├── config.js     # Build-time config: GitHub App and OAuth App client IDs
 │   ├── indicator.js  # A top-bar button: icon, count and menu (pure view: render(state))
 │   ├── views.js      # What each list shows: issues, projects, PRs, sourceglance
 │   ├── tabs.js       # The tab row for the "tabs in one menu" layout
+│   ├── appLauncher.js # Writes/removes the app icon's .desktop file
 │   ├── actions.js    # Menu actions: dialog → requests → notification
 │   ├── dialogs.js    # Comment, close and picker dialogs (ModalDialog)
 │   ├── github.js     # GitHub REST/GraphQL client and device-flow sign-in (Soup 3)
