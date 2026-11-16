@@ -6,14 +6,19 @@ import Gtk from 'gi://Gtk';
 
 import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {draftTarget, groupDraftsByStatus, isDoneStatus, itemKey} from '../../lib/model.js';
-import {actionButton, statusText} from './common.js';
+import {draftTarget, groupDraftsByStatus, isDoneStatus, itemKey, searchBoards} from '../../lib/model.js';
+import {actionButton, noMatchesGroup, statusText} from './common.js';
 
 export class ProjectsPage {
-    constructor({icons, actions}) {
+    /** `onClearSearch` empties the window's search box. */
+    constructor({icons, actions, onClearSearch}) {
         this._icons = icons;
         this._actions = actions;
+        this._onClearSearch = onClearSearch;
         this._groups = [];
+        this._state = null;
+        this._query = '';
+        this._terms = [];
         this._statusPage = new Adw.StatusPage();
         this._page = new Adw.PreferencesPage();
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
@@ -26,7 +31,27 @@ export class ProjectsPage {
         this.widget.visible_child_name = 'status';
     }
 
+    /** Shows only the drafts matching `terms`; [] shows them all again. */
+    setSearch(query, terms) {
+        this._query = query;
+        this._terms = terms;
+        if (this._state)
+            this.update(this._state);
+    }
+
+    _clear() {
+        for (const group of this._groups)
+            this._page.remove(group);
+        this._groups = [];
+    }
+
+    _add(group) {
+        this._page.add(group);
+        this._groups.push(group);
+    }
+
     update(state) {
+        this._state = state;
         const status = statusText(state);
         if (status) {
             this._status(status.icon, status.title, status.description);
@@ -41,17 +66,19 @@ export class ProjectsPage {
             this._status('content-loading-symbolic', _('Loading project boards…'), '');
             return;
         }
-        const boards = state.boards.filter(board => board.drafts.length > 0);
-        if (boards.length === 0) {
+        if (!state.boards.some(board => board.drafts.length > 0)) {
             this._status('object-select-symbolic', _('No draft items'),
                 _('Issues and pull requests on your boards are in their own lists.'));
             return;
         }
+        const boards = searchBoards(state.boards, this._terms).filter(board => board.drafts.length > 0);
 
         this.widget.visible_child_name = 'list';
-        for (const group of this._groups)
-            this._page.remove(group);
-        this._groups = [];
+        this._clear();
+        if (boards.length === 0) {
+            this._add(noMatchesGroup(this._query, () => this._onClearSearch()));
+            return;
+        }
         for (const board of boards) {
             const group = new Adw.PreferencesGroup({title: GLib.markup_escape_text(board.title, -1)});
             if (board.url) {
@@ -64,8 +91,7 @@ export class ProjectsPage {
                 for (const draft of status.drafts)
                     group.add(this._draftRow(board, draft, status.status, state.busy));
             }
-            this._page.add(group);
-            this._groups.push(group);
+            this._add(group);
         }
     }
 

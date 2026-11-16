@@ -1,4 +1,4 @@
-// Accounts → GitLab: sign in to gitlab.com with the device flow, or sign out.
+// Accounts, GitLab section: sign in to gitlab.com with the device flow, or sign out.
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import GLib from 'gi://GLib';
@@ -37,14 +37,12 @@ function describeError(error) {
     return _('Something went wrong: %s').format(error.message);
 }
 
-/** `ctx` is {window, settings, gitlabClient, toast}. */
-export function buildGitlabPage({window, settings, gitlabClient: client, toast}) {
-    const page = new Adw.PreferencesPage();
+/** The GitLab section of the Accounts page. `ctx` is {window, settings, gitlabClient, toast}. */
+export function buildGitlabGroups({window, settings, gitlabClient: client, toast}) {
     const group = new Adw.PreferencesGroup({
         title: _('Account'),
         description: _('Your GitLab issues and merge requests show in their own section of each list.'),
     });
-    page.add(group);
 
     const statusRow = new Adw.ActionRow({title: _('Status'), subtitle: _('Checking…')});
     const signOutButton = new Gtk.Button({label: _('Sign out'), valign: Gtk.Align.CENTER,
@@ -149,5 +147,5 @@ export function buildGitlabPage({window, settings, gitlabClient: client, toast})
         }
     })();
 
-    return page;
+    return [group];
 }

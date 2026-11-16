@@ -52,10 +52,14 @@ function entryRow(entry) {
  * @param {Gio.Icon} params.appIcon
  * @param {Adw.ToastOverlay} params.overlay the window's toast overlay (pages use it)
  * @param {Array} params.entries [{heading, sub}] or [{id, title, iconName|gicon, page, indent}]
+ * @param {Gtk.Widget} [params.headerStart] shown at the start of the content header bar
  * @param {Gtk.Widget} [params.headerEnd] shown at the end of the content header bar
- * @returns {{setCount(id: string, text: string): void, select(id: string): void, current(): string|null}}
+ * @param {Function} [params.onPageChanged] called with the selected entry's id
+ * @returns {{setCount(id: string, text: string): void, setSubtitle(text: string): void,
+ *   select(id: string): void, current(): string|null}}
  */
-export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = null}) {
+export function buildMainWindow(window, {appIcon, overlay, entries, headerStart = null, headerEnd = null,
+    onPageChanged = null}) {
     const list = new Gtk.ListBox({css_classes: ['navigation-sidebar', 'sourceglance-sidebar']});
     const stack = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
     const rows = new Map();
@@ -82,7 +86,11 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = 
     const sidebarPage = new Adw.NavigationPage({title: 'sourceglance', child: sidebarView});
 
     const contentView = new Adw.ToolbarView({content: stack});
-    const contentHeader = new Adw.HeaderBar();
+    // The page's name, with a subtitle such as the number of search results.
+    const windowTitle = new Adw.WindowTitle();
+    const contentHeader = new Adw.HeaderBar({title_widget: windowTitle});
+    if (headerStart)
+        contentHeader.pack_start(headerStart);
     if (headerEnd)
         contentHeader.pack_end(headerEnd);
     contentView.add_top_bar(contentHeader);
@@ -105,7 +113,9 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = 
             return;
         stack.visible_child_name = row._entry.id;
         contentPage.title = row._entry.title;
+        windowTitle.title = row._entry.title;
         split.show_content = true;
+        onPageChanged?.(row._entry.id);
     });
 
     const select = id => {
@@ -124,6 +134,9 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = 
                 return;
             row._count.label = text;
             row._count.visible = text !== '';
+        },
+        setSubtitle(text) {
+            windowTitle.subtitle = text;
         },
         select,
     };
