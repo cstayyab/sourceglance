@@ -13,6 +13,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and opens GitHub, you approve, done. It uses a GitHub App limited to issues, pull
   requests and project boards, on the repositories you choose: no code or settings access.
 - **Pull requests** in the menu: open PRs assigned to you or awaiting your review.
+- **Filter by label**: a dropdown on the Issues and Pull requests headings shows only items
+  with the chosen label. The menu stays open while you pick.
 - **Actions from the top bar** on every issue and PR: comment, close (with confirmation)
   and reopen from **Recently closed**, edit assignees and labels, and move it between
   statuses on its project boards.

@@ -13,6 +13,11 @@
     padding-top: 8px;
 }
 
+.sourceglance-filter {
+    font-weight: normal;
+    padding-right: 6px;
+}
+
 .sourceglance-repo {
     font-weight: bold;
     padding-top: 6px;
