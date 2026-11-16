@@ -9,7 +9,10 @@ import {
     classifyDeviceTokenResponse,
     classifyHttpError,
     formEncode,
+    isValidRepo,
     parseDeviceCodeResponse,
+    parseLabels,
+    parseLogins,
     parseSearchResponse,
 } from './model.js';
 
@@ -81,12 +84,21 @@ export class GitHubClient {
     }
 
     async _get(path, token, cancellable) {
-        const message = Soup.Message.new('GET', `${API_BASE}${path}`);
+        return this._request('GET', path, token, null, cancellable);
+    }
+
+    /** REST call with an optional JSON body. Resolves to the parsed JSON, or null for 204. */
+    async _request(method, path, token, body, cancellable) {
+        const message = Soup.Message.new(method, `${API_BASE}${path}`);
         const headers = message.get_request_headers();
         headers.append('Accept', 'application/vnd.github+json');
         headers.append('X-GitHub-Api-Version', '2022-11-28');
         if (token)
             headers.append('Authorization', `Bearer ${token}`);
+        if (body !== null && body !== undefined) {
+            message.set_request_body_from_bytes('application/json',
+                new GLib.Bytes(new TextEncoder().encode(JSON.stringify(body))));
+        }
         return this._send(message, cancellable);
     }
 
@@ -110,7 +122,7 @@ export class GitHubClient {
         }
 
         const status = message.get_status();
-        if (status !== Soup.Status.OK) {
+        if (status < 200 || status >= 300) {
             const responseHeaders = {};
             message.get_response_headers().foreach((name, value) => {
                 responseHeaders[name.toLowerCase()] = value;
@@ -118,8 +130,11 @@ export class GitHubClient {
             throw new GitHubError(classifyHttpError(status, responseHeaders, Date.now()));
         }
 
+        const text = new TextDecoder().decode(bytes.toArray());
+        if (status === Soup.Status.NO_CONTENT || !text)
+            return null;
         try {
-            return JSON.parse(new TextDecoder().decode(bytes.toArray()));
+            return JSON.parse(text);
         } catch {
             throw new GitHubError({kind: 'unknown', status, retryAt: null});
         }
@@ -131,10 +146,34 @@ export class GitHubClient {
         return user.login;
     }
 
-    /** Resolves to {total, issues} for open issues assigned to the token's owner. */
-    async searchAssignedIssues(token, repos = [], cancellable = null) {
-        const json = await this._get(buildSearchPath(repos), token, cancellable);
-        return parseSearchResponse(json);
+    /**
+     * Resolves to {total, items} for one search: 'issue' (open issues assigned to you),
+     * 'pr-assigned' or 'pr-review' (open PRs assigned to you / awaiting your review).
+     */
+    async search(token, repos = [], search = 'issue', cancellable = null) {
+        const json = await this._get(buildSearchPath(repos, search), token, cancellable);
+        return parseSearchResponse(json, search);
+    }
+
+    /** Runs a write request built by model.js (closeRequest(), commentRequest() and so on). */
+    async send(token, request, cancellable = null) {
+        if (!request)
+            throw new TypeError('sourceglance: empty request');
+        return this._request(request.method, request.path, token, request.body, cancellable);
+    }
+
+    /** Resolves to the repository's labels, [{name, color}] (first 100). */
+    async listLabels(token, repo, cancellable = null) {
+        if (!isValidRepo(repo))
+            throw new TypeError('sourceglance: not a valid repository');
+        return parseLabels(await this._get(`/repos/${repo}/labels?per_page=100`, token, cancellable));
+    }
+
+    /** Resolves to the logins that can be assigned in the repository (first 100). */
+    async listAssignable(token, repo, cancellable = null) {
+        if (!isValidRepo(repo))
+            throw new TypeError('sourceglance: not a valid repository');
+        return parseLogins(await this._get(`/repos/${repo}/assignees?per_page=100`, token, cancellable));
     }
 
     /** Starts device-flow sign-in. Resolves to {deviceCode, userCode, verificationUri, expiresIn, interval}. */

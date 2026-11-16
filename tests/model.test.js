@@ -3,20 +3,32 @@ import assert from 'node:assert/strict';
 
 import {
     DEVICE_VERIFICATION_URL,
+    MAX_COMMENT_LENGTH,
+    addLabelsRequest,
     appInstallUrl,
+    assigneesRequest,
     buildSearchPath,
     buildSearchQuery,
     classifyDeviceTokenResponse,
     classifyHttpError,
+    closeRequest,
+    commentRequest,
     countLabel,
+    diffSelection,
     formEncode,
     groupIssues,
     isSafeGitHubUrl,
+    isValidLogin,
     isValidRepo,
+    mergeItems,
     nextRefreshDelaySeconds,
     parseDeviceCodeResponse,
+    parseLabels,
+    parseLogins,
     parseRepoList,
     parseSearchResponse,
+    removeLabelRequest,
+    reopenRequest,
     relativeTime,
     repoFromApiUrl,
     truncate,
@@ -65,9 +77,16 @@ test('isSafeGitHubUrl only allows https://github.com links', () => {
 });
 
 test('parseSearchResponse drops unsafe issue links', () => {
-    const {issues} = parseSearchResponse({items: [{number: 1, title: 'x', html_url: 'file:///etc/passwd',
+    const {items} = parseSearchResponse({items: [{number: 1, title: 'x', html_url: 'file:///etc/passwd',
         repository_url: 'https://api.github.com/repos/a/b', updated_at: '2026-11-01T00:00:00Z'}]});
-    assert.equal(issues[0].url, null);
+    assert.equal(items[0].url, null);
+});
+
+test('buildSearchQuery lists PRs assigned to you or awaiting your review', () => {
+    assert.equal(buildSearchQuery([], 'pr-assigned'), 'is:open is:pr assignee:@me archived:false');
+    assert.equal(buildSearchQuery(['a/b'], 'pr-review'),
+        'is:open is:pr review-requested:@me archived:false repo:a/b');
+    assert.ok(buildSearchPath([], 'pr-review').includes('review-requested%3A%40me'));
 });
 
 test('repoFromApiUrl extracts owner/name', () => {
@@ -79,17 +98,98 @@ test('parseSearchResponse maps items and skips pull requests', () => {
     const result = parseSearchResponse({
         total_count: 3,
         items: [
-            {number: 1, title: 'One', html_url: 'https://github.com/a/b/issues/1',
-                repository_url: 'https://api.github.com/repos/a/b', updated_at: '2026-11-01T00:00:00Z'},
+            {number: 1, title: 'One', html_url: 'https://github.com/a/b/issues/1', node_id: 'I_1',
+                state: 'open', repository_url: 'https://api.github.com/repos/a/b',
+                updated_at: '2026-11-01T00:00:00Z',
+                labels: [{name: 'bug', color: 'D73A4A'}, {name: ''}, {color: 'fff'}],
+                assignees: [{login: 'omer-gh'}, {login: 'bad login'}, null]},
             {number: 2, title: 'PR', html_url: 'u', repository_url: 'x', updated_at: 'y', pull_request: {}},
         ],
     });
     assert.equal(result.total, 3);
-    assert.deepEqual(result.issues, [{
-        number: 1, title: 'One', url: 'https://github.com/a/b/issues/1', repo: 'a/b',
+    assert.deepEqual(result.items, [{
+        kind: 'issue', reason: 'assigned', number: 1, title: 'One',
+        url: 'https://github.com/a/b/issues/1', repo: 'a/b', nodeId: 'I_1', state: 'open',
+        labels: [{name: 'bug', color: 'd73a4a'}], assignees: ['omer-gh'],
         updatedAt: '2026-11-01T00:00:00Z',
     }]);
-    assert.deepEqual(parseSearchResponse(null), {total: 0, issues: []});
+    assert.deepEqual(parseSearchResponse(null), {total: 0, items: []});
+});
+
+test('parseSearchResponse keeps only PRs for PR searches, with the reason', () => {
+    const json = {items: [
+        {number: 1, title: 'Issue', repository_url: 'https://api.github.com/repos/a/b'},
+        {number: 7, title: 'PR', repository_url: 'https://api.github.com/repos/a/b', pull_request: {}},
+    ]};
+    const review = parseSearchResponse(json, 'pr-review').items;
+    assert.deepEqual(review.map(i => [i.kind, i.number, i.reason]), [['pr', 7, 'review']]);
+    assert.equal(parseSearchResponse(json, 'pr-assigned').items[0].reason, 'assigned');
+    assert.equal([...parseSearchResponse({items: [{number: 3, title: 'x'.repeat(500)}]}).items[0].title].length, 300);
+});
+
+test('mergeItems dedupes by repo and number, first copy wins', () => {
+    const a = {repo: 'a/b', number: 7, reason: 'assigned'};
+    const b = {repo: 'a/b', number: 7, reason: 'review'};
+    const c = {repo: 'a/b', number: 8, reason: 'review'};
+    assert.deepEqual(mergeItems([a], [b, c]), [a, c]);
+});
+
+test('close and reopen requests use the issues or pulls endpoint', () => {
+    const issue = {kind: 'issue', repo: 'a/b', number: 3};
+    const pr = {kind: 'pr', repo: 'a/b', number: 4};
+    assert.deepEqual(closeRequest(issue, 'not_planned'),
+        {method: 'PATCH', path: '/repos/a/b/issues/3', body: {state: 'closed', state_reason: 'not_planned'}});
+    assert.deepEqual(closeRequest(pr), {method: 'PATCH', path: '/repos/a/b/pulls/4', body: {state: 'closed'}});
+    assert.deepEqual(reopenRequest(issue),
+        {method: 'PATCH', path: '/repos/a/b/issues/3', body: {state: 'open', state_reason: 'reopened'}});
+    assert.deepEqual(reopenRequest(pr), {method: 'PATCH', path: '/repos/a/b/pulls/4', body: {state: 'open'}});
+    assert.throws(() => closeRequest(issue, 'spam'));
+});
+
+test('write requests refuse items that would inject into the URL', () => {
+    for (const bad of [
+        {repo: '../../user', number: 1},
+        {repo: 'unknown', number: 1},
+        {repo: 'a/b', number: '1/../../x'},
+        {repo: 'a/b', number: 0},
+        null,
+    ])
+        assert.throws(() => closeRequest(bad), TypeError);
+});
+
+test('commentRequest trims and rejects empty or oversized comments', () => {
+    const item = {kind: 'issue', repo: 'a/b', number: 3};
+    assert.deepEqual(commentRequest(item, '  hi  '),
+        {method: 'POST', path: '/repos/a/b/issues/3/comments', body: {body: 'hi'}});
+    assert.equal(commentRequest(item, '   '), null);
+    assert.equal(commentRequest(item, 'x'.repeat(MAX_COMMENT_LENGTH + 1)), null);
+});
+
+test('assignee and label requests validate names and encode label paths', () => {
+    const item = {kind: 'pr', repo: 'a/b', number: 3};
+    assert.deepEqual(assigneesRequest(item, ['omer-gh', 'omer-gh', 'bad login'], true),
+        {method: 'POST', path: '/repos/a/b/issues/3/assignees', body: {assignees: ['omer-gh']}});
+    assert.equal(assigneesRequest(item, ['omer-gh'], false).method, 'DELETE');
+    assert.equal(assigneesRequest(item, ['bad login'], false), null);
+    assert.deepEqual(addLabelsRequest(item, ['bug', 'bug', '']),
+        {method: 'POST', path: '/repos/a/b/issues/3/labels', body: {labels: ['bug']}});
+    assert.equal(removeLabelRequest(item, 'needs/triage ?').path,
+        '/repos/a/b/issues/3/labels/needs%2Ftriage%20%3F');
+    assert.throws(() => removeLabelRequest(item, ''), TypeError);
+});
+
+test('diffSelection lists additions and removals', () => {
+    assert.deepEqual(diffSelection(['a', 'b'], ['b', 'c']), {add: ['c'], remove: ['a']});
+    assert.deepEqual(diffSelection([], []), {add: [], remove: []});
+});
+
+test('parseLabels and parseLogins drop malformed entries', () => {
+    assert.deepEqual(parseLabels([{name: 'x', color: 'zzzzzz'}, 'bad', {name: 'y', color: 'ABCDEF'}]),
+        [{name: 'x', color: null}, {name: 'y', color: 'abcdef'}]);
+    assert.deepEqual(parseLabels(null), []);
+    assert.deepEqual(parseLogins([{login: 'a-b'}, {login: '-bad'}, {}]), ['a-b']);
+    assert.ok(isValidLogin('omer-gh'));
+    assert.ok(!isValidLogin('a/b'));
 });
 
 test('groupIssues orders issues and repos by most recent update', () => {
@@ -103,6 +203,8 @@ test('groupIssues orders issues and repos by most recent update', () => {
 test('classifyHttpError maps statuses to kinds', () => {
     assert.equal(classifyHttpError(401).kind, 'auth');
     assert.equal(classifyHttpError(403).kind, 'forbidden');
+    assert.equal(classifyHttpError(404).kind, 'not-found');
+    assert.equal(classifyHttpError(410).kind, 'gone');
     assert.equal(classifyHttpError(422).kind, 'query');
     assert.equal(classifyHttpError(502).kind, 'server');
     assert.equal(classifyHttpError(0).kind, 'network');

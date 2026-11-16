@@ -26,8 +26,21 @@ export function parseRepoList(text) {
     return {repos, invalid};
 }
 
-export function buildSearchQuery(repos = []) {
-    const parts = ['is:open', 'is:issue', 'assignee:@me', 'archived:false'];
+const LOGIN_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
+
+export function isValidLogin(login) {
+    return typeof login === 'string' && LOGIN_RE.test(login);
+}
+
+// What each search lists. PRs come from two searches: assigned to you, and awaiting your review.
+const SEARCH_QUALIFIERS = {
+    'issue': ['is:issue', 'assignee:@me'],
+    'pr-assigned': ['is:pr', 'assignee:@me'],
+    'pr-review': ['is:pr', 'review-requested:@me'],
+};
+
+export function buildSearchQuery(repos = [], search = 'issue') {
+    const parts = ['is:open', ...SEARCH_QUALIFIERS[search], 'archived:false'];
     for (const repo of repos) {
         if (isValidRepo(repo))
             parts.push(`repo:${repo}`);
@@ -35,8 +48,8 @@ export function buildSearchQuery(repos = []) {
     return parts.join(' ');
 }
 
-export function buildSearchPath(repos = []) {
-    const q = encodeURIComponent(buildSearchQuery(repos));
+export function buildSearchPath(repos = [], search = 'issue') {
+    const q = encodeURIComponent(buildSearchQuery(repos, search));
     return `/search/issues?q=${q}&sort=updated&order=desc&per_page=${MAX_ISSUES}`;
 }
 
@@ -52,9 +65,8 @@ export function isSafeGitHubUrl(url) {
 
 // OAuth device flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow).
 // The default sign-in is a GitHub App limited to issues, pull requests and projects; it
-// takes no scope. The opt-in full-access
-// sign-in uses an OAuth App, and reading private issues there needs `repo`: OAuth Apps have
-// no read-only scope for that. sourceglance only ever sends GET requests to the API.
+// takes no scope. The opt-in full-access sign-in uses an OAuth App, and reading private
+// issues there needs `repo`: OAuth Apps have no narrower scope for that.
 export const FULL_ACCESS_SCOPE = 'repo';
 export const DEVICE_VERIFICATION_URL = 'https://github.com/login/device';
 export const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
@@ -126,23 +138,149 @@ export function repoFromApiUrl(url) {
     return match ? match[1] : 'unknown';
 }
 
-export function parseSearchResponse(json) {
-    const items = Array.isArray(json?.items) ? json.items : [];
-    const issues = items
-        .filter(item => !item.pull_request)
-        .map(item => ({
-            number: item.number,
-            title: item.title ?? '',
-            url: isSafeGitHubUrl(item.html_url) ? item.html_url : null,
-            repo: repoFromApiUrl(item.repository_url),
-            updatedAt: item.updated_at,
+function cappedString(value, max) {
+    return typeof value === 'string' ? [...value].slice(0, max).join('') : '';
+}
+
+/** Labels from API data: [{name, color}], dropping malformed entries. */
+export function parseLabels(list) {
+    if (!Array.isArray(list))
+        return [];
+    return list
+        .filter(label => typeof label?.name === 'string' && label.name.length > 0 && label.name.length <= 100)
+        .map(label => ({
+            name: label.name,
+            color: /^[0-9a-fA-F]{6}$/.test(label.color ?? '') ? label.color.toLowerCase() : null,
         }));
-    return {total: json?.total_count ?? issues.length, issues};
+}
+
+/** Logins from a list of API users, dropping anything that isn't a valid login. */
+export function parseLogins(list) {
+    if (!Array.isArray(list))
+        return [];
+    return list.map(user => user?.login).filter(isValidLogin);
 }
 
 /**
- * Group issues by repository. Issues are sorted newest-updated first, and repositories are
- * ordered by their newest issue.
+ * Items from a search response. `search` is the search that produced it ('issue',
+ * 'pr-assigned' or 'pr-review'); items of the other kind are dropped.
+ */
+export function parseSearchResponse(json, search = 'issue') {
+    const wantPr = search !== 'issue';
+    const raw = Array.isArray(json?.items) ? json.items : [];
+    const items = raw
+        .filter(item => Boolean(item?.pull_request) === wantPr && Number.isInteger(item.number))
+        .map(item => ({
+            kind: wantPr ? 'pr' : 'issue',
+            reason: search === 'pr-review' ? 'review' : 'assigned',
+            number: item.number,
+            title: cappedString(item.title, 300),
+            url: isSafeGitHubUrl(item.html_url) ? item.html_url : null,
+            repo: repoFromApiUrl(item.repository_url),
+            nodeId: cappedString(item.node_id, 100) || null,
+            state: item.state === 'closed' ? 'closed' : 'open',
+            labels: parseLabels(item.labels),
+            assignees: parseLogins(item.assignees),
+            updatedAt: item.updated_at,
+        }));
+    return {total: json?.total_count ?? items.length, items};
+}
+
+/**
+ * Merge item lists, keeping the first copy of each (by repo and number). Used to combine the
+ * "assigned" and "review requested" PR searches; a PR in both keeps reason 'assigned'.
+ */
+export function mergeItems(...lists) {
+    const seen = new Map();
+    for (const item of lists.flat()) {
+        const key = `${item.repo}#${item.number}`;
+        if (!seen.has(key))
+            seen.set(key, item);
+    }
+    return [...seen.values()];
+}
+
+// Write requests. Each builder returns {method, path, body} for GitHubClient.send(), after
+// checking the parts that end up in the URL: API data is untrusted (threat model T7).
+
+export const MAX_COMMENT_LENGTH = 65536;
+
+function issuePath(item) {
+    if (!isValidRepo(item?.repo) || !Number.isInteger(item.number) || item.number <= 0)
+        throw new TypeError('sourceglance: not a valid issue or pull request');
+    return `/repos/${item.repo}/issues/${item.number}`;
+}
+
+/** Close an issue (reason 'completed' or 'not_planned') or a pull request. */
+export function closeRequest(item, reason = 'completed') {
+    const path = issuePath(item);
+    if (item.kind === 'pr')
+        return {method: 'PATCH', path: path.replace('/issues/', '/pulls/'), body: {state: 'closed'}};
+    if (reason !== 'completed' && reason !== 'not_planned')
+        throw new TypeError(`sourceglance: unknown close reason ${reason}`);
+    return {method: 'PATCH', path, body: {state: 'closed', state_reason: reason}};
+}
+
+export function reopenRequest(item) {
+    const path = issuePath(item);
+    if (item.kind === 'pr')
+        return {method: 'PATCH', path: path.replace('/issues/', '/pulls/'), body: {state: 'open'}};
+    return {method: 'PATCH', path, body: {state: 'open', state_reason: 'reopened'}};
+}
+
+/** Returns null for an empty or too long comment, so the dialog can keep Post disabled. */
+export function commentRequest(item, text) {
+    const path = issuePath(item);
+    const body = typeof text === 'string' ? text.trim() : '';
+    if (!body || body.length > MAX_COMMENT_LENGTH)
+        return null;
+    return {method: 'POST', path: `${path}/comments`, body: {body}};
+}
+
+/** Add (add=true) or remove assignees. Invalid logins are dropped; null if none are left. */
+export function assigneesRequest(item, logins, add) {
+    const path = issuePath(item);
+    const valid = [...new Set(logins)].filter(isValidLogin);
+    if (valid.length === 0)
+        return null;
+    return {method: add ? 'POST' : 'DELETE', path: `${path}/assignees`, body: {assignees: valid}};
+}
+
+function isValidLabelName(name) {
+    return typeof name === 'string' && name.length > 0 && name.length <= 100;
+}
+
+export function addLabelsRequest(item, names) {
+    const path = issuePath(item);
+    const valid = [...new Set(names)].filter(isValidLabelName);
+    if (valid.length === 0)
+        return null;
+    return {method: 'POST', path: `${path}/labels`, body: {labels: valid}};
+}
+
+export function removeLabelRequest(item, name) {
+    const path = issuePath(item);
+    if (!isValidLabelName(name))
+        throw new TypeError('sourceglance: not a valid label name');
+    return {method: 'DELETE', path: `${path}/labels/${encodeURIComponent(name)}`, body: null};
+}
+
+/**
+ * The requests that turn `current` into `wanted` (both arrays of names), for the picker
+ * dialogs. Kept in order: additions first, then removals.
+ */
+export function diffSelection(current, wanted) {
+    const before = new Set(current);
+    const after = new Set(wanted);
+    return {
+        add: [...after].filter(name => !before.has(name)),
+        remove: [...before].filter(name => !after.has(name)),
+    };
+}
+
+/**
+ * Group items by repository. Items are sorted newest-updated first, and repositories are
+ * ordered by their newest item.
  */
 export function groupIssues(issues) {
     const sorted = [...issues].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
@@ -159,7 +297,8 @@ export function groupIssues(issues) {
  * Map a non-200 HTTP response to an error kind. `headers` is a plain object with lowercase
  * header names. Status 0 means the request never got a response.
  *
- * Kinds: auth (401), forbidden (403), rate-limit, query (422), server (5xx), network, unknown.
+ * Kinds: auth (401), forbidden (403), not-found (404), gone (410), rate-limit, query (422),
+ * server (5xx), network, unknown.
  */
 export function classifyHttpError(status, headers = {}, nowMs = Date.now()) {
     const retryAfter = Number.parseInt(headers['retry-after'], 10);
@@ -178,6 +317,10 @@ export function classifyHttpError(status, headers = {}, nowMs = Date.now()) {
         return {kind: 'auth', status, retryAt: null};
     if (status === 403)
         return {kind: 'forbidden', status, retryAt: null};
+    if (status === 404)
+        return {kind: 'not-found', status, retryAt: null};
+    if (status === 410)
+        return {kind: 'gone', status, retryAt: null};
     if (status === 422)
         return {kind: 'query', status, retryAt: null};
     if (status >= 500)

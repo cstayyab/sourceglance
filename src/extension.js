@@ -121,7 +121,7 @@ export default class SourceglanceExtension extends Extension {
 
             this._login ??= await this._client.getViewer(token, cancellable);
             const repos = this._settings.get_strv('repositories');
-            const {total, issues} = await this._client.searchAssignedIssues(token, repos, cancellable);
+            const {total, items: issues} = await this._client.search(token, repos, 'issue', cancellable);
 
             this._setState({
                 status: 'ready',
