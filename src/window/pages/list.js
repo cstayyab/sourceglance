@@ -16,14 +16,16 @@ function copyFor(key) {
             title: _('Issues'),
             empty: _('No open issues assigned to you'),
             closedSearch: 'issue-closed',
+            closedIcon: 'issueClosed',
             closed: n => ngettext('%d closed issue still assigned to you', '%d closed issues still assigned to you', n).format(n),
         },
         prs: {
             title: _('Pull requests'),
             empty: _('No open pull requests for you'),
             closedSearch: 'pr-closed',
-            closed: n => ngettext('%d closed pull request still assigned to you',
-                '%d closed pull requests still assigned to you', n).format(n),
+            closedIcon: 'prMerged',
+            closed: n => ngettext('%d merged or closed pull request still assigned to you',
+                '%d merged or closed pull requests still assigned to you', n).format(n),
         },
     }[key];
 }
@@ -122,7 +124,7 @@ export class ListPage {
         if (count !== null && count !== undefined) {
             const footer = new Adw.PreferencesGroup();
             const row = new Adw.ActionRow({title: copy.closed(count), activatable: true, use_markup: false});
-            row.add_prefix(new Gtk.Image({icon_name: 'object-select-symbolic'}));
+            row.add_prefix(new Gtk.Image({gicon: this._icons[copy.closedIcon]}));
             row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
             row.connect('activated', () => this._actions.open(searchPageUrl(copy.closedSearch, this._repos())));
             footer.add(row);
@@ -153,8 +155,8 @@ export class ListPage {
         buttons.append(actionButton({iconName: 'web-browser-symbolic', label: _('Open on GitHub'), onClick: () => a.open(item.url)}));
         buttons.append(actionButton({iconName: 'chat-message-new-symbolic', label: _('Comment'), onClick: () => a.comment(item)}));
         buttons.append(item.kind === 'pr'
-            ? actionButton({iconName: 'window-close-symbolic', label: _('Close'), onClick: () => a.close(item)})
-            : actionButton({iconName: 'object-select-symbolic', label: _('Close'), onClick: () => a.close(item)}));
+            ? actionButton({gicon: this._icons.prClosed, label: _('Close'), onClick: () => a.close(item)})
+            : actionButton({gicon: this._icons.issueClosed, label: _('Close'), onClick: () => a.close(item)}));
         buttons.append(actionButton({iconName: 'system-users-symbolic', label: _('Assignees'), onClick: () => a.assignees(item)}));
         buttons.append(actionButton({gicon: this._icons.label, label: _('Labels'), onClick: () => a.labels(item)}));
         for (const board of item.boards ?? []) {

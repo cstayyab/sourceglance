@@ -6,6 +6,10 @@ import {
     LAUNCHER_ID,
     MAX_COMMENT_LENGTH,
     TOOLBAR_LISTS,
+    WIDGET_WIDTH,
+    clampWidgetPosition,
+    defaultWidgetPosition,
+    normalizeWidgets,
     draftTarget,
     groupDraftsByStatus,
     gtypeName,
@@ -34,6 +38,7 @@ import {
     filterByLabel,
     formEncode,
     groupIssues,
+    isDoneStatus,
     isSafeGitHubUrl,
     isValidLogin,
     isValidRepo,
@@ -519,4 +524,22 @@ test('listBadge shows counts once loaded, 0 included', () => {
     assert.equal(listBadge('projects', {...base, boards: null, boardsError: 'forbidden'}), '');
     assert.equal(listBadge('issues', {...base, status: 'signed-out'}), '');
     assert.equal(listBadge('issues', {...base, updatedAt: null}), '');
+});
+
+test('desktop widget ids, default spots and clamping', () => {
+    assert.deepEqual(normalizeWidgets(['projects', 'summary', 'x', 'summary']), ['summary', 'projects']);
+    assert.deepEqual(normalizeWidgets(null), []);
+    const area = {x: 0, y: 32, width: 1280, height: 768};
+    assert.deepEqual(defaultWidgetPosition(area, []), {x: 1280 - WIDGET_WIDTH - 24, y: 56});
+    assert.deepEqual(defaultWidgetPosition(area, [100, 200]), {x: 1280 - WIDGET_WIDTH - 24, y: 56 + 116 + 216});
+    const size = {width: WIDGET_WIDTH, height: 200};
+    assert.deepEqual(clampWidgetPosition({x: 5000, y: -40}, area, size), {x: 1280 - WIDGET_WIDTH, y: 32});
+    assert.deepEqual(clampWidgetPosition({x: 100.4, y: 300.6}, area, size), {x: 100, y: 301});
+});
+
+test('isDoneStatus recognises finished board columns', () => {
+    for (const name of ['Done', 'done', ' Closed ', 'Complete', 'COMPLETED'])
+        assert.ok(isDoneStatus(name), name);
+    for (const name of ['Todo', 'In progress', 'Not done', null, undefined])
+        assert.ok(!isDoneStatus(name), String(name));
 });

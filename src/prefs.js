@@ -17,6 +17,7 @@ import {buildPlaceholderPage} from './window/pages/placeholder.js';
 import {ProjectsPage} from './window/pages/projects.js';
 import {buildSystemStartPage} from './window/pages/systemStart.js';
 import {buildSystemTrayPage} from './window/pages/systemTray.js';
+import {buildWidgetsPage} from './window/pages/widgets.js';
 
 export default class SourceglancePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -28,6 +29,9 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const icon = name => Gio.FileIcon.new(this.dir.get_child('icons').get_child(`${name}.svg`));
         const icons = {
             issue: icon('issue-symbolic'),
+            issueClosed: icon('issue-closed-symbolic'),
+            prMerged: icon('git-merge-symbolic'),
+            prClosed: icon('pr-closed-symbolic'),
             pr: icon('git-pull-request-symbolic'),
             label: icon('label-symbolic'),
             projects: icon('checklist-symbolic'),
@@ -66,8 +70,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
                 {id: 'projects', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
                 {heading: _('Settings')},
                 {id: 'widgets', title: _('Desktop Widgets'), iconName: 'view-grid-symbolic',
-                    page: comingSoon('view-grid-symbolic', _('Desktop Widgets'),
-                        _('Cards with your issues, pull requests and projects on the desktop.'))},
+                    page: buildWidgetsPage(ctx)},
                 {id: 'tray', title: _('System Tray'), iconName: 'preferences-desktop-display-symbolic',
                     page: buildSystemTrayPage(ctx)},
                 {heading: _('Accounts'), sub: true},

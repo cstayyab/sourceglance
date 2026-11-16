@@ -154,6 +154,37 @@ export function classifyDeviceTokenResponse(json, interval) {
     }
 }
 
+// Desktop widgets (lib/widgets.js): which cards, and where they go.
+export const WIDGET_IDS = ['summary', 'issues', 'prs', 'projects'];
+export const WIDGET_WIDTH = 320;
+const WIDGET_MARGIN = 24;
+const WIDGET_GAP = 16;
+
+/** Known card ids from the `widgets` setting, in display order, without duplicates. */
+export function normalizeWidgets(ids) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    return WIDGET_IDS.filter(id => wanted.has(id));
+}
+
+/**
+ * Default spot for the index-th card: a column at the right edge of the work area, top down.
+ * `area` is {x, y, width, height}; `heights` are the heights of the cards above it.
+ */
+export function defaultWidgetPosition(area, heights) {
+    const y = area.y + WIDGET_MARGIN + heights.reduce((sum, h) => sum + h + WIDGET_GAP, 0);
+    return {x: area.x + area.width - WIDGET_WIDTH - WIDGET_MARGIN, y};
+}
+
+/** Keeps a card fully inside the work area (a saved spot may be off a now-smaller screen). */
+export function clampWidgetPosition({x, y}, area, size) {
+    const maxX = area.x + Math.max(0, area.width - size.width);
+    const maxY = area.y + Math.max(0, area.height - size.height);
+    return {
+        x: Math.round(Math.min(Math.max(x, area.x), maxX)),
+        y: Math.round(Math.min(Math.max(y, area.y), maxY)),
+    };
+}
+
 // The app grid launcher ("Open sourceglance"), written by the extension (appLauncher.js).
 export const LAUNCHER_ID = 'io.github.omer_gh.sourceglance';
 
@@ -515,6 +546,11 @@ export function draftTarget(board, draft) {
             title: board.title,
         },
     };
+}
+
+/** True for a board column that means finished (Done, Closed, Complete, Completed). */
+export function isDoneStatus(name) {
+    return typeof name === 'string' && /^\s*(done|closed|complete|completed)\s*$/i.test(name);
 }
 
 /** Draft items of a board grouped by status, in the board's column order; "No status" last. */

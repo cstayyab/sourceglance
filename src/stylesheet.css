@@ -124,3 +124,66 @@
 .sourceglance-picker-empty {
     font-style: italic;
 }
+
+/* Desktop widgets (lib/widgets.js): dark cards with a header in the top-bar blue. */
+.sourceglance-widget {
+    background-color: rgba(22, 27, 34, 0.9);
+    border: 1px solid rgba(88, 166, 255, 0.35);
+    border-radius: 14px;
+    color: #e6edf3;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.sourceglance-widget-header {
+    background-color: rgba(88, 166, 255, 0.3);
+    border-radius: 13px 13px 0 0;
+    padding: 8px 12px;
+    spacing: 8px;
+    font-weight: bold;
+}
+
+.sourceglance-widget-header:hover {
+    background-color: rgba(88, 166, 255, 0.42);
+}
+
+.sourceglance-widget-body {
+    padding: 6px;
+    spacing: 2px;
+}
+
+.sourceglance-widget-row {
+    padding: 5px 8px;
+    border-radius: 8px;
+    color: #e6edf3;
+}
+
+.sourceglance-widget-row:hover,
+.sourceglance-widget-row:focus {
+    background-color: rgba(88, 166, 255, 0.18);
+}
+
+.sourceglance-widget-row-box {
+    spacing: 8px;
+}
+
+.sourceglance-widget-icon {
+    icon-size: 16px;
+}
+
+.sourceglance-widget-count,
+.sourceglance-widget-detail {
+    font-weight: bold;
+    color: #58a6ff;
+}
+
+.sourceglance-widget-message {
+    padding: 8px;
+    font-style: italic;
+    color: rgba(230, 237, 243, 0.7);
+}
+
+.sourceglance-widget-footer {
+    padding: 2px 14px 10px 14px;
+    font-size: smaller;
+    color: rgba(230, 237, 243, 0.55);
+}

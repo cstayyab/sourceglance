@@ -8,13 +8,14 @@ import {ActionController} from './lib/actions.js';
 import {installLauncher, removeLauncher} from './lib/appLauncher.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {ToolbarButton} from './lib/indicator.js';
-import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons} from './lib/model.js';
+import {DesktopWidgets} from './lib/widgets.js';
+import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
 import {lookupToken} from './lib/tokenStore.js';
 
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
-const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher'];
+const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -76,6 +77,9 @@ export default class SourceglanceExtension extends Extension {
             app: icon('sourceglance'),
             // Used inside the menus.
             issue: icon('issue'),
+            issueClosed: icon('issue-closed'),
+            prMerged: icon('git-merge'),
+            prClosed: icon('pr-closed'),
             label: icon('label'),
         };
         this._buttons = [];
@@ -119,6 +123,12 @@ export default class SourceglanceExtension extends Extension {
         this._running = true;
         sessionRunning = true;
         this._buildButtons();
+        this._widgets = new DesktopWidgets({
+            settings: this._settings,
+            icons: this._icons,
+            getRepos: () => this._settings?.get_strv('repositories') ?? [],
+        });
+        this._widgets.update(this._state);
         this._refresh();
     }
 
@@ -136,6 +146,8 @@ export default class SourceglanceExtension extends Extension {
         for (const button of this._buttons)
             button.destroy();
         this._buttons = [];
+        this._widgets?.destroy();
+        this._widgets = null;
         Main.notify('sourceglance', _('sourceglance has quit. To start it again, open its Settings ' +
             'from the Extensions app and choose Start now.'));
     }
@@ -168,6 +180,8 @@ export default class SourceglanceExtension extends Extension {
         for (const button of this._buttons ?? [])
             button.destroy();
         this._buttons = null;
+        this._widgets?.destroy();
+        this._widgets = null;
         this._icons = null;
 
         this._state = null;
@@ -221,6 +235,7 @@ export default class SourceglanceExtension extends Extension {
         this._state = {...this._state, ...patch};
         for (const button of this._buttons)
             button.render(this._state);
+        this._widgets?.update(this._state);
     }
 
     _setBusy(item, busy) {
@@ -393,7 +408,9 @@ export default class SourceglanceExtension extends Extension {
             });
             this._publish();
             await this._loadBoards(token, all, cancellable);
-            if (this._lists().includes('projects'))
+            // Boards feed the Projects list and the projects and summary widgets.
+            const widgets = normalizeWidgets(this._settings.get_strv('widgets'));
+            if (this._lists().includes('projects') || widgets.includes('projects') || widgets.includes('summary'))
                 await this._loadViewerBoards(token, cancellable);
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
