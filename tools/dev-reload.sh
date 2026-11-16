@@ -31,11 +31,18 @@ cp "$ROOT"/src/schemas/*.gschema.xml "$DIR/schemas/"
 glib-compile-schemas "$DIR/schemas"
 printf '%s\n' "$stamp" > "$DIR/dev/current"
 
+state_of() { gnome-extensions info "$UUID" | sed -n 's/^ *State: //p'; }
+
 gnome-extensions disable "$UUID"
+# Enabling again before the Shell has finished disabling is ignored, so wait for it.
+for _ in $(seq 1 20); do
+    [[ $(state_of) != ACTIVE ]] && break
+    sleep 0.25
+done
 gnome-extensions enable "$UUID"
 # The loader imports the build asynchronously; wait for it to settle.
 for _ in $(seq 1 20); do
-    state=$(gnome-extensions info "$UUID" | sed -n 's/^ *State: //p')
+    state=$(state_of)
     [[ $state == ACTIVE || $state == ERROR ]] && break
     sleep 0.25
 done
