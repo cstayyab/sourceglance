@@ -391,6 +391,29 @@ export function diffSelection(current, wanted) {
     };
 }
 
+/** Labels used by the grouped items, as [{name, count}] sorted by name, for the label filter. */
+export function labelOptions(groups) {
+    const counts = new Map();
+    for (const group of groups) {
+        for (const item of group.issues) {
+            for (const name of new Set(item.labels.map(label => label.name)))
+                counts.set(name, (counts.get(name) ?? 0) + 1);
+        }
+    }
+    return [...counts]
+        .map(([name, count]) => ({name, count}))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Keeps only items with the label (null keeps everything), dropping repositories left empty. */
+export function filterByLabel(groups, label) {
+    if (label === null)
+        return groups;
+    return groups
+        .map(group => ({...group, issues: group.issues.filter(item => item.labels.some(l => l.name === label))}))
+        .filter(group => group.issues.length > 0);
+}
+
 /**
  * Group items by repository. Items are sorted newest-updated first, and repositories are
  * ordered by their newest item.

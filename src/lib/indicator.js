@@ -10,7 +10,7 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {countLabel, isSafeGitHubUrl, itemKey, relativeTime, truncate} from './model.js';
+import {countLabel, filterByLabel, isSafeGitHubUrl, itemKey, labelOptions, relativeTime, truncate} from './model.js';
 
 const VIEW_ALL_URL = 'https://github.com/issues/assigned';
 
@@ -50,6 +50,20 @@ function errorText(error, intervalMinutes) {
     }
 }
 
+// A choice in a label dropdown. It doesn't emit 'activate', so picking a label filters the
+// list without closing the menu.
+const FilterItem = GObject.registerClass(
+class FilterItem extends PopupMenu.PopupMenuItem {
+    _init(text, onPick) {
+        super._init(text);
+        this._onPick = onPick;
+    }
+
+    activate(_event) {
+        this._onPick();
+    }
+});
+
 export const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
     _init({onRefresh, onSettings, onAction}) {
@@ -58,6 +72,14 @@ class Indicator extends PanelMenu.Button {
         this._onSettings = onSettings;
         this._onAction = onAction;
         this._state = null;
+        // Label chosen in each section's dropdown; null shows everything. Kept across refreshes.
+        this._labelFilters = {issues: null, prs: null};
+        this._rebuildId = 0;
+        this.connect('destroy', () => {
+            if (this._rebuildId)
+                GLib.source_remove(this._rebuildId);
+            this._rebuildId = 0;
+        });
 
         const box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
         this._icon = new St.Icon({
@@ -156,11 +178,47 @@ class Indicator extends PanelMenu.Button {
             : label;
     }
 
-    _addSection(title, groups) {
+    /** A section heading with a label filter dropdown, then its items grouped by repository. */
+    _addSection(title, groups, key) {
         if (!groups?.length)
             return;
-        this._addInfo(title, 'sourceglance-section');
-        for (const group of groups) {
+        const options = labelOptions(groups);
+        let filter = this._labelFilters[key];
+        // The label disappeared after a refresh: show everything again.
+        if (filter !== null && !options.some(option => option.name === filter))
+            filter = this._labelFilters[key] = null;
+
+        if (options.length === 0) {
+            this._addInfo(title, 'sourceglance-section');
+        } else {
+            const header = new PopupMenu.PopupSubMenuMenuItem(title);
+            header.add_style_class_name('sourceglance-section');
+            const current = new St.Label({
+                text: filter === null ? _('All labels') : truncate(filter, 24),
+                style_class: 'sourceglance-filter',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            if (header._triangleBin)
+                header.insert_child_below(current, header._triangleBin);
+            else
+                header.add_child(current);
+            this.menu.addMenuItem(header);
+
+            const pick = name => {
+                this._labelFilters[key] = name;
+                this._scheduleRebuild();
+            };
+            const all = new FilterItem(_('All labels'), () => pick(null));
+            all.setOrnament(filter === null ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+            header.menu.addMenuItem(all);
+            for (const option of options) {
+                const entry = new FilterItem(`${truncate(option.name, 40)} (${option.count})`, () => pick(option.name));
+                entry.setOrnament(filter === option.name ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+                header.menu.addMenuItem(entry);
+            }
+        }
+
+        for (const group of filterByLabel(groups, filter)) {
             this._addInfo(group.repo, 'sourceglance-repo');
             for (const item of group.issues)
                 this._addItem(item);
@@ -196,6 +254,18 @@ class Indicator extends PanelMenu.Button {
         }
     }
 
+    // Rebuild after the current event: the item that was clicked is destroyed by the rebuild.
+    _scheduleRebuild() {
+        if (this._rebuildId)
+            return;
+        this._rebuildId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._rebuildId = 0;
+            if (this._state)
+                this._rebuildMenu();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     _rebuildMenu() {
         const state = this._state;
         this.menu.removeAll();
@@ -212,8 +282,8 @@ class Indicator extends PanelMenu.Button {
                 this._addInfo(_('Missing some? sourceglance only sees the repositories you ' +
                     'gave it. Check Settings.'), 'sourceglance-hint');
             } else {
-                this._addSection(_('Issues'), state.groups);
-                this._addSection(_('Pull requests'), state.prGroups);
+                this._addSection(_('Issues'), state.groups, 'issues');
+                this._addSection(_('Pull requests'), state.prGroups, 'prs');
             }
         }
         if (signedIn && state.recentlyClosed.length > 0) {

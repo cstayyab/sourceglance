@@ -20,11 +20,13 @@ import {
     commentRequest,
     countLabel,
     diffSelection,
+    filterByLabel,
     formEncode,
     groupIssues,
     isSafeGitHubUrl,
     isValidLogin,
     isValidRepo,
+    labelOptions,
     mergeItems,
     nextRefreshDelaySeconds,
     parseDeviceCodeResponse,
@@ -238,6 +240,28 @@ test('classifyGraphqlErrors maps GraphQL error types', () => {
     assert.equal(classifyGraphqlErrors([{type: 'NOT_FOUND'}]), 'not-found');
     assert.equal(classifyGraphqlErrors([{message: 'x'}]), 'query');
     assert.equal(classifyGraphqlErrors(null), 'query');
+});
+
+test('labelOptions counts each label once per item, sorted by name', () => {
+    const item = (...names) => ({labels: names.map(name => ({name, color: null}))});
+    const groups = [
+        {repo: 'a/b', issues: [item('ui', 'bug'), item('bug', 'bug')]},
+        {repo: 'c/d', issues: [item(), item('docs')]},
+    ];
+    assert.deepEqual(labelOptions(groups),
+        [{name: 'bug', count: 2}, {name: 'docs', count: 1}, {name: 'ui', count: 1}]);
+    assert.deepEqual(labelOptions([]), []);
+});
+
+test('filterByLabel keeps matching items and drops emptied repositories', () => {
+    const item = (number, ...names) => ({number, labels: names.map(name => ({name, color: null}))});
+    const groups = [
+        {repo: 'a/b', issues: [item(1, 'bug'), item(2)]},
+        {repo: 'c/d', issues: [item(3, 'docs')]},
+    ];
+    assert.deepEqual(filterByLabel(groups, 'bug'), [{repo: 'a/b', issues: [item(1, 'bug')]}]);
+    assert.equal(filterByLabel(groups, null), groups);
+    assert.deepEqual(filterByLabel(groups, 'none'), []);
 });
 
 test('diffSelection lists additions and removals', () => {
