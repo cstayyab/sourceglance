@@ -1,0 +1,57 @@
+/* sourceglance window theme: the top-bar blue (#58a6ff / #1f6feb). Every rule is scoped to
+   .sourceglance-window, because other extensions' Settings run in the same process. */
+
+.sourceglance-window {
+    --accent-bg-color: #1f6feb;
+    --accent-fg-color: #ffffff;
+    --accent-color: #0969da;
+}
+
+@media (prefers-color-scheme: dark) {
+    .sourceglance-window {
+        --accent-color: #58a6ff;
+    }
+}
+
+/* Sidebar: tinted like the top-bar block, selection in the stronger blue. */
+.sourceglance-window .sourceglance-sidebar {
+    background-color: alpha(#58a6ff, 0.10);
+}
+
+.sourceglance-window .sourceglance-sidebar-header {
+    background-image: linear-gradient(to bottom, alpha(#58a6ff, 0.32), alpha(#58a6ff, 0.16));
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-sidebar > row:selected {
+    background-color: alpha(#58a6ff, 0.32);
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-sidebar > row:selected:hover {
+    background-color: alpha(#58a6ff, 0.40);
+}
+
+.sourceglance-window .sourceglance-sidebar-heading {
+    font-weight: bold;
+    font-size: smaller;
+    opacity: 0.7;
+    margin: 14px 6px 4px 6px;
+}
+
+.sourceglance-window .sourceglance-sidebar-subheading {
+    font-weight: bold;
+    font-size: smaller;
+    opacity: 0.6;
+    margin: 8px 6px 2px 18px;
+}
+
+.sourceglance-window .sourceglance-indent {
+    margin-left: 18px;
+}
+
+.sourceglance-window .sourceglance-count-pill {
+    background-color: alpha(#58a6ff, 0.28);
+    border-radius: 999px;
+    padding: 0 8px;
+    font-weight: bold;
+    font-size: smaller;
+}

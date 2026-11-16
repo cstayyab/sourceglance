@@ -1,0 +1,42 @@
+// Settings → System Start: starting with your session, the app icon, and Start now.
+import Adw from 'gi://Adw';
+import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk';
+
+import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+
+/** `ctx` is {settings, toast}. */
+export function buildSystemStartPage({settings, toast}) {
+    const page = new Adw.PreferencesPage();
+    const group = new Adw.PreferencesGroup({title: _('Startup')});
+    page.add(group);
+
+    const autostartRow = new Adw.SwitchRow({
+        title: _('Start automatically'),
+        subtitle: _('Show sourceglance in the top bar when you log in'),
+    });
+    settings.bind('start-automatically', autostartRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+    group.add(autostartRow);
+
+    const launcherRow = new Adw.SwitchRow({
+        title: _('Show in app grid'),
+        subtitle: _('An app icon that starts sourceglance and opens this window'),
+    });
+    settings.bind('app-launcher', launcherRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+    group.add(launcherRow);
+
+    // After Quit, this is the way back without logging out.
+    const startRow = new Adw.ActionRow({
+        title: _('Start now'),
+        subtitle: _('Show sourceglance in the top bar again after you chose Quit'),
+    });
+    const startButton = new Gtk.Button({label: _('Start'), valign: Gtk.Align.CENTER, css_classes: ['suggested-action']});
+    startButton.connect('clicked', () => {
+        settings.set_int('start-request', settings.get_int('start-request') + 1);
+        toast(_('sourceglance is starting'));
+    });
+    startRow.add_suffix(startButton);
+    group.add(startRow);
+
+    return page;
+}
