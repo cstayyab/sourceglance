@@ -7,6 +7,14 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
+### Changed
+
+- The search box sits on the right of the window's title bar and is always shown, on every
+  page. Searching from a settings page opens the first list; clearing the search restores
+  every list's results and counts and keeps the list you're on (or opens the first list).
+
 ## [0.3.0] - 2026-11-16
 
 ### Added
@@ -106,7 +114,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/omer-gh/sourceglance/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/omer-gh/sourceglance/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/omer-gh/sourceglance/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/omer-gh/sourceglance/releases/tag/v0.1.0

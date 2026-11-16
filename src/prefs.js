@@ -44,7 +44,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const toast = title => overlay.add_toast(new Adw.Toast({title}));
         const ctx = {window, settings, client, gitlabClient, toast, dir: this.dir};
 
-        // One search box in the title bar filters all three lists. While it has text, the
+        // One search box, on the right of the title bar, filters all three lists. While it has text, the
         // sidebar counts and the title's subtitle show matches; clearing it shows everything.
         const LISTS = ['issues', 'prs', 'projects'];
         const search = new Gtk.SearchEntry({placeholder_text: _('Search lists'), width_chars: 20, valign: Gtk.Align.CENTER,
@@ -80,6 +80,10 @@ export default class SourceglancePreferences extends ExtensionPreferences {
 
         search.connect('search-changed', () => {
             terms = searchTerms(search.text);
+            // Searching from a settings page shows the first list; clearing it there does too.
+            // On a list, the selection stays.
+            if (!LISTS.includes(currentPage))
+                main?.select(LISTS[0]);
             for (const page of pages)
                 page.setSearch(search.text.trim(), terms);
             showCounts();
@@ -94,21 +98,18 @@ export default class SourceglancePreferences extends ExtensionPreferences {
             data.refresh();
             update.check();
         });
+        // The search box sits on the right of the title, always shown, next to the buttons.
         const headerEnd = new Gtk.Box({spacing: 6});
+        headerEnd.append(search);
         headerEnd.append(update.widget);
         headerEnd.append(refresh);
 
         main = buildMainWindow(window, {
             appIcon: icon('sourceglance-app'),
             overlay,
-            headerStart: search,
             headerEnd,
             onPageChanged: id => {
                 currentPage = id;
-                // Search is for the lists; the text is kept while you visit a settings page.
-                // On a list, typing anywhere in the window goes into the search box.
-                search.visible = LISTS.includes(id);
-                search.set_key_capture_widget(search.visible ? window : null);
                 showCounts();
             },
             entries: [
@@ -146,7 +147,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         // Esc clears a search first, wherever the focus is; this window would otherwise close.
         const escape = new Gtk.EventControllerKey({propagation_phase: Gtk.PropagationPhase.CAPTURE});
         escape.connect('key-pressed', (_controller, keyval) => {
-            if (keyval !== Gdk.KEY_Escape || search.text === '' || !search.visible)
+            if (keyval !== Gdk.KEY_Escape || search.text === '')
                 return false;
             // In a dialog (comment, close, pickers), Esc closes the dialog as usual.
             if (window.get_focus()?.get_ancestor(Adw.Dialog.$gtype))
@@ -156,13 +157,12 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         });
         window.add_controller(escape);
 
-        // Ctrl+F jumps to the search box from a list.
+        // Typing on a list goes into the search box; Ctrl+F jumps there from any page.
+        search.set_key_capture_widget(window);
         const shortcuts = new Gtk.ShortcutController({scope: Gtk.ShortcutScope.LOCAL});
         shortcuts.add_shortcut(new Gtk.Shortcut({
             trigger: Gtk.ShortcutTrigger.parse_string('<Control>f'),
             action: Gtk.CallbackAction.new(() => {
-                if (!search.visible)
-                    return false;
                 search.grab_focus();
                 return true;
             }),
