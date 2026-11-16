@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Pull requests: two branches, one merging back -->
+  <path fill-rule="evenodd" d="M1.75 3a2.25 2.25 0 1 0 4.5 0a2.25 2.25 0 1 0-4.5 0Zm1.15 0a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0Z"/>
+  <path fill-rule="evenodd" d="M1.75 13a2.25 2.25 0 1 0 4.5 0a2.25 2.25 0 1 0-4.5 0Zm1.15 0a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0Z"/>
+  <rect x="3.4" y="5.25" width="1.2" height="5.5"/>
+  <path fill-rule="evenodd" d="M9.75 13a2.25 2.25 0 1 0 4.5 0a2.25 2.25 0 1 0-4.5 0Zm1.15 0a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0Z"/>
+  <path d="M11.4 10.75V5.6c0-.5-.4-.9-.9-.9H8.6V3.5h1.9c1.2 0 2.1.9 2.1 2.1v5.15Z"/>
+  <path d="M6.4 4.1 9 1.9v4.4Z"/>
+</svg>

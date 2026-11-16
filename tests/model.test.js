@@ -4,6 +4,13 @@ import assert from 'node:assert/strict';
 import {
     DEVICE_VERIFICATION_URL,
     MAX_COMMENT_LENGTH,
+    TOOLBAR_LISTS,
+    draftTarget,
+    groupDraftsByStatus,
+    itemKey,
+    normalizeButtons,
+    parseViewerBoards,
+    searchPageUrl,
     PROJECT_ITEMS_QUERY,
     classifyGraphqlErrors,
     moveStatusRequest,
@@ -240,6 +247,72 @@ test('classifyGraphqlErrors maps GraphQL error types', () => {
     assert.equal(classifyGraphqlErrors([{type: 'NOT_FOUND'}]), 'not-found');
     assert.equal(classifyGraphqlErrors([{message: 'x'}]), 'query');
     assert.equal(classifyGraphqlErrors(null), 'query');
+});
+
+test('normalizeButtons keeps known lists in toolbar order', () => {
+    assert.deepEqual(normalizeButtons(['prs', 'issues', 'prs', 'evil', 'app']), ['issues', 'prs']);
+    assert.deepEqual(normalizeButtons([]), []);
+    assert.deepEqual(normalizeButtons(null), []);
+    assert.deepEqual(normalizeButtons(TOOLBAR_LISTS), ['issues', 'projects', 'prs']);
+});
+
+test('closed searches count closed items still assigned to you', () => {
+    assert.equal(buildSearchQuery([], 'issue-closed'), 'is:closed is:issue assignee:@me archived:false');
+    assert.equal(buildSearchQuery(['a/b'], 'pr-closed'), 'is:closed is:pr assignee:@me archived:false repo:a/b');
+    assert.ok(buildSearchPath([], 'issue-closed').endsWith('&per_page=1'));
+    assert.ok(buildSearchPath([], 'issue').endsWith('&per_page=25'));
+    const url = searchPageUrl('pr-closed');
+    assert.ok(url.startsWith('https://github.com/pulls?q=is%3Aclosed%20is%3Apr'));
+    assert.ok(isSafeGitHubUrl(url));
+    assert.ok(searchPageUrl('issue-closed').startsWith('https://github.com/issues?q='));
+});
+
+test('parseViewerBoards keeps open boards and their non-archived drafts only', () => {
+    const field = {id: 'F_1', options: [{id: 'o1', name: 'Todo'}, {id: 'o2', name: 'Done'}]};
+    const board = (id, extra = {}) => ({
+        id, title: `Board ${id}`, url: `https://github.com/users/me/projects/${id.length}`, closed: false, field,
+        items: {totalCount: 3, nodes: [
+            {id: 'PVTI_d1', type: 'DRAFT_ISSUE', isArchived: false, content: {title: 'Draft one'},
+                fieldValueByName: {optionId: 'o2', name: 'Done'}},
+            {id: 'PVTI_d2', type: 'DRAFT_ISSUE', isArchived: true, content: {title: 'Archived'}},
+            {id: 'PVTI_i1', type: 'ISSUE', isArchived: false, content: {}},
+            {id: 'PVTI_d3', type: 'DRAFT_ISSUE', isArchived: false, content: {title: 'No status'}, fieldValueByName: null},
+        ]},
+        ...extra,
+    });
+    const boards = parseViewerBoards({
+        data: {viewer: {
+            projectsV2: {nodes: [board('PVT_a'), board('PVT_closed', {closed: true}), null]},
+            organizations: {nodes: [{projectsV2: {nodes: [board('PVT_a'), board('PVT_b', {url: 'https://evil.example/x'})]}}, null]},
+        }},
+        errors: [{type: 'FORBIDDEN'}],
+    });
+    assert.deepEqual(boards.map(b => b.projectId), ['PVT_a', 'PVT_b']);
+    assert.deepEqual(boards[0].drafts, [
+        {itemId: 'PVTI_d1', title: 'Draft one', optionId: 'o2', status: 'Done'},
+        {itemId: 'PVTI_d3', title: 'No status', optionId: null, status: null},
+    ]);
+    assert.equal(boards[0].truncated, false);
+    assert.equal(boards[1].url, null);
+    assert.deepEqual(parseViewerBoards(null), []);
+    assert.deepEqual(parseViewerBoards({data: {viewer: {}}}), []);
+});
+
+test('groupDraftsByStatus follows column order with No status last', () => {
+    const board = {
+        options: [{id: 'o1', name: 'Todo'}, {id: 'o2', name: 'Doing'}, {id: 'o3', name: 'Done'}],
+        drafts: [{itemId: 'a', optionId: 'o3'}, {itemId: 'b', optionId: null}, {itemId: 'c', optionId: 'o1'}],
+    };
+    assert.deepEqual(groupDraftsByStatus(board).map(g => [g.status, g.drafts.map(d => d.itemId)]),
+        [['Todo', ['c']], ['Done', ['a']], [null, ['b']]]);
+});
+
+test('draftTarget builds an action target that moveStatusRequest accepts', () => {
+    const board = {projectId: 'PVT_a', title: 'Roadmap', fieldId: 'F_1', options: [{id: 'o1', name: 'Todo'}]};
+    const {item, board: target} = draftTarget(board, {itemId: 'PVTI_d1', title: 'Draft', optionId: null, status: null});
+    assert.equal(item.kind, 'draft');
+    assert.equal(itemKey(item), 'project#PVTI_d1');
+    assert.equal(moveStatusRequest(target, 'o1').body.variables.item, 'PVTI_d1');
 });
 
 test('labelOptions counts each label once per item, sorted by name', () => {

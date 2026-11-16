@@ -20,7 +20,9 @@ src/
 ├── prefs.js          # Settings window (libadwaita): GitHub / token sign-in, filters
 ├── lib/
 │   ├── config.js     # Build-time config: GitHub App and OAuth App client IDs
-│   ├── indicator.js  # Panel button and menu (pure view: render(state))
+│   ├── indicator.js  # A top-bar button: icon, count and menu (pure view: render(state))
+│   ├── views.js      # What each list shows: issues, projects, PRs, sourceglance
+│   ├── tabs.js       # The tab row for the "tabs in one menu" layout
 │   ├── actions.js    # Menu actions: dialog → requests → notification
 │   ├── dialogs.js    # Comment, close and picker dialogs (ModalDialog)
 │   ├── github.js     # GitHub REST/GraphQL client and device-flow sign-in (Soup 3)
@@ -28,6 +30,7 @@ src/
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
 ├── stylesheet.css    # Styles for the panel menu
+├── icons/            # Symbolic icons: sourceglance, checklist (projects), pull request
 └── schemas/          # GSettings schema (non-secret settings only)
 tests/                # Node unit tests for lib/model.js
 tools/shell-smoke.sh  # Headless GNOME Shell enable/disable smoke test
