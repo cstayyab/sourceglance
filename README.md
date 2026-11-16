@@ -1,33 +1,66 @@
 # sourceglance
 
-**Your GitHub and GitLab issues, pull requests and project boards, one click away in the Ubuntu top bar.**
+**Your GitHub and GitLab issues, pull requests and project boards, one glance away: in the
+Ubuntu top bar, in their own window, and right on your desktop.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Lint](https://github.com/omer-gh/sourceglance/actions/workflows/lint.yml/badge.svg)](https://github.com/omer-gh/sourceglance/actions/workflows/lint.yml)
 [![GNOME Shell](https://img.shields.io/badge/GNOME%20Shell-46--50-4a86cf)](src/metadata.json)
+[![Release](https://img.shields.io/github/v/release/omer-gh/sourceglance?include_prereleases)](https://github.com/omer-gh/sourceglance/releases)
 
 **Home page and download: <https://omer-gh.github.io/sourceglance/>**
 
-sourceglance is a GNOME Shell extension for Ubuntu Desktop. It puts buttons in the top bar
-for your issues, pull requests and project boards; click one to see and act on what's
-assigned to you, without opening a browser.
+sourceglance is a GNOME Shell extension for Ubuntu Desktop. It shows what's assigned to you
+on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 
-> **Status: early release.** v0.1.0 is the first release. See the [roadmap](#roadmap) and
-> the open issues if you want to help.
+- **Top-bar buttons** for Issues, Pull requests and Projects, each with a live count.
+- **Desktop widgets**: cards with your lists, pinned to the desktop under your windows.
+- **A main window** with every list and all settings in one place.
+
+> **Status: first release.** v0.1.0 is out as a pre-release. Try it, and
+> [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
 ## Features
 
-- [x] Top-bar buttons for Issues, Pull requests and Projects, each with its count, as one
-  group or as tabs
-- [x] Sign in with GitHub (device flow) through a GitHub App limited to issues, pull
-  requests and projects; tokens stay in the GNOME keyring
-- [x] Actions from the menu: comment, close and reopen, assignees, labels, project status
-- [x] Filter by label; closed items still assigned to you are counted
-- [x] GitHub Projects (v2) draft items, grouped by status
-- [x] gitlab.com issues and merge requests in their own sections
-- [x] Main window with lists and settings, splash screen, app grid icon
-- [x] Desktop widgets
-- [ ] Desktop notifications for new assignments
+- **Desktop widgets**: Summary, Issues, Pull requests and Projects cards on your desktop.
+  Drag them anywhere, set their opacity, click an item to open it.
+- **Top bar**: buttons for sourceglance, Issues, Pull requests and Projects as one tinted
+  group or as tabs in one menu, each with its count (0 included).
+- **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
+  items between statuses on your project boards, from the menus or the window.
+- **GitHub and GitLab**: gitlab.com issues and merge requests get their own collapsible
+  section in every list, menu and widget; counts add up across both.
+- **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
+- **Filter by label**, and see how many closed or merged items are still assigned to you.
+- **Main window** with a sidebar for your lists and settings, a splash screen, and an app
+  grid icon, all in the top bar's blue.
+- **Limited access**: signs in through a GitHub App that can only see issues, pull requests
+  and projects (no code). Tokens stay in the GNOME keyring.
+- **Start automatically** at login, or **Quit** and start it again from the app grid.
+- **One-file installer**: a setup wizard with repair, upgrade and remove.
+
+Planned: desktop notifications for new assignments.
+
+## Desktop widgets
+
+Widgets put your lists on the desktop itself, so a glance at the desktop shows what's
+waiting for you. They sit below your windows and above desktop icons, so they never cover
+your work and stay clickable.
+
+| Card | Shows |
+| --- | --- |
+| **Summary** | Open issues, pull requests and project drafts, plus closed and merged items still assigned to you |
+| **Issues** | Open issues assigned to you, from GitHub and GitLab |
+| **Pull requests** | Pull and merge requests assigned to you or awaiting your review |
+| **Projects** | Draft items on your project boards, with their status |
+
+- **Turn cards on or off** in sourceglance → **Settings → Desktop Widgets**. Summary is on
+  by default.
+- **Move a card** by dragging its header; sourceglance remembers where you put it.
+  **Reset positions** puts them all back in a column on the right.
+- **Opacity** sets how see-through the cards are.
+- **Click an item** to open it in your browser. Each card shows when it was last updated
+  and refreshes with the rest of sourceglance.
 
 ## Requirements
 
@@ -36,19 +69,18 @@ assigned to you, without opening a browser.
 
 ## Installation
 
-### Preview without installing for good
+### Setup wizard (recommended)
 
-```bash
-git clone https://github.com/omer-gh/sourceglance.git
-```
+1. Download **sourceglance Setup** from the
+   [home page](https://omer-gh.github.io/sourceglance/) or
+   [Releases](https://github.com/omer-gh/sourceglance/releases): one `.AppImage` file
+   (`x86_64` for most PCs, `aarch64` for ARM).
+2. In Files, right-click it, choose **Properties** and turn on **Executable as Program**.
+3. Double-click it and follow the wizard, then log out and back in.
 
-```bash
-cd sourceglance && ./tools/preview.sh
-```
-
-The script explains the risks, asks you to accept the [MIT License](LICENSE) (the software
-comes with no warranty), and does any one-time setup. See
-[docs/development.md](docs/development.md#preview-script-recommended).
+No admin password, app store or apt/snap repository needed. Run it again later to repair or
+remove sourceglance. The [install guide](docs/installing.md) also covers checking the
+download.
 
 ### From source
 
@@ -64,67 +96,85 @@ Then log out and back in (on Wayland), and enable the extension:
 gnome-extensions enable sourceglance@omer-gh.github.io
 ```
 
-### Setup wizard (recommended)
+### Preview without installing for good
 
-Download sourceglance Setup from the [home page](https://omer-gh.github.io/sourceglance/)
-or [Releases](https://github.com/omer-gh/sourceglance/releases), allow it to run once
-(**Properties → Executable as Program**), and double-click it. A setup wizard walks you
-through the license, a system check and the install — no admin password, app store or
-apt/snap repository needed. Run it again later to repair or remove sourceglance. See the
-[install guide](docs/installing.md).
+```bash
+git clone https://github.com/omer-gh/sourceglance.git
+```
+
+```bash
+cd sourceglance && ./tools/preview.sh
+```
+
+The script explains the risks, asks you to accept the [MIT License](LICENSE) (the software
+comes with no warranty), and does any one-time setup. See
+[docs/development.md](docs/development.md#preview-script-recommended).
 
 ### From extensions.gnome.org
 
 Coming with the first stable release.
 
-## Usage
+## Getting started
 
-1. Click the sourceglance icon (a branch with an eye) in the top bar and choose **Sign in…**.
-2. Click **Sign in with GitHub**. sourceglance copies a short code and opens GitHub in your
-   browser; paste the code and approve. Settings shows "Signed in as @you".
+Open sourceglance from the app grid (or the sourceglance button in the top bar →
+**Settings**), then go to **Accounts**:
 
-   This gives sourceglance access to issues, pull requests and project boards only, and
-   nothing else: no code, settings or admin access.
-3. Click **Choose repositories** and pick which repositories sourceglance may access. For
-   another person's private repository, its owner has to install the app there.
-4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
-   everything assigned to you.
-5. The top bar shows sourceglance's buttons as one tinted block, each list with its count:
-   - **sourceglance**: who you're signed in as, Refresh and Settings, plus **Start
-     automatically** and **Quit**. After Quit, start it again from the **sourceglance app
-     icon** in the app grid, or Settings → **Start now**.
-   - **Issues** (checkbox): open issues assigned to you
-   - **Pull requests** (branches): PRs assigned to you or awaiting your review
-   - **Projects** (checklist): draft items on your project boards, grouped by status, with
-     **Move to status…**
-
-   In **Settings → Top bar** you choose which lists to show, and whether they're separate
-   icons or **tabs in one menu**. The Issues and Pull requests lists can be filtered by label,
-   and always end with how many closed items are still assigned to you.
-
-   Click any issue or PR for its actions:
-   - **Open on GitHub**
-   - **Comment…**
-   - **Close…**: issues close as completed or not planned; you confirm first. Closed items
-     stay under **Recently closed** with **Reopen** until you log out.
-   - **Assignees…** and **Labels…**
-   - **Board: Status…** for each project board it's on, to move it to another status
+1. **GitHub → Sign in.** sourceglance copies a short code and opens GitHub; paste it and
+   approve. This gives access to issues, pull requests and project boards only: no code,
+   settings or admin access.
+2. **Choose repositories** to pick which repositories sourceglance may see. Optionally list
+   repositories to watch (`owner/name, owner/other`); leave it empty to see everything
+   assigned to you.
+3. **GitLab → Sign in** (optional) and approve on gitlab.com the same way. GitLab sign-ins
+   renew themselves in the background.
 
 **Repositories owned by someone else** (including private ones you collaborate on) appear
 once their owner installs the sourceglance app on them: send them
-`https://github.com/apps/<app>/installations/new` and ask them to pick the repository.
-Organization repositories need an organization owner to install it.
+<https://github.com/apps/sourceglance/installations/new> and ask them to pick the
+repository. Organization repositories need an organization owner to install it.
+
+## Using sourceglance
+
+### Top bar
+
+The top bar shows sourceglance's buttons as one tinted block, each list with its count:
+
+- **sourceglance**: who you're signed in as, Refresh and Settings, plus **Start
+  automatically** and **Quit**. After Quit, start it again from the app grid icon.
+- **Issues**: open issues assigned to you
+- **Pull requests**: pull and merge requests assigned to you or awaiting your review
+- **Projects**: draft items on your project boards, grouped by status
+
+Each list can be filtered by label and ends with how many closed items are still assigned
+to you. In **Settings → System Tray** you choose which lists to show, and whether they're
+separate buttons or **tabs in one menu**.
+
+### Actions
+
+Click any issue, pull request or merge request, in a menu or in the window, for its actions:
+
+- **Open on GitHub** / **Open on GitLab**
+- **Comment…**
+- **Close…** (you confirm first; GitHub issues close as completed or not planned) and
+  **Reopen**
+- **Assignees…** and **Labels…**
+- **Board: Status…** for each project board it's on
+
+### Main window
+
+The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
+and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
+Tray**, **Accounts** (GitHub, GitLab) and **System Start** (start at login, app grid icon).
 
 ## Roadmap
 
 | Milestone | Goal |
-| ----------- | ------ |
-| `v0.1.0` | Token sign-in and assigned-issues list |
-| `v0.2.0` | GitHub Projects (v2) board view |
-| `v0.3.0` | Notifications and unread badge |
+| --- | --- |
+| `v0.1.0` ✅ | Top bar, main window, desktop widgets, GitHub and gitlab.com, setup wizard |
+| `v0.2.0` | Desktop notifications for new assignments |
 | `v1.0.0` | Published on extensions.gnome.org |
 
-Details and acceptance criteria: [docs/product/roadmap.md](docs/product/roadmap.md).
+Details: [docs/product/roadmap.md](docs/product/roadmap.md).
 
 ## Contributing
 
@@ -142,4 +192,4 @@ Everyone taking part must follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 [MIT](LICENSE) © 2026 Mohammad Omer
 
-sourceglance is not affiliated with or endorsed by GitHub, Inc.
+sourceglance is not affiliated with or endorsed by GitHub, Inc. or GitLab Inc.
