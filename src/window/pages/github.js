@@ -60,7 +60,7 @@ function buildAccountGroup({window, settings, client, toast}) {
     const signInRow = new Adw.ActionRow({
         title: _('Sign in with GitHub'),
         subtitle: GITHUB_APP_CLIENT_ID
-            ? _('Access to issues, pull requests and projects only, in the repositories you choose')
+            ? _('Access to issues, pull requests and projects only. Public repositories are read-only unless the app is installed there')
             : _('Not available in this build: the GitHub App isn’t configured.'),
     });
     const signInButton = new Gtk.Button({
@@ -75,7 +75,7 @@ function buildAccountGroup({window, settings, client, toast}) {
     const installUrl = appInstallUrl(GITHUB_APP_SLUG);
     const reposRow = new Adw.ActionRow({
         title: _('Choose repositories'),
-        subtitle: _('Pick which repositories sourceglance can access on GitHub'),
+        subtitle: _('Pick the repositories sourceglance may change and, if private, see'),
         activatable: true,
         visible: Boolean(GITHUB_APP_CLIENT_ID && installUrl),
     });
