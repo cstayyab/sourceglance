@@ -46,7 +46,29 @@ make smoke       # enable/disable 10× in an isolated headless GNOME Shell
 desktop. It checks the extension loads and unloads cleanly in the signed-out state; test
 the signed-in flow by hand in a nested session (below) with your own token.
 
-## Run it locally
+## Preview script (recommended)
+
+`tools/preview.sh` handles the one-time setup and starts a preview:
+
+```bash
+./tools/preview.sh
+```
+
+```bash
+./tools/preview.sh --session
+```
+
+| Mode | What it does | Use it for |
+|------|--------------|------------|
+| default (`--nested`) | Starts a second GNOME Shell in a window and enables sourceglance there. Its settings live in `~/.cache/sourceglance-preview`, so your real session isn't changed. | Checking the menu, states and settings UI safely |
+| `--session` | Installs and enables sourceglance in your real desktop session | Testing sign-in (the nested session can't reach your keyring) |
+
+Before doing anything, the script explains the risks, shows the MIT License and its
+no-warranty terms, and asks you to type **I agree**. It installs missing packages
+(`mutter-dev-bin` on GNOME 49+) with `sudo apt install` only after asking. Run
+`./tools/preview.sh --help` for all options.
+
+## Run it locally by hand
 
 ```bash
 make install     # compiles schemas and copies src/ to ~/.local/share/gnome-shell/extensions/

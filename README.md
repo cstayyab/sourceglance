@@ -29,6 +29,20 @@ without opening a browser.
 
 ## Installation
 
+### Preview without installing for good
+
+```bash
+git clone https://github.com/omer-gh/sourceglance.git
+```
+
+```bash
+cd sourceglance && ./tools/preview.sh
+```
+
+The script explains the risks, asks you to accept the [MIT License](LICENSE) (the software
+comes with no warranty), and does any one-time setup. See
+[docs/development.md](docs/development.md#preview-script-recommended).
+
 ### From source
 
 ```bash
