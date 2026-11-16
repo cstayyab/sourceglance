@@ -7,6 +7,19 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-16
+
+### Added
+
+- **About sourceglance** in the sourceglance menu, and an **About** page in the window:
+  the version, the author (Mohammad Omer, [@omer-gh](https://github.com/omer-gh)), and links
+  to **Report an issue**, **Fork and contribute**, the contributing guide, the home page,
+  source code, release notes and license.
+- The README and home page invite you to report issues and to contribute by forking the
+  repository and opening a pull request.
+- Screenshots of the desktop widgets, top-bar menu and main window in the README and on the
+  home page.
+
 ## [0.1.0] - 2026-11-16
 
 ### Added
@@ -67,5 +80,6 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/omer-gh/sourceglance/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/omer-gh/sourceglance/releases/tag/v0.1.0

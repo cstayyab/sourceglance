@@ -12,6 +12,7 @@ import {listBadge} from './lib/model.js';
 import {WindowActions} from './window/actions.js';
 import {WindowData} from './window/data.js';
 import {buildMainWindow, loadTheme} from './window/mainWindow.js';
+import {buildAboutPage} from './window/pages/about.js';
 import {buildGithubPage} from './window/pages/github.js';
 import {buildGitlabPage} from './window/pages/gitlab.js';
 import {ListPage} from './window/pages/list.js';
@@ -81,13 +82,29 @@ export default class SourceglancePreferences extends ExtensionPreferences {
                     page: buildGitlabPage(ctx)},
                 {id: 'start', title: _('System Start'), iconName: 'system-run-symbolic',
                     page: buildSystemStartPage(ctx)},
+                {id: 'about', title: _('About'), iconName: 'help-about-symbolic',
+                    page: buildAboutPage({window, appIcon: icon('sourceglance-app'),
+                        version: this.metadata['version-name'] ?? 'dev'})},
             ],
         });
+
+        // The top-bar menu sets open-page (e.g. "about") before opening this window, and
+        // again if the window is already open.
+        const openPage = () => {
+            const id = settings.get_string('open-page');
+            if (!id)
+                return;
+            main.select(id);
+            settings.set_string('open-page', '');
+        };
+        const openPageId = settings.connect('changed::open-page', openPage);
+        openPage();
 
         // Signing in or out on the GitHub page reloads the lists.
         const tokenChangedId = settings.connect('changed::token-changed', () => data.refresh());
         window.connect('close-request', () => {
             settings.disconnect(tokenChangedId);
+            settings.disconnect(openPageId);
             data.stop();
             client.destroy();
             gitlabClient.destroy();

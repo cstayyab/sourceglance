@@ -1,5 +1,5 @@
 // What each top-bar list shows. Each view fills a PopupMenu from the state (see indicator.js).
-// `ui` is {menu, state, filters, icons, scheduleRebuild, onAction, onRefresh, onSettings, repos}.
+// `ui` is {menu, state, filters, icons, scheduleRebuild, onAction, onRefresh, onSettings, onAbout, repos}.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -112,6 +112,7 @@ const THEMED = {
     profile: 'avatar-default-symbolic',
     signIn: 'dialog-password-symbolic',
     quit: 'application-exit-symbolic',
+    about: 'help-about-symbolic',
 };
 
 function icon(name) {
@@ -422,7 +423,7 @@ function headerText(state) {
     return `@${login}`;
 }
 
-/** The sourceglance list: status, profile, Refresh and Settings. */
+/** The sourceglance list: status, profile, Refresh, Settings and About. */
 export function renderApp(ui) {
     const {state} = ui;
     addInfo(ui, headerText(state), 'sourceglance-header');
@@ -439,6 +440,7 @@ export function renderApp(ui) {
         addAction(ui, _('Settings'), () => ui.onSettings(), icon('settings'));
     else
         addAction(ui, _('Sign in…'), () => ui.onSettings(), icon('signIn'));
+    addAction(ui, _('About sourceglance'), () => ui.onAbout(), icon('about'));
 }
 
 // A switch row that flips without closing the menu, so you see the new state.

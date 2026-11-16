@@ -8,7 +8,8 @@ Ubuntu top bar, in their own window, and right on your desktop.**
 [![GNOME Shell](https://img.shields.io/badge/GNOME%20Shell-46--50-4a86cf)](src/metadata.json)
 [![Release](https://img.shields.io/github/v/release/omer-gh/sourceglance?include_prereleases)](https://github.com/omer-gh/sourceglance/releases)
 
-**Home page and download: <https://omer-gh.github.io/sourceglance/>**
+**Home page and download: <https://omer-gh.github.io/sourceglance/>** ·
+Made by **Mohammad Omer** ([@omer-gh](https://github.com/omer-gh))
 
 sourceglance is a GNOME Shell extension for Ubuntu Desktop. It shows what's assigned to you
 on GitHub and gitlab.com, and lets you act on it, without opening a browser:
@@ -143,8 +144,8 @@ repository. Organization repositories need an organization owner to install it.
 
 The top bar shows sourceglance's buttons as one tinted block, each list with its count:
 
-- **sourceglance**: who you're signed in as, Refresh and Settings, plus **Start
-  automatically** and **Quit**. After Quit, start it again from the app grid icon.
+- **sourceglance**: who you're signed in as, Refresh, Settings and **About sourceglance**,
+  plus **Start automatically** and **Quit**. After Quit, start it again from the app grid icon.
 - **Issues**: open issues assigned to you
 - **Pull requests**: pull and merge requests assigned to you or awaiting your review
 - **Projects**: draft items on your project boards, grouped by status
@@ -171,28 +172,45 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
 and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
 Tray**, **Accounts** (GitHub, GitLab) and **System Start** (start at login, app grid icon).
+**About** shows the version and the author, with links to report an issue or fork the
+repository and contribute.
 
 ## Roadmap
 
 | Milestone | Goal |
 | --- | --- |
 | `v0.1.0` ✅ | Top bar, main window, desktop widgets, GitHub and gitlab.com, setup wizard |
-| `v0.2.0` | Desktop notifications for new assignments |
+| `v0.2.0` ✅ | About page: version, author, report an issue, fork and contribute |
+| `v0.3.0` | Desktop notifications for new assignments |
 | `v1.0.0` | Published on extensions.gnome.org |
 
 Details: [docs/product/roadmap.md](docs/product/roadmap.md).
 
 ## Contributing
 
-Contributions are welcome — bug reports, ideas, docs and code. Start with
-[CONTRIBUTING.md](CONTRIBUTING.md), and look for issues labelled
-[`good first issue`](https://github.com/omer-gh/sourceglance/labels/good%20first%20issue).
+sourceglance is open source, and your help makes it better.
+
+- **Report an issue:** found a bug, have an idea or a question?
+  [Open an issue](https://github.com/omer-gh/sourceglance/issues/new/choose). Include your
+  Ubuntu and GNOME Shell versions, and what you expected to happen.
+- **Contribute code or docs** by forking the repository:
+  1. [Fork sourceglance](https://github.com/omer-gh/sourceglance/fork) to your account and
+     clone your fork.
+  2. Create a branch, make your change, and run `make lint` and `make test`.
+  3. Push the branch to your fork and open a pull request against `main`.
+
+  Start with [CONTRIBUTING.md](CONTRIBUTING.md), and look for issues labelled
+  [`good first issue`](https://github.com/omer-gh/sourceglance/labels/good%20first%20issue).
 
 - Developer setup: [docs/development.md](docs/development.md)
 - Release process: [RELEASING.md](RELEASING.md)
-- Security reports: [SECURITY.md](SECURITY.md)
+- Security reports: [SECURITY.md](SECURITY.md) (please don't open public issues for these)
 
 Everyone taking part must follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Author
+
+**Mohammad Omer**: [@omer-gh](https://github.com/omer-gh) on GitHub.
 
 ## License
 

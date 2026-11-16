@@ -19,7 +19,7 @@ import {lookupToken} from './lib/tokenStore.js';
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
 const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
-    'collapsed-sections'];
+    'collapsed-sections', 'open-page'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -206,6 +206,14 @@ export default class SourceglanceExtension extends Extension {
         return normalizeButtons(this._settings.get_strv('toolbar-buttons'));
     }
 
+    /** Opens the sourceglance window, on `page` if given (the window reads `open-page`). */
+    _openWindow(page = '') {
+        this._settings.set_string('open-page', page);
+        // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
+        Promise.resolve(this.openPreferences()).catch(e =>
+            console.warn(`sourceglance: could not open Settings: ${e.message}`));
+    }
+
     /**
      * (Re)creates the top-bar buttons: one per list plus the sourceglance button ("separate"),
      * or only the sourceglance button with a tab per list ("tabs").
@@ -217,11 +225,8 @@ export default class SourceglanceExtension extends Extension {
         const tabs = this._settings.get_string('layout') === 'tabs';
         const callbacks = {
             onRefresh: () => this._refresh(),
-            onSettings: () => {
-                // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
-                Promise.resolve(this.openPreferences()).catch(e =>
-                    console.warn(`sourceglance: could not open Settings: ${e.message}`));
-            },
+            onSettings: () => this._openWindow(),
+            onAbout: () => this._openWindow('about'),
             onAction: (item, action, arg) => this._actions.run(item, action, arg),
             getRepos: () => this._settings?.get_strv('repositories') ?? [],
             getAutostart: () => this._settings?.get_boolean('start-automatically') ?? true,

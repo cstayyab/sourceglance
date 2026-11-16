@@ -68,6 +68,11 @@
       <summary>Refresh request counter</summary>
       <description>Internal. Bumped by the sourceglance window after a change, so the top bar refreshes right away.</description>
     </key>
+    <key name="open-page" type="s">
+      <default>''</default>
+      <summary>Page to open</summary>
+      <description>Internal. Set by the top-bar menu (for example to "about") so the window shows that page.</description>
+    </key>
     <key name="token-changed" type="i">
       <default>0</default>
       <summary>Token change counter</summary>
