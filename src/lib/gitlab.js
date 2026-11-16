@@ -76,7 +76,7 @@ export class GitLabClient {
             headers[name.toLowerCase()] = value;
         });
         const text = new TextDecoder().decode(bytes.toArray());
-        let json = null;
+        let json;
         try {
             json = text ? JSON.parse(text) : null;
         } catch {
