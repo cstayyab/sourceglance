@@ -161,6 +161,20 @@ export function parseExtensionInfo(text) {
     return {state: field('State'), path: field('Path')};
 }
 
+/**
+ * Can Setup start the new version in the running session by turning sourceglance off and on?
+ * Only when GNOME Shell is running Setup's loader from memory, which is the case when:
+ * - the old install already had the loader (`hadLoader`: versions/current), since older
+ *   versions keep their code in GNOME Shell's memory until the next login;
+ * - it had no development build (`hadDevBuild`: dev/current, from `make reload`), whose
+ *   loader GNOME Shell may still be running and which this install removes;
+ * - the running Shell has this very folder active (`info` from `gnome-extensions info`).
+ * Otherwise the restart would leave sourceglance in an error state until the next login.
+ */
+export function canRestartInSession({hadLoader, hadDevBuild, info, target}) {
+    return hadLoader && !hadDevBuild && info?.state === 'ACTIVE' && info.path === target;
+}
+
 /** Parse "sha256sum"-format manifest text into [{hash, path}]. */
 export function parseManifest(text) {
     const entries = [];

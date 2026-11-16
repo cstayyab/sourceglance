@@ -5,6 +5,7 @@ import {
     EXIT,
     allChecksPass,
     backupsToPrune,
+    canRestartInSession,
     compareVersions,
     decideMode,
     describeShellRange,
@@ -137,4 +138,15 @@ test('parseExtensionInfo reads the state and path', () => {
     assert.deepEqual(parseExtensionInfo(text),
         {state: 'ACTIVE', path: '/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io'});
     assert.deepEqual(parseExtensionInfo(''), {state: null, path: null});
+});
+
+test('canRestartInSession only restarts when the running Shell has the Setup loader', () => {
+    const target = '/home/u/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io';
+    const ok = {hadLoader: true, hadDevBuild: false, info: {state: 'ACTIVE', path: target}, target};
+    assert.ok(canRestartInSession(ok));
+    assert.ok(!canRestartInSession({...ok, hadLoader: false}), 'older layout: code is in memory until login');
+    assert.ok(!canRestartInSession({...ok, hadDevBuild: true}), 'make reload: its loader may be in memory');
+    assert.ok(!canRestartInSession({...ok, info: {state: 'ERROR', path: target}}));
+    assert.ok(!canRestartInSession({...ok, info: {state: 'ACTIVE', path: '/elsewhere'}}));
+    assert.ok(!canRestartInSession({...ok, info: null}));
 });

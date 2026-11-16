@@ -7,6 +7,12 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Setup no longer tries to restart sourceglance when a development build (`make reload`) was
+  installed: GNOME Shell may still be running that build's loader, so the restart left
+  sourceglance in an error state until the next login. Setup now asks you to log out instead.
+
 ## [0.4.0] - 2026-11-16
 
 ### Changed
