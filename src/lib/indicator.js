@@ -27,13 +27,16 @@ class ToolbarButton extends PanelMenu.Button {
      * @param {object} params.icons Gio.Icon per id
      * @param {string[]|null} params.tabs for the app button in the tabs layout: the lists to show as tabs
      */
-    _init({id, icons, tabs = null, onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit}) {
+    _init({id, icons, tabs = null, onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit,
+        getCollapsed, setCollapsed}) {
         super._init(0.0, `sourceglance ${id}`);
         this._id = id;
         this._icons = icons;
         this._tabs = tabs;
         this._tab = tabs?.[0] ?? 'app';
         this._callbacks = {onRefresh, onSettings, onAction, getRepos, getAutostart, setAutostart, onQuit};
+        this._getCollapsed = getCollapsed;
+        this._setCollapsed = setCollapsed;
         this._state = null;
         // Label chosen in each list's dropdown; null shows everything. Kept across refreshes.
         this._filters = {issues: null, prs: null};
@@ -129,6 +132,12 @@ class ToolbarButton extends PanelMenu.Button {
             icons: this._icons,
             scheduleRebuild: () => this._scheduleRebuild(),
             repos: this._callbacks.getRepos(),
+            collapsed: this._getCollapsed(),
+            toggleCollapsed: id => {
+                const current = this._getCollapsed();
+                this._setCollapsed(current.includes(id) ? current.filter(other => other !== id) : [...current, id]);
+                this._scheduleRebuild();
+            },
             ...this._callbacks,
         };
 

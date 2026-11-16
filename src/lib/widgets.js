@@ -14,6 +14,7 @@ import {
     clampWidgetPosition,
     defaultWidgetPosition,
     isDoneStatus,
+    itemRef,
     listBadge,
     normalizeWidgets,
     relativeTime,
@@ -132,7 +133,7 @@ class Card {
     render(state, icons, repos) {
         this._body.destroy_all_children();
         this._footer.text = updatedText(state);
-        const signedIn = state.status === 'ready' || state.status === 'error';
+        const signedIn = state.status === 'ready' || state.status === 'error' || state.gitlab?.status === 'ready';
         this._count.text = this.id === 'summary' ? '' : listBadge(this.id, state);
         if (!signedIn) {
             this._message(state.status === 'signed-out'
@@ -161,25 +162,35 @@ class Card {
         this._row({gicon: icons.prs, text: _('Pull requests'), detail: listBadge('prs', state),
             onClick: github('https://github.com/pulls')});
         this._row({gicon: icons.projects, text: _('Project drafts'), detail: listBadge('projects', state) || '–'});
-        const closed = state.closedCounts ?? {};
-        this._row({gicon: icons.issueClosed, text: _('Closed issues still assigned'),
-            detail: closed.issues === null || closed.issues === undefined ? '–' : String(closed.issues),
+        // GitHub's and (when signed in) GitLab's closed counts, added up.
+        const sum = key => {
+            const counts = [state.closedCounts?.[key]];
+            if (state.gitlab?.status === 'ready')
+                counts.push(state.gitlab.closedCounts?.[key]);
+            const known = counts.filter(n => Number.isInteger(n));
+            return known.length ? String(known.reduce((a, b) => a + b, 0)) : '–';
+        };
+        this._row({gicon: icons.issueClosed, text: _('Closed issues still assigned'), detail: sum('issues'),
             onClick: github(searchPageUrl('issue-closed', repos))});
-        this._row({gicon: icons.prMerged, text: _('Merged or closed PRs still assigned'),
-            detail: closed.prs === null || closed.prs === undefined ? '–' : String(closed.prs),
+        this._row({gicon: icons.prMerged, text: _('Merged or closed PRs still assigned'), detail: sum('prs'),
             onClick: github(searchPageUrl('pr-closed', repos))});
     }
 
     _renderItems(state, icons, repos) {
         const pr = this.id === 'prs';
-        const items = (pr ? state.prGroups : state.groups).flatMap(group => group.issues);
+        const gl = state.gitlab?.status === 'ready' ? state.gitlab : null;
+        const items = [
+            ...(pr ? state.prGroups : state.groups).flatMap(group => group.issues),
+            ...(gl ? (pr ? gl.prGroups : gl.groups).flatMap(group => group.issues) : []),
+        ];
         if (items.length === 0) {
             this._message(pr ? _('No open pull requests for you') : _('No open issues assigned to you'));
             return;
         }
         for (const item of items.slice(0, MAX_ROWS)) {
-            this._row({gicon: pr ? icons.prs : icons.issue, text: `#${item.number}  ${truncate(item.title, 34)}`,
-                detail: pr && item.reason === 'review' ? _('review') : '',
+            this._row({gicon: pr ? icons.prs : icons.issue, text: `${itemRef(item)}  ${truncate(item.title, 34)}`,
+                detail: [item.platform === 'gitlab' ? 'GitLab' : '', pr && item.reason === 'review' ? _('review') : '']
+                    .filter(Boolean).join(' · '),
                 onClick: item.url ? () => openUri(item.url) : null});
         }
         if (items.length > MAX_ROWS) {

@@ -187,3 +187,9 @@
     font-size: smaller;
     color: rgba(230, 237, 243, 0.55);
 }
+
+/* GitHub / GitLab section headers in the lists. */
+.sourceglance-platform {
+    font-weight: bold;
+    spacing: 6px;
+}

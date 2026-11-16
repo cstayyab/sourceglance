@@ -41,7 +41,7 @@ export default [
     },
     {
         // ADR 0004: the pure core must stay importable from Node.
-        files: ['src/lib/model.js', 'tools/installer/lib/plan.js'],
+        files: ['src/lib/model.js', 'src/lib/gitlabModel.js', 'tools/installer/lib/plan.js'],
         rules: {
             'no-restricted-imports': ['error', {patterns: ['gi://*', 'resource://*']}],
         },

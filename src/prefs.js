@@ -7,13 +7,14 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {GitHubClient} from './lib/github.js';
+import {GitLabClient} from './lib/gitlab.js';
 import {listBadge} from './lib/model.js';
 import {WindowActions} from './window/actions.js';
 import {WindowData} from './window/data.js';
 import {buildMainWindow, loadTheme} from './window/mainWindow.js';
 import {buildGithubPage} from './window/pages/github.js';
+import {buildGitlabPage} from './window/pages/gitlab.js';
 import {ListPage} from './window/pages/list.js';
-import {buildPlaceholderPage} from './window/pages/placeholder.js';
 import {ProjectsPage} from './window/pages/projects.js';
 import {buildSystemStartPage} from './window/pages/systemStart.js';
 import {buildSystemTrayPage} from './window/pages/systemTray.js';
@@ -23,6 +24,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         const client = new GitHubClient(this.metadata['version-name'] ?? 'dev');
+        const gitlabClient = new GitLabClient(this.metadata['version-name'] ?? 'dev');
         window.set_default_size(960, 680);
         loadTheme(window, this.dir);
 
@@ -38,27 +40,26 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         };
         const overlay = new Adw.ToastOverlay();
         const toast = title => overlay.add_toast(new Adw.Toast({title}));
-        const ctx = {window, settings, client, toast, dir: this.dir};
+        const ctx = {window, settings, client, gitlabClient, toast, dir: this.dir};
 
         const pages = [];
-        const data = new WindowData({client, settings, onChange: state => {
+        const data = new WindowData({client, gitlabClient, settings, onChange: state => {
             for (const page of pages)
                 page.update(state);
             for (const id of ['issues', 'prs', 'projects'])
                 main.setCount(id, listBadge(id, state));
             refresh.sensitive = !state.refreshing;
         }});
-        const actions = new WindowActions({window, client, data, toast});
+        const actions = new WindowActions({window, client, gitlabClient, data, toast});
         const repos = () => settings.get_strv('repositories');
-        const issuesPage = new ListPage({key: 'issues', icons, actions, repos});
-        const prsPage = new ListPage({key: 'prs', icons, actions, repos});
+        const issuesPage = new ListPage({key: 'issues', icons, actions, repos, settings});
+        const prsPage = new ListPage({key: 'prs', icons, actions, repos, settings});
         const projectsPage = new ProjectsPage({icons, actions});
         pages.push(issuesPage, prsPage, projectsPage);
 
         const refresh = new Gtk.Button({icon_name: 'view-refresh-symbolic', tooltip_text: _('Refresh')});
         refresh.connect('clicked', () => data.refresh());
 
-        const comingSoon = (iconName, title, description) => buildPlaceholderPage({iconName, title, description});
         const main = buildMainWindow(window, {
             appIcon: icon('sourceglance-app'),
             overlay,
@@ -77,7 +78,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
                 {id: 'github', title: 'GitHub', iconName: 'avatar-default-symbolic', indent: true,
                     page: buildGithubPage(ctx)},
                 {id: 'gitlab', title: 'GitLab', iconName: 'avatar-default-symbolic', indent: true,
-                    page: comingSoon('avatar-default-symbolic', 'GitLab', _('Sign in with GitLab to see your issues and merge requests.'))},
+                    page: buildGitlabPage(ctx)},
                 {id: 'start', title: _('System Start'), iconName: 'system-run-symbolic',
                     page: buildSystemStartPage(ctx)},
             ],
@@ -89,6 +90,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
             settings.disconnect(tokenChangedId);
             data.stop();
             client.destroy();
+            gitlabClient.destroy();
             return false;
         });
         for (const page of pages)

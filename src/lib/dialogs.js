@@ -8,7 +8,8 @@ import {CheckBox} from 'resource:///org/gnome/shell/ui/checkBox.js';
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
-import {MAX_COMMENT_LENGTH, gtypeName, truncate} from './model.js';
+import {MAX_COMMENT_LENGTH, gtypeName, itemRef, truncate} from './model.js';
+import {closeReasons} from './requests.js';
 
 // GNOME 48 replaced St.BoxLayout's `vertical` with `orientation`.
 function verticalBox(params) {
@@ -30,9 +31,11 @@ function setSensitive(button, sensitive) {
 }
 
 function itemHeading(item) {
-    return item.kind === 'pr'
-        ? _('Pull request #%d in %s').format(item.number, item.repo)
-        : _('Issue #%d in %s').format(item.number, item.repo);
+    if (item.kind !== 'pr')
+        return _('Issue %s in %s').format(itemRef(item), item.repo);
+    return item.platform === 'gitlab'
+        ? _('Merge request %s in %s').format(itemRef(item), item.repo)
+        : _('Pull request %s in %s').format(itemRef(item), item.repo);
 }
 
 /** Comment box. Calls onSubmit(text) with the text as typed; model.js validates it. */
@@ -75,16 +78,27 @@ class CommentDialog extends ModalDialog.ModalDialog {
     }
 });
 
-/** Close confirmation. Calls onConfirm(reason): 'completed' or 'not_planned' (issues), 'pr'. */
+function closeTitle(item) {
+    const ref = itemRef(item);
+    if (item.kind !== 'pr')
+        return _('Close issue %s?').format(ref);
+    return item.platform === 'gitlab' ? _('Close merge request %s?').format(ref) : _('Close pull request %s?').format(ref);
+}
+
+function closeButtonLabel(item) {
+    if (item.kind !== 'pr')
+        return _('Close issue');
+    return item.platform === 'gitlab' ? _('Close merge request') : _('Close pull request');
+}
+
+/** Close confirmation. Calls onConfirm(reason): one of closeReasons(item). */
 export const CloseDialog = GObject.registerClass({GTypeName: gtypeName('CloseDialog', import.meta.url)},
 class CloseDialog extends ModalDialog.ModalDialog {
     _init(item, onConfirm) {
         super._init({styleClass: 'sourceglance-dialog'});
 
         this.contentLayout.add_child(new Dialog.MessageDialogContent({
-            title: item.kind === 'pr'
-                ? _('Close pull request #%d?').format(item.number)
-                : _('Close issue #%d?').format(item.number),
+            title: closeTitle(item),
             description: `${truncate(item.title, 120)}\n${item.repo}`,
         }));
 
@@ -93,12 +107,10 @@ class CloseDialog extends ModalDialog.ModalDialog {
             onConfirm(reason);
         };
         this.addButton({label: _('Cancel'), action: () => this.close(), key: Clutter.KEY_Escape});
-        if (item.kind === 'pr') {
-            this.addButton({label: _('Close pull request'), action: () => choose('pr')});
-        } else {
-            this.addButton({label: _('Close as not planned'), action: () => choose('not_planned')});
-            this.addButton({label: _('Close as completed'), action: () => choose('completed')});
-        }
+        // GitHub issues can be closed as completed or not planned; everything else just closes.
+        const labels = {not_planned: _('Close as not planned'), completed: _('Close as completed'), close: closeButtonLabel(item)};
+        for (const reason of closeReasons(item))
+            this.addButton({label: labels[reason], action: () => choose(reason)});
     }
 });
 

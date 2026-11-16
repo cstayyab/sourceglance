@@ -297,7 +297,15 @@ export function mergeItems(...lists) {
 
 /** Stable identity of an issue or PR: "owner/name#number". */
 export function itemKey(item) {
+    // GitLab paths can match GitHub ones, and issue #3 and merge request !3 differ.
+    if (item.platform === 'gitlab')
+        return `gitlab:${item.repo}${item.kind === 'pr' ? '!' : '#'}${item.number}`;
     return `${item.repo}#${item.number}`;
+}
+
+/** "#12" for issues and GitHub PRs, "!12" for GitLab merge requests. */
+export function itemRef(item) {
+    return `${item.platform === 'gitlab' && item.kind === 'pr' ? '!' : '#'}${item.number}`;
 }
 
 // Write requests. Each builder returns {method, path, body} for GitHubClient.send(), after
@@ -750,15 +758,22 @@ export function truncate(text, max = 48) {
  * prTotal/Shown, boards and boardsError.
  */
 export function listBadge(id, state) {
-    const signedIn = state.status === 'ready' || state.status === 'error';
-    if (!signedIn || state.updatedAt === null)
+    const github = (state.status === 'ready' || state.status === 'error') && state.updatedAt !== null;
+    // GitLab counts are added once loaded (state.gitlab, same field names).
+    const gl = state.gitlab?.status === 'ready' || (state.gitlab?.status === 'error' && state.gitlab.updatedAt)
+        ? state.gitlab : null;
+    if (!github && !gl)
         return '';
+    const sum = (total, shown) => countLabel((github ? state[total] : 0) + (gl ? gl[total] : 0),
+        (github ? state[shown] : 0) + (gl ? gl[shown] : 0)) || '0';
     switch (id) {
     case 'issues':
-        return countLabel(state.issueTotal, state.issueShown) || '0';
+        return sum('issueTotal', 'issueShown');
     case 'prs':
-        return countLabel(state.prTotal, state.prShown) || '0';
+        return sum('prTotal', 'prShown');
     case 'projects':
+        if (!github)
+            return '';
         if (state.boards === null)
             return state.boardsError ? '' : '…';
         return String(state.boards.reduce((sum, board) => sum + board.drafts.length, 0));

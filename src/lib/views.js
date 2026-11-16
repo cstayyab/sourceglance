@@ -15,15 +15,18 @@ import {
     filterByLabel,
     groupDraftsByStatus,
     gtypeName,
-    isSafeGitHubUrl,
     isDoneStatus,
     isValidLogin,
     itemKey,
+    itemRef,
     labelOptions,
+    listBadge,
     relativeTime,
     searchPageUrl,
     truncate,
 } from './model.js';
+import {gitlabClosedPageUrl} from './gitlabModel.js';
+import {isSafeLink} from './requests.js';
 
 function formatRelative(date) {
     const {unit, value} = relativeTime(date);
@@ -76,8 +79,8 @@ class FilterItem extends PopupMenu.PopupMenuItem {
 });
 
 export function openUri(uri) {
-    if (!isSafeGitHubUrl(uri)) {
-        console.warn('sourceglance: refusing to open a non-GitHub link');
+    if (!isSafeLink(uri)) {
+        console.warn('sourceglance: refusing to open a link that isn\u2019t github.com or gitlab.com');
         return;
     }
     try {
@@ -154,7 +157,7 @@ function listReady(ui) {
 export {listBadge as badgeText} from './model.js';
 
 function itemLabel(item) {
-    const label = `#${item.number}  ${truncate(item.title)}`;
+    const label = `${itemRef(item)}  ${truncate(item.title)}`;
     return item.kind === 'pr' && item.reason === 'review'
         ? _('%s · review requested').format(label)
         : label;
@@ -173,14 +176,15 @@ function addItem(ui, item) {
         entry.setSensitive(!busy);
         return entry;
     };
-    add(_('Open on GitHub'), icon('open'), () => openUri(item.url)).setSensitive(Boolean(item.url));
+    const gitlab = item.platform === 'gitlab';
+    add(gitlab ? _('Open on GitLab') : _('Open on GitHub'), icon('open'), () => openUri(item.url)).setSensitive(Boolean(item.url));
     if (item.state === 'closed') {
         add(_('Reopen'), icon('reopen'), () => ui.onAction(item, 'reopen'));
         return;
     }
     add(_('Comment…'), icon('comment'), () => ui.onAction(item, 'comment'));
     if (item.kind === 'pr')
-        add(_('Close pull request…'), ui.icons.prClosed, () => ui.onAction(item, 'close'));
+        add(gitlab ? _('Close merge request…') : _('Close pull request…'), ui.icons.prClosed, () => ui.onAction(item, 'close'));
     else
         add(_('Close issue…'), ui.icons.issueClosed, () => ui.onAction(item, 'close'));
     add(_('Assignees…'), icon('assignees'), () => ui.onAction(item, 'assignees'));
@@ -194,7 +198,7 @@ function addItem(ui, item) {
 /** A section heading with a label filter dropdown, then its items grouped by repository. */
 function addSection(ui, title, groups, key) {
     const options = labelOptions(groups);
-    let filter = ui.filters[key];
+    let filter = ui.filters[key] ?? null;
     // The label disappeared after a refresh: show everything again.
     if (filter !== null && !options.some(option => option.name === filter))
         filter = ui.filters[key] = null;
@@ -238,30 +242,92 @@ function addSection(ui, title, groups, key) {
     }
 }
 
-/** The always-visible footer: closed items still assigned to you, linking to them on GitHub. */
-function addClosedFooter(ui, count, search, text, gicon) {
+/** The always-visible footer: closed items still assigned to you, linking to them. */
+function addClosedFooter(ui, count, url, text, gicon) {
     ui.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    const label = count === null ? text(null) : text(count);
-    const row = addAction(ui, label, () => openUri(searchPageUrl(search, ui.repos)), gicon);
+    const row = addAction(ui, text(count ?? null), () => openUri(url), gicon);
     row.add_style_class_name('sourceglance-footer');
 }
 
-function renderItemList(ui, {key, kind, title, empty, closedSearch, closedText, closedIcon, groups}) {
-    if (listReady(ui)) {
-        if (groups.length === 0)
-            addInfo(ui, empty, 'sourceglance-message');
-        else
-            addSection(ui, title, groups, key);
+// A header that collapses or expands its platform's section without closing the menu.
+const SectionToggle = GObject.registerClass({GTypeName: gtypeName('SectionToggle', import.meta.url)},
+class SectionToggle extends PopupMenu.PopupBaseMenuItem {
+    _init(text, count, collapsed, onToggle) {
+        super._init({style_class: 'sourceglance-platform'});
+        this.add_child(new St.Icon({icon_name: collapsed ? 'pan-end-symbolic' : 'pan-down-symbolic',
+            style_class: 'popup-menu-icon'}));
+        this.add_child(new St.Label({text, x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
+        this.add_child(new St.Label({text: count, style_class: 'sourceglance-count', y_align: Clutter.ActorAlign.CENTER}));
+        this._onToggle = onToggle;
+    }
 
-        const closed = ui.state.recentlyClosed.filter(item => item.kind === kind);
-        if (closed.length > 0) {
-            addInfo(ui, _('Recently closed'), 'sourceglance-section');
-            for (const item of closed)
-                addItem(ui, item);
+    activate(_event) {
+        this._onToggle();
+    }
+});
+
+/** One platform's part of a list: status, the label-filtered items, and the closed footer. */
+function renderPlatform(ui, cfg, src) {
+    if (src.status === 'signed-out') {
+        addInfo(ui, src.platform === 'gitlab'
+            ? _('Not signed in to GitLab.') : _('Not signed in. Open the sourceglance menu to sign in.'), 'sourceglance-message');
+        return;
+    }
+    if (!src.updatedAt) {
+        addInfo(ui, src.status === 'error' ? _('Couldn’t load. Retrying soon.') : _('Loading…'), 'sourceglance-message');
+        return;
+    }
+    if (src.status === 'error') {
+        addInfo(ui, src.platform === 'gitlab'
+            ? _('Couldn’t reach GitLab. Showing the last list.')
+            : errorText(src.error, ui.state.intervalMinutes), 'sourceglance-message');
+    }
+    if (src.groups.length === 0)
+        addInfo(ui, src.platform === 'gitlab' ? cfg.emptyGitLab : cfg.empty, 'sourceglance-message');
+    else
+        addSection(ui, cfg.title, src.groups, src.platform === 'gitlab' ? `${cfg.key}:gitlab` : cfg.key);
+    addClosedFooter(ui, src.closedCount, src.closedUrl, src.platform === 'gitlab' ? cfg.closedTextGitLab : cfg.closedText,
+        ui.icons[cfg.closedIcon]);
+}
+
+function renderItemList(ui, cfg) {
+    const {state} = ui;
+    const github = {
+        platform: 'github', status: state.status, updatedAt: state.updatedAt, error: state.error,
+        groups: cfg.key === 'issues' ? state.groups : state.prGroups,
+        closedCount: state.closedCounts[cfg.key],
+        closedUrl: searchPageUrl(cfg.closedSearch, ui.repos),
+    };
+    const gl = state.gitlab;
+    if (!gl || gl.status === 'signed-out') {
+        // GitHub only: no platform headers, as before GitLab existed.
+        renderPlatform(ui, cfg, github);
+    } else {
+        const gitlab = {
+            platform: 'gitlab', status: gl.status, updatedAt: gl.updatedAt, error: gl.error,
+            groups: (cfg.key === 'issues' ? gl.groups : gl.prGroups) ?? [],
+            closedCount: gl.closedCounts?.[cfg.key],
+            closedUrl: gitlabClosedPageUrl(cfg.kind, gl.login),
+        };
+        for (const src of [github, gitlab]) {
+            const id = `${cfg.key}:${src.platform}`;
+            const collapsed = ui.collapsed.includes(id);
+            const count = listBadge(cfg.key, src.platform === 'gitlab'
+                ? {status: 'signed-out', gitlab: gl}
+                : {...state, gitlab: null});
+            ui.menu.addMenuItem(new SectionToggle(src.platform === 'gitlab' ? 'GitLab' : 'GitHub', count, collapsed,
+                () => ui.toggleCollapsed(id)));
+            if (!collapsed)
+                renderPlatform(ui, cfg, src);
         }
     }
-    if (signedIn(ui.state))
-        addClosedFooter(ui, ui.state.closedCounts[key], closedSearch, closedText, ui.icons[closedIcon]);
+
+    const closed = state.recentlyClosed.filter(item => item.kind === cfg.kind);
+    if (closed.length > 0 && (signedIn(state) || gl?.status === 'ready')) {
+        addInfo(ui, _('Recently closed'), 'sourceglance-section');
+        for (const item of closed)
+            addItem(ui, item);
+    }
 }
 
 export function renderIssues(ui) {
@@ -270,8 +336,11 @@ export function renderIssues(ui) {
         kind: 'issue',
         title: _('Issues'),
         empty: _('No open issues assigned to you'),
-        groups: ui.state.groups,
+        emptyGitLab: _('No open GitLab issues assigned to you'),
         closedSearch: 'issue-closed',
+        closedTextGitLab: n => n === null
+            ? _('Closed GitLab issues still assigned to you')
+            : ngettext('%d closed GitLab issue still assigned to you', '%d closed GitLab issues still assigned to you', n).format(n),
         closedIcon: 'issueClosed',
         closedText: n => n === null
             ? _('Closed issues still assigned to you')
@@ -285,8 +354,12 @@ export function renderPrs(ui) {
         kind: 'pr',
         title: _('Pull requests'),
         empty: _('No open pull requests for you'),
-        groups: ui.state.prGroups,
+        emptyGitLab: _('No open merge requests for you'),
         closedSearch: 'pr-closed',
+        closedTextGitLab: n => n === null
+            ? _('Merged or closed merge requests still assigned to you')
+            : ngettext('%d merged or closed merge request still assigned to you',
+                '%d merged or closed merge requests still assigned to you', n).format(n),
         closedIcon: 'prMerged',
         closedText: n => n === null
             ? _('Merged or closed pull requests still assigned to you')

@@ -7,15 +7,19 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {ActionController} from './lib/actions.js';
 import {installLauncher, removeLauncher} from './lib/appLauncher.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
+import {GitLabClient} from './lib/gitlab.js';
+import {loadGitLab} from './lib/gitlabLoader.js';
 import {ToolbarButton} from './lib/indicator.js';
 import {DesktopWidgets} from './lib/widgets.js';
 import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
+import {GITLAB_CLIENT_ID} from './lib/config.js';
 import {lookupToken} from './lib/tokenStore.js';
 
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
-const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity'];
+const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
+    'collapsed-sections'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -43,6 +47,8 @@ const INITIAL_STATE = {
     // Your project boards with their draft items; null until loaded.
     boards: null,
     boardsError: null,
+    // GitLab's lists, with the same field names; 'signed-out' shows no GitLab sections.
+    gitlab: {status: 'signed-out'},
     updatedAt: null,
     error: null,
     refreshing: false,
@@ -53,6 +59,8 @@ export default class SourceglanceExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._client = new GitHubClient(this.metadata['version-name'] ?? 'dev');
+        this._gitlab = new GitLabClient(this.metadata['version-name'] ?? 'dev');
+        this._glResults = null;
         this._state = {...INITIAL_STATE};
         this._login = null;
         this._cancellable = null;
@@ -63,8 +71,10 @@ export default class SourceglanceExtension extends Extension {
 
         this._actions = new ActionController({
             client: this._client,
+            gitlabClient: this._gitlab,
             getToken: () => this._readToken(null),
-            getLogin: () => this._login,
+            getGitlabToken: () => this._gitlab.accessToken(GITLAB_CLIENT_ID),
+            getLogin: platform => platform === 'gitlab' ? this._state?.gitlab?.login ?? null : this._login,
             setBusy: (item, busy) => this._setBusy(item, busy),
             onChanged: (item, change) => this._onItemChanged(item, change),
         });
@@ -173,6 +183,9 @@ export default class SourceglanceExtension extends Extension {
 
         this._client?.destroy();
         this._client = null;
+        this._gitlab?.destroy();
+        this._gitlab = null;
+        this._glResults = null;
         this._results = null;
         this._closed = null;
         this._busy = null;
@@ -212,6 +225,8 @@ export default class SourceglanceExtension extends Extension {
             onAction: (item, action, arg) => this._actions.run(item, action, arg),
             getRepos: () => this._settings?.get_strv('repositories') ?? [],
             getAutostart: () => this._settings?.get_boolean('start-automatically') ?? true,
+            getCollapsed: () => this._settings?.get_strv('collapsed-sections') ?? [],
+            setCollapsed: ids => this._settings?.set_strv('collapsed-sections', ids),
             setAutostart: active => this._settings?.set_boolean('start-automatically', active),
             onQuit: () => this._quit(),
         };
@@ -299,6 +314,21 @@ export default class SourceglanceExtension extends Extension {
 
     /** Pushes the latest search results to the menu, hiding items closed from the menu. */
     _publish() {
+        if (this._glResults) {
+            const gl = this._glResults;
+            const shownIssues = gl.issues.filter(item => !this._closed.has(itemKey(item)));
+            const shownPrs = gl.prs.filter(item => !this._closed.has(itemKey(item)));
+            this._setState({gitlab: {
+                status: 'ready', login: gl.login, updatedAt: gl.updatedAt, error: null,
+                closedCounts: gl.closedCounts,
+                groups: groupIssues(shownIssues),
+                prGroups: groupIssues(shownPrs),
+                issueTotal: Math.max(0, gl.issueTotal - (gl.issues.length - shownIssues.length)),
+                issueShown: shownIssues.length,
+                prTotal: Math.max(0, gl.prTotal - (gl.prs.length - shownPrs.length)),
+                prShown: shownPrs.length,
+            }});
+        }
         if (!this._results)
             return;
         const {issues, prs, issueTotal, prTotal} = this._results;
@@ -320,6 +350,26 @@ export default class SourceglanceExtension extends Extension {
             prTotal: Math.max(0, prTotal - (prs.length - shownPrs.length)),
             prShown: shownPrs.length,
         });
+    }
+
+    /** Loads GitLab next to GitHub; its errors only mark the GitLab sections. */
+    async _loadGitLab(cancellable) {
+        try {
+            const gl = await loadGitLab(this._gitlab, cancellable);
+            if (gl.status === 'signed-out') {
+                this._glResults = null;
+                this._setState({gitlab: {status: 'signed-out'}});
+            } else {
+                this._glResults = gl;
+                this._publish();
+            }
+        } catch (e) {
+            if (isCancelled(e) || cancellable.is_cancelled())
+                return;
+            console.warn(`sourceglance: GitLab refresh failed: ${e.kind ?? e.message}`);
+            this._setState({gitlab: {...this._state.gitlab, status: 'error',
+                error: {kind: e.kind ?? 'unknown', retryAt: e.retryAt ?? null}}});
+        }
     }
 
     _schedule(seconds) {
@@ -356,6 +406,7 @@ export default class SourceglanceExtension extends Extension {
 
         const intervalMinutes = this._settings.get_int('refresh-interval');
         this._setState({refreshing: true, intervalMinutes});
+        const gitlabDone = this._loadGitLab(cancellable);
 
         let error = null;
         try {
@@ -364,7 +415,7 @@ export default class SourceglanceExtension extends Extension {
                 this._login = null;
                 this._results = null;
                 this._closed.clear();
-                this._setState({...INITIAL_STATE, status: 'signed-out', intervalMinutes});
+                this._setState({...INITIAL_STATE, gitlab: this._state.gitlab, status: 'signed-out', intervalMinutes});
                 return;
             }
             if (this._state.status === 'signed-out')
@@ -425,6 +476,7 @@ export default class SourceglanceExtension extends Extension {
             }
             this._setState({status: 'error', login: this._login, error, refreshing: false});
         } finally {
+            await gitlabDone;
             if (this._cancellable === cancellable) {
                 this._cancellable = null;
                 this._schedule(nextRefreshDelaySeconds(intervalMinutes, error));
