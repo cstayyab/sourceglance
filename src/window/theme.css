@@ -55,3 +55,13 @@
     font-weight: bold;
     font-size: smaller;
 }
+
+.sourceglance-window .sourceglance-action {
+    padding: 4px 10px;
+    border-radius: 8px;
+    background-color: alpha(#58a6ff, 0.14);
+}
+
+.sourceglance-window .sourceglance-action:hover {
+    background-color: alpha(#58a6ff, 0.26);
+}

@@ -2,13 +2,19 @@
 // the settings in a sidebar layout (src/window/).
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {GitHubClient} from './lib/github.js';
+import {listBadge} from './lib/model.js';
+import {WindowActions} from './window/actions.js';
+import {WindowData} from './window/data.js';
 import {buildMainWindow, loadTheme} from './window/mainWindow.js';
 import {buildGithubPage} from './window/pages/github.js';
+import {ListPage} from './window/pages/list.js';
 import {buildPlaceholderPage} from './window/pages/placeholder.js';
+import {ProjectsPage} from './window/pages/projects.js';
 import {buildSystemStartPage} from './window/pages/systemStart.js';
 import {buildSystemTrayPage} from './window/pages/systemTray.js';
 
@@ -16,30 +22,48 @@ export default class SourceglancePreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         const client = new GitHubClient(this.metadata['version-name'] ?? 'dev');
-        window.connect('close-request', () => {
-            client.destroy();
-            return false;
-        });
-        window.set_default_size(960, 640);
+        window.set_default_size(960, 680);
         loadTheme(window, this.dir);
 
         const icon = name => Gio.FileIcon.new(this.dir.get_child('icons').get_child(`${name}.svg`));
+        const icons = {
+            issue: icon('issue-symbolic'),
+            pr: icon('git-pull-request-symbolic'),
+            label: icon('label-symbolic'),
+            projects: icon('checklist-symbolic'),
+        };
         const overlay = new Adw.ToastOverlay();
         const toast = title => overlay.add_toast(new Adw.Toast({title}));
         const ctx = {window, settings, client, toast, dir: this.dir};
 
+        const pages = [];
+        const data = new WindowData({client, settings, onChange: state => {
+            for (const page of pages)
+                page.update(state);
+            for (const id of ['issues', 'prs', 'projects'])
+                main.setCount(id, listBadge(id, state));
+            refresh.sensitive = !state.refreshing;
+        }});
+        const actions = new WindowActions({window, client, data, toast});
+        const repos = () => settings.get_strv('repositories');
+        const issuesPage = new ListPage({key: 'issues', icons, actions, repos});
+        const prsPage = new ListPage({key: 'prs', icons, actions, repos});
+        const projectsPage = new ProjectsPage({icons, actions});
+        pages.push(issuesPage, prsPage, projectsPage);
+
+        const refresh = new Gtk.Button({icon_name: 'view-refresh-symbolic', tooltip_text: _('Refresh')});
+        refresh.connect('clicked', () => data.refresh());
+
         const comingSoon = (iconName, title, description) => buildPlaceholderPage({iconName, title, description});
-        buildMainWindow(window, {
+        const main = buildMainWindow(window, {
             appIcon: icon('sourceglance-app'),
             overlay,
+            headerEnd: refresh,
             entries: [
                 {heading: _('Lists')},
-                {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic',
-                    page: comingSoon('checkbox-checked-symbolic', _('Issues'), _('Your issues will show here.'))},
-                {id: 'prs', title: _('Pull requests'), gicon: icon('git-pull-request-symbolic'),
-                    page: comingSoon('view-list-symbolic', _('Pull requests'), _('Your pull requests will show here.'))},
-                {id: 'projects', title: _('Projects'), gicon: icon('checklist-symbolic'),
-                    page: comingSoon('view-list-symbolic', _('Projects'), _('Your project boards will show here.'))},
+                {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
+                {id: 'prs', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
+                {id: 'projects', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
                 {heading: _('Settings')},
                 {id: 'widgets', title: _('Desktop Widgets'), iconName: 'view-grid-symbolic',
                     page: comingSoon('view-grid-symbolic', _('Desktop Widgets'),
@@ -55,5 +79,17 @@ export default class SourceglancePreferences extends ExtensionPreferences {
                     page: buildSystemStartPage(ctx)},
             ],
         });
+
+        // Signing in or out on the GitHub page reloads the lists.
+        const tokenChangedId = settings.connect('changed::token-changed', () => data.refresh());
+        window.connect('close-request', () => {
+            settings.disconnect(tokenChangedId);
+            data.stop();
+            client.destroy();
+            return false;
+        });
+        for (const page of pages)
+            page.update(data.state);
+        data.start();
     }
 }

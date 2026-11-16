@@ -6,13 +6,13 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {CloseDialog, CommentDialog, PickerDialog} from './dialogs.js';
 import {GitHubError, isCancelled} from './github.js';
 import {
-    addLabelsRequest,
-    assigneesRequest,
+    assigneeChangeRequests,
+    assigneeChoices,
     closeRequest,
     commentRequest,
-    diffSelection,
+    labelChangeRequests,
+    labelChoices,
     moveStatusRequest,
-    removeLabelRequest,
     reopenRequest,
 } from './model.js';
 
@@ -148,23 +148,15 @@ export class ActionController {
             () => this._client.listAssignable(token, item.repo)));
         if (!logins)
             return;
-        // You can always assign or unassign yourself; current assignees stay listed too.
         const me = this._getLogin();
-        const all = [...new Set([...(me ? [me] : []), ...item.assignees, ...logins])];
+        const all = assigneeChoices(item, me, logins);
         this._open(new PickerDialog({
             title: _('Assignees'),
             description: itemText(item),
             options: all.map(login => ({id: login, label: login === me ? _('%s (you)').format(login) : login})),
             selected: item.assignees,
             emptyText: _('Nobody can be assigned in this repository.'),
-            onApply: wanted => {
-                const {add, remove} = diffSelection(item.assignees, wanted);
-                const requests = [
-                    add.length ? assigneesRequest(item, add, true) : null,
-                    remove.length ? assigneesRequest(item, remove, false) : null,
-                ].filter(Boolean);
-                this._send(item, requests, _('Assignees updated'), 'updated');
-            },
+            onApply: wanted => this._send(item, assigneeChangeRequests(item, wanted), _('Assignees updated'), 'updated'),
         }));
     }
 
@@ -174,21 +166,14 @@ export class ActionController {
         if (!labels)
             return;
         const current = item.labels.map(label => label.name);
-        const names = [...new Set([...current, ...labels.map(label => label.name)])];
+        const names = labelChoices(item, labels);
         this._open(new PickerDialog({
             title: _('Labels'),
             description: itemText(item),
             options: names.map(name => ({id: name, label: name})),
             selected: current,
             emptyText: _('This repository has no labels.'),
-            onApply: wanted => {
-                const {add, remove} = diffSelection(current, wanted);
-                const requests = [
-                    add.length ? addLabelsRequest(item, add) : null,
-                    ...remove.map(name => removeLabelRequest(item, name)),
-                ].filter(Boolean);
-                this._send(item, requests, _('Labels updated'), 'updated');
-            },
+            onApply: wanted => this._send(item, labelChangeRequests(item, wanted), _('Labels updated'), 'updated'),
         }));
     }
 

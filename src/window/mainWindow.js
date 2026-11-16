@@ -1,6 +1,7 @@
 // The sourceglance window: a sidebar of lists and settings, and the selected page.
 // Built inside the Settings window GNOME opens for the extension (see prefs.js).
 import Adw from 'gi://Adw';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 let themeLoaded = false;
@@ -33,7 +34,7 @@ function entryRow(entry) {
     const image = entry.gicon ? new Gtk.Image({gicon: entry.gicon}) : new Gtk.Image({icon_name: entry.iconName});
     box.append(image);
     box.append(new Gtk.Label({label: entry.title, xalign: 0, hexpand: true}));
-    const count = new Gtk.Label({css_classes: ['sourceglance-count-pill'], visible: false});
+    const count = new Gtk.Label({css_classes: ['sourceglance-count-pill'], visible: false, valign: Gtk.Align.CENTER});
     box.append(count);
     const row = new Gtk.ListBoxRow({child: box});
     if (entry.indent)
@@ -51,9 +52,10 @@ function entryRow(entry) {
  * @param {Gio.Icon} params.appIcon
  * @param {Adw.ToastOverlay} params.overlay the window's toast overlay (pages use it)
  * @param {Array} params.entries [{heading, sub}] or [{id, title, iconName|gicon, page, indent}]
+ * @param {Gtk.Widget} [params.headerEnd] shown at the end of the content header bar
  * @returns {{setCount(id: string, text: string): void, select(id: string): void}}
  */
-export function buildMainWindow(window, {appIcon, overlay, entries}) {
+export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = null}) {
     const list = new Gtk.ListBox({css_classes: ['navigation-sidebar', 'sourceglance-sidebar']});
     const stack = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
     const rows = new Map();
@@ -80,7 +82,10 @@ export function buildMainWindow(window, {appIcon, overlay, entries}) {
     const sidebarPage = new Adw.NavigationPage({title: 'sourceglance', child: sidebarView});
 
     const contentView = new Adw.ToolbarView({content: stack});
-    contentView.add_top_bar(new Adw.HeaderBar());
+    const contentHeader = new Adw.HeaderBar();
+    if (headerEnd)
+        contentHeader.pack_end(headerEnd);
+    contentView.add_top_bar(contentHeader);
     const contentPage = new Adw.NavigationPage({title: '', child: contentView});
 
     const split = new Adw.NavigationSplitView({
@@ -108,7 +113,8 @@ export function buildMainWindow(window, {appIcon, overlay, entries}) {
         if (row)
             list.select_row(row);
     };
-    select(entries.find(entry => entry.id)?.id);
+    // SOURCEGLANCE_PAGE (development) opens on a given page, e.g. for screenshots.
+    select(GLib.getenv('SOURCEGLANCE_PAGE') ?? entries.find(entry => entry.id)?.id);
 
     return {
         setCount(id, text) {
