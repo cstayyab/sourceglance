@@ -7,6 +7,17 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Update available** in the window's title bar when a newer version is out. Clicking it
+  downloads the new Setup for your PC, checks it against the release's `SHA256SUMS`, and
+  opens it only if it matches; when Setup finishes, the window reopens on the new version.
+  Turn the check off in Settings → System Start → **Check for updates**.
+- **Updates without logging out**: Setup installs each version in its own folder behind a
+  small loader, and restarts sourceglance after updating, so the new version runs straight
+  away. Coming from v0.2.0 or earlier, log out once after this first update.
+- An **Update, repair or remove** section on the home page.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added

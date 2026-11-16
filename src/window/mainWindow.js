@@ -53,7 +53,7 @@ function entryRow(entry) {
  * @param {Adw.ToastOverlay} params.overlay the window's toast overlay (pages use it)
  * @param {Array} params.entries [{heading, sub}] or [{id, title, iconName|gicon, page, indent}]
  * @param {Gtk.Widget} [params.headerEnd] shown at the end of the content header bar
- * @returns {{setCount(id: string, text: string): void, select(id: string): void}}
+ * @returns {{setCount(id: string, text: string): void, select(id: string): void, current(): string|null}}
  */
 export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = null}) {
     const list = new Gtk.ListBox({css_classes: ['navigation-sidebar', 'sourceglance-sidebar']});
@@ -117,6 +117,7 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerEnd = 
     select(GLib.getenv('SOURCEGLANCE_PAGE') ?? entries.find(entry => entry.id)?.id);
 
     return {
+        current: () => list.get_selected_row()?._entry?.id ?? null,
         setCount(id, text) {
             const row = rows.get(id);
             if (!row)

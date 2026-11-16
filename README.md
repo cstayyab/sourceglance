@@ -81,9 +81,21 @@ your work and stay clickable.
 2. In Files, right-click it, choose **Properties** and turn on **Executable as Program**.
 3. Double-click it and follow the wizard, then log out and back in.
 
-No admin password, app store or apt/snap repository needed. Run it again later to repair or
-remove sourceglance. The [install guide](docs/installing.md) also covers checking the
-download.
+No admin password, app store or apt/snap repository needed. The same Setup file installs,
+updates, repairs and removes sourceglance. The [install guide](docs/installing.md) also
+covers checking the download.
+
+### Updating
+
+When a newer version is out, sourceglance's window shows **Update available** next to
+Refresh. Click it: sourceglance downloads the new Setup for your PC into a private temporary
+folder, checks it against the release's `SHA256SUMS`, and opens it only if it matches. Setup
+updates sourceglance in place and starts the new version straight away, with no log-out;
+then the window reopens on the new version. You can also just download and run the latest
+Setup yourself. Coming from v0.2.0 or earlier, log out once after this first update.
+
+Turn the check off in **Settings → System Start → Check for updates**. It only asks GitHub
+for the list of sourceglance releases; nothing about you is sent.
 
 ### From source
 

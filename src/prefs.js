@@ -59,7 +59,8 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const projectsPage = new ProjectsPage({icons, actions});
         pages.push(issuesPage, prsPage, projectsPage);
 
-        const update = new UpdateButton({window, client, settings, toast, version: this.metadata['version-name'] ?? 'dev'});
+        const update = new UpdateButton({window, client, settings, toast, version: this.metadata['version-name'] ?? 'dev',
+            currentPage: () => main?.current()});
         const refresh = new Gtk.Button({icon_name: 'view-refresh-symbolic', tooltip_text: _('Refresh')});
         refresh.connect('clicked', () => {
             data.refresh();

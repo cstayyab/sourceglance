@@ -8,7 +8,8 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 UUID=sourceglance@omer-gh.github.io
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/sourceglance-setup-test.XXXXXX")
-PAYLOAD="$ROOT/tools/installer/payload"
+# SETUP_PAYLOAD: test a payload staged elsewhere (tools/build-setup.sh payload DIR).
+PAYLOAD="${SETUP_PAYLOAD:-$ROOT/tools/installer/payload}"
 EXT="$WORK/data/gnome-shell/extensions/$UUID"
 BACKUPS="$WORK/cache/sourceglance-setup/backups"
 VERSION=$(sed -n 's/.*"version-name": *"\([^"]*\)".*/\1/p' "$ROOT/src/metadata.json")
@@ -66,9 +67,24 @@ enabled | grep -q "$UUID" || fail "install: not enabled"
 [[ $(backups) -eq 0 ]] || fail "fresh install should not back up"
 ok "install: files copied, enabled for next login"
 
+# Installed layout: a loader at the top runs versions/<version>/ (tools/installer/loader).
+[[ $(cat "$EXT/versions/current") == "$VERSION" ]] || fail "layout: versions/current"
+[[ -f $EXT/versions/$VERSION/extension.js && -f $EXT/versions/$VERSION/schemas/gschemas.compiled ]] \
+    || fail "layout: version folder"
+grep -q SourceglanceLoader "$EXT/extension.js" && grep -q SourceglancePrefsLoader "$EXT/prefs.js" \
+    || fail "layout: loaders"
+[[ -f $EXT/stylesheet.css && -f $EXT/icons/sourceglance-symbolic.svg && -f $EXT/schemas/gschemas.compiled ]] \
+    || fail "layout: top-level files GNOME Shell reads"
+grep -q "Log out and back in" "$WORK/install.out" || fail "fresh install should ask to log out"
+ok "layout: loader plus versions/$VERSION, log out to start the first time"
+
 sed -i "s/\"version-name\": *\"$VERSION\"/\"version-name\": \"0.0.1\"/" "$EXT/metadata.json"
-setup --quiet --accept-license >/dev/null
+printf '0.0.1\n' > "$EXT/versions/current"
+setup --quiet --accept-license > "$WORK/upgrade.out"
 [[ $(installed_version) == "$VERSION" && $(backups) -eq 1 ]] || fail "upgrade"
+[[ $(cat "$EXT/versions/current") == "$VERSION" ]] || fail "upgrade: versions/current"
+# No GNOME Shell runs here, so nothing can be restarted: it asks for a log-out instead.
+grep -q "Log out and back in" "$WORK/upgrade.out" || fail "upgrade without a Shell should ask to log out"
 ok "upgrade from 0.0.1: replaced, previous version backed up"
 
 setup --quiet --accept-license --repair >/dev/null

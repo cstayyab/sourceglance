@@ -1,7 +1,8 @@
 // "Update available" in the window's title bar, next to Refresh. Asks GitHub's public
 // releases API whether a newer sourceglance is out. Clicking it downloads the new Setup,
 // checks it against the release's SHA256SUMS and opens it (updater.js); Setup's wizard
-// then upgrades the installation. If that fails, it opens the home page's Update section.
+// then upgrades the installation and restarts sourceglance in the top bar; when it finishes,
+// this window reopens on the new version. If anything fails, it opens the home page instead.
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
@@ -10,16 +11,20 @@ import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions
 
 import {HOME_URL} from '../lib/config.js';
 import {isCancelled} from '../lib/github.js';
-import {UpdateError, downloadVerifiedSetup, launchSetup} from '../lib/updater.js';
-import {availableUpdate} from '../lib/updates.js';
+import {UpdateError, downloadVerifiedSetup, installedVersion, reopenWindowSoon, runSetup} from '../lib/updater.js';
+import {availableUpdate, compareVersions, parseVersion} from '../lib/updates.js';
 
 // Refresh checks again, but not more often than this (GitHub allows 60 anonymous calls an hour).
 const MIN_INTERVAL_MS = 10 * 60 * 1000;
 
 export class UpdateButton {
-    /** `version` is the installed version-name, e.g. "0.2.0"; `toast(text)` shows a message. */
-    constructor({window, client, settings, version, toast}) {
+    /**
+     * `version` is the running version-name, e.g. "0.2.0"; `toast(text)` shows a message;
+     * `currentPage()` is the page to reopen on.
+     */
+    constructor({window, client, settings, version, toast, currentPage}) {
         this._window = window;
+        this._currentPage = currentPage;
         this._toast = toast;
         this._client = client;
         this._settings = settings;
@@ -75,8 +80,9 @@ export class UpdateButton {
         this._cancellable = cancellable;
         try {
             const {version, path} = await downloadVerifiedSetup(this._client, this._version, cancellable);
-            launchSetup(path);
+            const finished = runSetup(path);
             this._toast(_('sourceglance Setup %s is open. Follow it to finish updating.').format(version));
+            this._reopenWhenUpdated(finished);
         } catch (e) {
             if (isCancelled(e))
                 return;
@@ -96,6 +102,22 @@ export class UpdateButton {
             this._content.label = _('Update available');
             this.widget.sensitive = true;
         }
+    }
+
+    /** After Setup finishes, reopens this window on the new version if one was installed. */
+    async _reopenWhenUpdated(finished) {
+        if (!await finished)
+            return;
+        const installed = installedVersion();
+        const running = parseVersion(this._version);
+        if (!installed || !running || compareVersions(parseVersion(installed), running) <= 0)
+            return;
+        this._toast(_('Updated to sourceglance %s. Reopening…').format(installed));
+        const page = this._currentPage?.();
+        if (page)
+            this._settings.set_string('open-page', page);
+        reopenWindowSoon();
+        this._window.close();
     }
 
     destroy() {

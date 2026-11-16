@@ -3,7 +3,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {UUID, parseManifest, parseShellMajor} from './plan.js';
+import {UUID, parseExtensionInfo, parseManifest, parseShellMajor} from './plan.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
@@ -125,6 +125,45 @@ export function setUserExtensionsEnabled() {
     const settings = shellSettings();
     settings?.set_boolean('disable-user-extensions', false);
     Gio.Settings.sync();
+}
+
+/**
+ * The running GNOME Shell's view of sourceglance ({state, path}), or null when no Shell is
+ * reachable or it doesn't know the extension (it learns about new extensions at login).
+ */
+export async function shellExtensionInfo() {
+    const result = await run(['gnome-extensions', 'info', UUID]);
+    return result.status === 0 ? parseExtensionInfo(result.stdout) : null;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+        resolve();
+        return GLib.SOURCE_REMOVE;
+    }));
+}
+
+async function waitForState(done) {
+    let state = null;
+    for (let i = 0; i < 20; i++) {
+        state = (await shellExtensionInfo())?.state ?? null;
+        if (done(state))
+            break;
+        await sleep(250);
+    }
+    return state;
+}
+
+/**
+ * Turns sourceglance off and on in the running GNOME Shell, so it runs the version just
+ * installed (the loader imports it from its own folder). Resolves to true once it's running.
+ */
+export async function restartInShell() {
+    await run(['gnome-extensions', 'disable', UUID]);
+    // Enabling before the Shell has finished disabling is ignored.
+    await waitForState(state => state !== 'ACTIVE');
+    await run(['gnome-extensions', 'enable', UUID]);
+    return await waitForState(state => state === 'ACTIVE' || state === 'ERROR') === 'ACTIVE';
 }
 
 /** Turn the extension on or off for the next login (enabled-extensions / disabled-extensions). */

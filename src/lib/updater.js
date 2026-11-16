@@ -5,7 +5,9 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {checksumsAsset, findUpdate, normalizeArch, parseChecksums, setupAsset} from './updates.js';
+import {checksumsAsset, findUpdate, normalizeArch, parseChecksums, parseVersion, setupAsset} from './updates.js';
+
+const UUID = 'sourceglance@omer-gh.github.io';
 
 export class UpdateError extends Error {
     /** `kind` is 'up-to-date', 'unsupported', 'missing' or 'checksum'. */
@@ -60,7 +62,43 @@ export async function downloadVerifiedSetup(client, installed, cancellable = nul
     return {version: update.version, path: file.get_path()};
 }
 
-/** Opens the Setup wizard; it runs on its own, so closing the window doesn't stop it. */
-export function launchSetup(path) {
-    Gio.Subprocess.new([path], Gio.SubprocessFlags.NONE);
+/** Opens the Setup wizard; resolves to true once it finishes successfully. */
+export function runSetup(path) {
+    const proc = Gio.Subprocess.new([path], Gio.SubprocessFlags.NONE);
+    return new Promise(resolve => proc.wait_check_async(null, (_proc, result) => {
+        try {
+            resolve(proc.wait_check_finish(result));
+        } catch {
+            resolve(false); // cancelled, failed or closed
+        }
+    }));
+}
+
+/** The version installed for you now ("0.3.0"), read from disk, or null. */
+export function installedVersion() {
+    const dir = GLib.build_filenamev([GLib.get_user_data_dir(), 'gnome-shell', 'extensions', UUID]);
+    const read = path => {
+        try {
+            return new TextDecoder().decode(GLib.file_get_contents(path)[1]);
+        } catch {
+            return null;
+        }
+    };
+    const current = read(GLib.build_filenamev([dir, 'versions', 'current']))?.trim();
+    if (parseVersion(current))
+        return current;
+    try {
+        const version = JSON.parse(read(GLib.build_filenamev([dir, 'metadata.json'])) ?? '')['version-name'];
+        return parseVersion(version) ? version : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Opens the window again a moment after this one closes: by then its process has quit (it
+ * stops 2 s after its last window), so the new window loads the newly installed version.
+ */
+export function reopenWindowSoon() {
+    Gio.Subprocess.new(['sh', '-c', 'sleep 3; exec gnome-extensions prefs "$0"', UUID], Gio.SubprocessFlags.NONE);
 }
