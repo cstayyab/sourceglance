@@ -7,6 +7,12 @@
     font-size: smaller;
 }
 
+.sourceglance-section {
+    font-size: smaller;
+    font-weight: bold;
+    padding-top: 8px;
+}
+
 .sourceglance-repo {
     font-weight: bold;
     padding-top: 6px;

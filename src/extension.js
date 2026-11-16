@@ -6,13 +6,14 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {Indicator} from './lib/indicator.js';
-import {groupIssues, nextRefreshDelaySeconds} from './lib/model.js';
+import {groupIssues, mergeItems, nextRefreshDelaySeconds} from './lib/model.js';
 import {lookupToken} from './lib/tokenStore.js';
 
 const INITIAL_STATE = {
     status: 'loading',
     login: null,
     groups: [],
+    prGroups: [],
     total: 0,
     shown: 0,
     updatedAt: null,
@@ -121,14 +122,21 @@ export default class SourceglanceExtension extends Extension {
 
             this._login ??= await this._client.getViewer(token, cancellable);
             const repos = this._settings.get_strv('repositories');
-            const {total, items: issues} = await this._client.search(token, repos, 'issue', cancellable);
+            const [issues, assigned, review] = await Promise.all(
+                ['issue', 'pr-assigned', 'pr-review'].map(search =>
+                    this._client.search(token, repos, search, cancellable)));
+            const prs = mergeItems(assigned.items, review.items);
+            // Results past the first page of either PR search aren't in `prs`.
+            const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
+                Math.max(0, review.total - review.items.length);
 
             this._setState({
                 status: 'ready',
                 login: this._login,
-                groups: groupIssues(issues),
-                total,
-                shown: issues.length,
+                groups: groupIssues(issues.items),
+                prGroups: groupIssues(prs),
+                total: issues.total + prTotal,
+                shown: issues.items.length + prs.length,
                 updatedAt: new Date(),
                 error: null,
                 refreshing: false,

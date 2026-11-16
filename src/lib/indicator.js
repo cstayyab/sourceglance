@@ -86,8 +86,8 @@ class Indicator extends PanelMenu.Button {
     }
 
     _hasList() {
-        const {status, groups} = this._state;
-        return status === 'ready' || (status === 'error' && groups.length > 0);
+        const {status, groups, prGroups} = this._state;
+        return status === 'ready' || (status === 'error' && groups.length + prGroups.length > 0);
     }
 
     _updatePanel() {
@@ -101,7 +101,7 @@ class Indicator extends PanelMenu.Button {
         if (status === 'signed-out')
             name = _('sourceglance: not signed in');
         else if (label)
-            name = ngettext('sourceglance: %s assigned issue', 'sourceglance: %s assigned issues', total).format(label);
+            name = ngettext('sourceglance: %s item for you', 'sourceglance: %s items for you', total).format(label);
         else
             name = 'sourceglance';
         this.accessible_name = name;
@@ -148,6 +148,26 @@ class Indicator extends PanelMenu.Button {
         }
     }
 
+    _itemLabel(item) {
+        const label = `#${item.number}  ${truncate(item.title)}`;
+        return item.kind === 'pr' && item.reason === 'review'
+            ? _('%s · review requested').format(label)
+            : label;
+    }
+
+    _addSection(title, groups) {
+        if (!groups?.length)
+            return;
+        this._addInfo(title, 'sourceglance-section');
+        for (const group of groups) {
+            this._addInfo(group.repo, 'sourceglance-repo');
+            for (const item of group.issues) {
+                const row = this._addAction(this._itemLabel(item), () => this._openUri(item.url));
+                row.add_style_class_name('sourceglance-issue');
+            }
+        }
+    }
+
     _rebuildMenu() {
         const state = this._state;
         this.menu.removeAll();
@@ -159,19 +179,13 @@ class Indicator extends PanelMenu.Button {
         const signedIn = state.status === 'ready' || state.status === 'error';
         if (this._hasList()) {
             if (state.total === 0) {
-                this._addInfo(_('No open issues assigned to you'), 'sourceglance-message');
-                // Read-only sign-ins silently hide repositories they weren't granted.
+                this._addInfo(_('No open issues or pull requests for you'), 'sourceglance-message');
+                // Limited sign-ins silently hide repositories they weren't granted.
                 this._addInfo(_('Missing some? sourceglance only sees the repositories you ' +
                     'gave it. Check Settings.'), 'sourceglance-hint');
             } else {
-                for (const group of state.groups) {
-                    this._addInfo(group.repo, 'sourceglance-repo');
-                    for (const issue of group.issues) {
-                        const item = this._addAction(`#${issue.number}  ${truncate(issue.title)}`,
-                            () => this._openUri(issue.url));
-                        item.add_style_class_name('sourceglance-issue');
-                    }
-                }
+                this._addSection(_('Issues'), state.groups);
+                this._addSection(_('Pull requests'), state.prGroups);
             }
         }
 
