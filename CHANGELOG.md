@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-16
+
 ### Added
 
 - **Sign in with GitHub** in Settings, using the device flow: sourceglance copies a code
@@ -65,4 +67,5 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/commits/main
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/omer-gh/sourceglance/releases/tag/v0.1.0

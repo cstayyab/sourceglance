@@ -1,31 +1,38 @@
 # sourceglance
 
-**Your GitHub issues and project boards, one click away in the Ubuntu top bar.**
+**Your GitHub and GitLab issues, pull requests and project boards, one click away in the Ubuntu top bar.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Lint](https://github.com/omer-gh/sourceglance/actions/workflows/lint.yml/badge.svg)](https://github.com/omer-gh/sourceglance/actions/workflows/lint.yml)
 [![GNOME Shell](https://img.shields.io/badge/GNOME%20Shell-46--50-4a86cf)](src/metadata.json)
 
-sourceglance is a GNOME Shell extension for Ubuntu Desktop. It puts a small indicator in the
-top bar; click it to see the issues assigned to you and the cards on your GitHub Projects,
-without opening a browser.
+**Home page and download: <https://omer-gh.github.io/sourceglance/>**
 
-> **Status: early development.** v0.1.0 (assigned issues) is in progress; Projects boards
-> come next. See the [roadmap](#roadmap) and the open issues if you want to help.
+sourceglance is a GNOME Shell extension for Ubuntu Desktop. It puts buttons in the top bar
+for your issues, pull requests and project boards; click one to see and act on what's
+assigned to you, without opening a browser.
+
+> **Status: early release.** v0.1.0 is the first release. See the [roadmap](#roadmap) and
+> the open issues if you want to help.
 
 ## Features
 
-- [x] Top-bar indicator with a count of your open assigned issues
-- [x] Sign in with a GitHub personal access token (stored in the GNOME keyring)
-- [x] List issues assigned to you, grouped by repository, with auto-refresh
-- [x] Filter to specific repositories; open any issue in the browser with one click
-- [ ] Show GitHub Projects (v2) columns and cards
+- [x] Top-bar buttons for Issues, Pull requests and Projects, each with its count, as one
+  group or as tabs
+- [x] Sign in with GitHub (device flow) through a GitHub App limited to issues, pull
+  requests and projects; tokens stay in the GNOME keyring
+- [x] Actions from the menu: comment, close and reopen, assignees, labels, project status
+- [x] Filter by label; closed items still assigned to you are counted
+- [x] GitHub Projects (v2) draft items, grouped by status
+- [x] gitlab.com issues and merge requests in their own sections
+- [x] Main window with lists and settings, splash screen, app grid icon
+- [x] Desktop widgets
 - [ ] Desktop notifications for new assignments
 
 ## Requirements
 
 - Ubuntu 24.04 LTS or newer (or any distro with GNOME Shell 46–50)
-- A GitHub account
+- A GitHub or gitlab.com account
 
 ## Installation
 
@@ -57,14 +64,14 @@ Then log out and back in (on Wayland), and enable the extension:
 gnome-extensions enable sourceglance@omer-gh.github.io
 ```
 
-### Setup wizard (planned for v0.1.0)
+### Setup wizard (recommended)
 
-Download `sourceglance-Setup-X.Y.Z-x86_64.AppImage` from
-[Releases](https://github.com/omer-gh/sourceglance/releases), allow it to run once
+Download sourceglance Setup from the [home page](https://omer-gh.github.io/sourceglance/)
+or [Releases](https://github.com/omer-gh/sourceglance/releases), allow it to run once
 (**Properties → Executable as Program**), and double-click it. A setup wizard walks you
 through the license, a system check and the install — no admin password, app store or
 apt/snap repository needed. Run it again later to repair or remove sourceglance. See the
-[installer design](docs/design/installer.md).
+[install guide](docs/installing.md).
 
 ### From extensions.gnome.org
 
