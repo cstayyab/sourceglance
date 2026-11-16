@@ -20,6 +20,8 @@ import {
     projectItemsRequest,
     addLabelsRequest,
     appInstallUrl,
+    assigneeChangeRequests,
+    assigneeChoices,
     assigneesRequest,
     buildSearchPath,
     buildSearchQuery,
@@ -35,8 +37,11 @@ import {
     isSafeGitHubUrl,
     isValidLogin,
     isValidRepo,
+    labelChangeRequests,
+    labelChoices,
     labelOptions,
     launcherDesktopEntry,
+    listBadge,
     mergeItems,
     nextRefreshDelaySeconds,
     parseDeviceCodeResponse,
@@ -490,4 +495,28 @@ test('launcherDesktopEntry runs launcher.js with gjs and quotes the path', () =>
     const odd = launcherDesktopEntry({launcherPath: '/a $b"c\\d/launcher.js', iconPath: '/i.svg'});
     assert.ok(odd.includes('Exec=gjs -m "/a \\\\$b\\\\"c\\\\\\\\d/launcher.js"'));
     assert.equal(LAUNCHER_ID, 'io.github.omer_gh.sourceglance');
+});
+
+test('assignee and label pickers: choices and change requests', () => {
+    const item = {kind: 'issue', repo: 'a/b', number: 5, assignees: ['ann'], labels: [{name: 'bug', color: null}]};
+    assert.deepEqual(assigneeChoices(item, 'me', ['bob', 'ann']), ['me', 'ann', 'bob']);
+    assert.deepEqual(assigneeChoices(item, null, ['bob']), ['ann', 'bob']);
+    assert.deepEqual(assigneeChangeRequests(item, ['me']).map(r => [r.method, r.body.assignees]),
+        [['POST', ['me']], ['DELETE', ['ann']]]);
+    assert.deepEqual(assigneeChangeRequests(item, ['ann']), []);
+    assert.deepEqual(labelChoices(item, [{name: 'ui'}, {name: 'bug'}]), ['bug', 'ui']);
+    assert.deepEqual(labelChangeRequests(item, ['ui']).map(r => [r.method, r.path]),
+        [['POST', '/repos/a/b/issues/5/labels'], ['DELETE', '/repos/a/b/issues/5/labels/bug']]);
+});
+
+test('listBadge shows counts once loaded, 0 included', () => {
+    const base = {status: 'ready', updatedAt: new Date(), issueTotal: 0, issueShown: 0, prTotal: 30, prShown: 25,
+        boards: [{drafts: [1, 2]}], boardsError: null};
+    assert.equal(listBadge('issues', base), '0');
+    assert.equal(listBadge('prs', base), '25+');
+    assert.equal(listBadge('projects', base), '2');
+    assert.equal(listBadge('projects', {...base, boards: null}), '…');
+    assert.equal(listBadge('projects', {...base, boards: null, boardsError: 'forbidden'}), '');
+    assert.equal(listBadge('issues', {...base, status: 'signed-out'}), '');
+    assert.equal(listBadge('issues', {...base, updatedAt: null}), '');
 });

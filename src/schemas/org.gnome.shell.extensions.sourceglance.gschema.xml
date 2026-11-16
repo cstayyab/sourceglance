@@ -42,6 +42,11 @@
       <summary>Start request counter</summary>
       <description>Internal. Bumped by Settings' "Start now" to show sourceglance again after Quit.</description>
     </key>
+    <key name="refresh-request" type="i">
+      <default>0</default>
+      <summary>Refresh request counter</summary>
+      <description>Internal. Bumped by the sourceglance window after a change, so the top bar refreshes right away.</description>
+    </key>
     <key name="token-changed" type="i">
       <default>0</default>
       <summary>Token change counter</summary>

@@ -11,7 +11,6 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {
-    countLabel,
     draftTarget,
     filterByLabel,
     groupDraftsByStatus,
@@ -153,24 +152,7 @@ function listReady(ui) {
     return state.status === 'ready' || state.updatedAt !== null;
 }
 
-// Badge text for a list's top-bar button or tab, '0' included once known; '' hides it
-// (signed out, or not loaded yet).
-export function badgeText(id, state) {
-    if (!signedIn(state) || state.updatedAt === null)
-        return '';
-    switch (id) {
-    case 'issues':
-        return countLabel(state.issueTotal, state.issueShown) || '0';
-    case 'prs':
-        return countLabel(state.prTotal, state.prShown) || '0';
-    case 'projects':
-        if (state.boards === null)
-            return state.boardsError ? '' : '…';
-        return String(state.boards.reduce((sum, board) => sum + board.drafts.length, 0));
-    default:
-        return '';
-    }
-}
+export {listBadge as badgeText} from './model.js';
 
 function itemLabel(item) {
     const label = `#${item.number}  ${truncate(item.title)}`;

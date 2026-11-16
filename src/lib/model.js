@@ -596,6 +596,39 @@ export function filterByLabel(groups, label) {
         .filter(group => group.issues.length > 0);
 }
 
+// Picker flows shared by the top-bar menus (lib/actions.js) and the window (window/actions.js).
+
+/**
+ * Logins to offer in the Assignees picker: you first (you can always assign yourself), then
+ * current assignees, then the repository's assignable users.
+ */
+export function assigneeChoices(item, me, assignable) {
+    return [...new Set([...(isValidLogin(me) ? [me] : []), ...item.assignees, ...assignable])];
+}
+
+/** Requests that change the item's assignees to `wanted` (additions first). */
+export function assigneeChangeRequests(item, wanted) {
+    const {add, remove} = diffSelection(item.assignees, wanted);
+    return [
+        add.length ? assigneesRequest(item, add, true) : null,
+        remove.length ? assigneesRequest(item, remove, false) : null,
+    ].filter(Boolean);
+}
+
+/** Label names to offer: the item's current labels, then the repository's. */
+export function labelChoices(item, repoLabels) {
+    return [...new Set([...item.labels.map(label => label.name), ...repoLabels.map(label => label.name)])];
+}
+
+/** Requests that change the item's labels to `wanted` (one add, then one remove per label). */
+export function labelChangeRequests(item, wanted) {
+    const {add, remove} = diffSelection(item.labels.map(label => label.name), wanted);
+    return [
+        add.length ? addLabelsRequest(item, add) : null,
+        ...remove.map(name => removeLabelRequest(item, name)),
+    ].filter(Boolean);
+}
+
 /**
  * Group items by repository. Items are sorted newest-updated first, and repositories are
  * ordered by their newest item.
@@ -673,6 +706,29 @@ export function relativeTime(date, nowMs = Date.now()) {
 export function truncate(text, max = 48) {
     const chars = [...text];
     return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : text;
+}
+
+/**
+ * Count for a list's top-bar button, tab or sidebar row: '0' included once loaded; ''
+ * hides it (signed out, or not loaded yet). `state` has status, updatedAt, issueTotal/Shown,
+ * prTotal/Shown, boards and boardsError.
+ */
+export function listBadge(id, state) {
+    const signedIn = state.status === 'ready' || state.status === 'error';
+    if (!signedIn || state.updatedAt === null)
+        return '';
+    switch (id) {
+    case 'issues':
+        return countLabel(state.issueTotal, state.issueShown) || '0';
+    case 'prs':
+        return countLabel(state.prTotal, state.prShown) || '0';
+    case 'projects':
+        if (state.boards === null)
+            return state.boardsError ? '' : '…';
+        return String(state.boards.reduce((sum, board) => sum + board.drafts.length, 0));
+    default:
+        return '';
+    }
 }
 
 /** Text for the panel badge: '' (hidden), '7', or '25+' when results were cut off. */
