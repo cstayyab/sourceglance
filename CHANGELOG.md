@@ -18,6 +18,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Auto-refresh on a configurable interval, plus a manual **Refresh** item. Waits for
   GitHub's rate-limit reset when needed.
 - Clear menu messages when signed out, loading, empty, or when GitHub can't be reached.
+- **sourceglance Setup**: a double-clickable installer (AppImage) with an MSI-style wizard —
+  license agreement, system check, progress with automatic rollback, and Repair / Remove
+  when run again. Also scriptable from the command line. See
+  [Installing sourceglance with Setup](docs/installing.md).
 - `tools/preview.sh` to preview locally in a nested GNOME Shell or your own session,
   with one-time setup, a risk warning and MIT License agreement.
 - Project docs: contributing guide, issue and PR templates, release process.

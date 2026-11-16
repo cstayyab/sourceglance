@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": "github:omer-gh/sourceglance",
   "scripts": {
-    "lint": "eslint src tests",
+    "lint": "eslint src tests tools",
     "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
