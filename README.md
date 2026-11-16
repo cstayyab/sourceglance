@@ -21,7 +21,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 
 ![sourceglance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
 
-> **Status: early releases.** v0.3.0 is the latest, published as a pre-release. Try it, and
+> **Status: early releases.** v0.4.0 is the latest, published as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
 ## Features
@@ -205,11 +205,12 @@ Tray**, **Accounts** (GitHub and GitLab on one page) and **System Start** (start
 app grid icon). **About** shows the version and the author, with links to report an issue or
 fork the repository and contribute.
 
-**Search** the lists from the box in the title bar (or just start typing on a list; Ctrl+F
-also jumps there). It matches titles, repositories, `#numbers`, labels, people and board
+**Search** the lists from the box on the right of the title bar, always there on every page
+(or just start typing; Ctrl+F also jumps there). Searching from a settings page opens the
+first list. It matches titles, repositories, `#numbers`, labels, people and board
 statuses, across Issues, Pull requests and Projects at once. While you search, the sidebar
 counts and the title bar show how many items match. Clear the box, press Esc or click
-**Clear search** to see your full lists again.
+**Clear search** to see your full lists and counts again; the list you're on stays selected.
 
 ## Roadmap
 
@@ -218,7 +219,8 @@ counts and the title bar show how many items match. Clear the box, press Esc or 
 | `v0.1.0` ✅ | Top bar, main window, desktop widgets, GitHub and gitlab.com, setup wizard |
 | `v0.2.0` ✅ | About page: version, author, report an issue, fork and contribute |
 | `v0.3.0` ✅ | Update button with verified downloads, updates without logging out, search, one Accounts page |
-| `v0.4.0` | Desktop notifications for new assignments |
+| `v0.4.0` ✅ | Search box always on the right of the title bar |
+| `v0.5.0` | Desktop notifications for new assignments |
 | `v1.0.0` | Published on extensions.gnome.org |
 
 Details: [docs/product/roadmap.md](docs/product/roadmap.md).
