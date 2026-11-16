@@ -63,11 +63,17 @@ Coming with the first stable release.
 
 ## Usage
 
-1. [Create a fine-grained token](https://github.com/settings/personal-access-tokens/new)
-   with read-only **Issues** and **Metadata** access to the repositories you care about.
-2. Click the sourceglance icon in the top bar and choose **Settings**.
-3. Paste the token into **Personal access token** and press the apply button. Settings
-   shows "Signed in as @you".
+1. Click the sourceglance icon in the top bar and choose **Settings**.
+2. Click **Sign in with GitHub**. sourceglance copies a short code and opens GitHub in your
+   browser; paste the code and approve. Settings shows "Signed in as @you".
+
+   GitHub asks for the `repo` scope, because it has no read-only scope for issues in
+   private repositories. sourceglance only ever reads.
+
+   Prefer a token? Expand **Use a personal access token instead** and paste a
+   [fine-grained token](https://github.com/settings/personal-access-tokens/new) with
+   read-only **Issues** and **Metadata** access. It only sees the repositories you grant
+   it, and can't see repositories owned by other people, even if you collaborate on them.
 4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
    everything assigned to you.
 5. Click the icon to see your issues; click any issue to open it in your browser.

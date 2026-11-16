@@ -9,8 +9,12 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Sign in with GitHub** in Settings, using the OAuth device flow: sourceglance copies a
+  code and opens GitHub, you approve, done. Sees issues in every repository you can
+  access, including other people's private repositories you collaborate on.
 - Sign in with a GitHub personal access token in Settings; the token is validated and
   stored in the GNOME keyring. Sign out removes it.
+- When no issues are found, the menu hints that a token may not reach every repository.
 - The top-bar menu lists your open assigned issues, grouped by repository, newest first,
   with a "View all on GitHub" link. Click an issue to open it in your browser.
 - The top-bar icon shows how many open issues are assigned to you.

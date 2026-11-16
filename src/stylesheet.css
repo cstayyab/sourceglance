@@ -19,3 +19,7 @@
 .sourceglance-message {
     font-style: italic;
 }
+
+.sourceglance-hint {
+    font-size: smaller;
+}

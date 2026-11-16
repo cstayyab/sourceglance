@@ -160,6 +160,9 @@ class Indicator extends PanelMenu.Button {
         if (this._hasList()) {
             if (state.total === 0) {
                 this._addInfo(_('No open issues assigned to you'), 'sourceglance-message');
+                // A fine-grained token silently hides repositories it wasn't granted.
+                this._addInfo(_('Missing some? Your token may not reach every repository. ' +
+                    'Sign in with GitHub in Settings to see them all.'), 'sourceglance-hint');
             } else {
                 for (const group of state.groups) {
                     this._addInfo(group.repo, 'sourceglance-repo');

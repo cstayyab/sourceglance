@@ -17,10 +17,11 @@ npm install
 ```
 src/
 ├── extension.js      # Lifecycle and refresh loop: created in enable(), destroyed in disable()
-├── prefs.js          # Settings window (libadwaita): token sign-in, filters
+├── prefs.js          # Settings window (libadwaita): GitHub / token sign-in, filters
 ├── lib/
+│   ├── config.js     # Build-time config: OAuth App client ID
 │   ├── indicator.js  # Panel button and menu (pure view: render(state))
-│   ├── github.js     # GitHub REST client (Soup 3)
+│   ├── github.js     # GitHub REST client and device-flow sign-in (Soup 3)
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
@@ -84,6 +85,24 @@ Decision logic is in `tools/installer/lib/plan.js` (no GNOME imports, tested by
 run inside a headless GNOME Shell with isolated `HOME`/`XDG_*` directories; use it to
 refresh `docs/images/setup-*.png`. Keep the wizard to GTK 4.14 / libadwaita 1.5 APIs so it
 runs on GNOME 46.
+
+## OAuth App for "Sign in with GitHub"
+
+**Sign in with GitHub** uses the OAuth device flow, which needs the client ID of a GitHub
+OAuth App. While `OAUTH_CLIENT_ID` in `src/lib/config.js` is empty, Settings offers only
+the personal access token.
+
+1. Go to [github.com/settings/developers](https://github.com/settings/developers) →
+   **OAuth Apps** → **New OAuth App**. For a project-owned app, create it under the
+   organization instead.
+2. Name it `sourceglance`. Use `https://github.com/omer-gh/sourceglance` for both the homepage
+   and the authorization callback URL. Device flow doesn't use the callback.
+3. Register it, then on the app page check **Enable Device Flow** and save.
+4. Copy the **Client ID** into `OAUTH_CLIENT_ID`. Don't generate a client secret: device
+   flow doesn't need one, and the client ID is public by design.
+
+The app asks for the `repo` scope, because OAuth Apps have no read-only scope for issues
+in private repositories. sourceglance only sends `GET` requests to the API.
 
 ## Run it locally by hand
 

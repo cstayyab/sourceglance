@@ -1,16 +1,29 @@
 import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
+import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {GitHubClient, GitHubError} from './lib/github.js';
+import {OAUTH_CLIENT_ID} from './lib/config.js';
+import {DeviceFlowError, GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {parseRepoList} from './lib/model.js';
 import {clearToken, lookupToken, storeToken} from './lib/tokenStore.js';
 
 const NEW_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 
 function describeError(error) {
+    if (error instanceof DeviceFlowError) {
+        switch (error.kind) {
+        case 'expired':
+            return _('The sign-in code expired. Try again.');
+        case 'denied':
+            return _('Sign-in was cancelled on GitHub.');
+        default:
+            return _('GitHub sign-in failed (%s).').format(error.detail);
+        }
+    }
     if (!(error instanceof GitHubError))
         return _('Something went wrong: %s').format(error.message);
     switch (error.kind) {
@@ -59,11 +72,51 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         statusRow.add_suffix(signOutButton);
         group.add(statusRow);
 
+        // Device flow: the user approves a short code on github.com while we poll for the token.
+        const signInRow = new Adw.ActionRow({
+            title: _('Sign in with GitHub'),
+            subtitle: OAUTH_CLIENT_ID
+                ? _('Approve sourceglance in your browser. Sees every repository you can see.')
+                : _('Not available in this build. Use a personal access token.'),
+        });
+        const signInButton = new Gtk.Button({
+            label: _('Sign in'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['suggested-action'],
+            sensitive: Boolean(OAUTH_CLIENT_ID),
+        });
+        signInRow.add_suffix(signInButton);
+        group.add(signInRow);
+
+        const codeRow = new Adw.ActionRow({
+            subtitle: _('Code copied. Paste it on GitHub and approve. Waiting…'),
+            title_selectable: true,
+            css_classes: ['property'],
+            visible: false,
+        });
+        const openButton = new Gtk.Button({
+            icon_name: 'adw-external-link-symbolic',
+            tooltip_text: _('Open GitHub again'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['flat'],
+        });
+        const cancelButton = new Gtk.Button({label: _('Cancel'), valign: Gtk.Align.CENTER});
+        codeRow.add_suffix(openButton);
+        codeRow.add_suffix(cancelButton);
+        group.add(codeRow);
+
+        const tokenExpander = new Adw.ExpanderRow({
+            title: _('Use a personal access token instead'),
+            subtitle: _('Fine-grained tokens only see the repositories they were granted'),
+            expanded: !OAUTH_CLIENT_ID,
+        });
+        group.add(tokenExpander);
+
         const tokenRow = new Adw.PasswordEntryRow({
             title: _('Personal access token'),
             show_apply_button: true,
         });
-        group.add(tokenRow);
+        tokenExpander.add_row(tokenRow);
 
         const linkRow = new Adw.ActionRow({
             title: _('Create a token'),
@@ -74,7 +127,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         linkRow.connect('activated', () => {
             new Gtk.UriLauncher({uri: NEW_TOKEN_URL}).launch(window, null, null);
         });
-        group.add(linkRow);
+        tokenExpander.add_row(linkRow);
 
         const setLogin = login => {
             statusRow.subtitle = login ? _('Signed in as @%s').format(login) : _('Not signed in');
@@ -85,18 +138,64 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const notifyTokenChanged = () =>
             settings.set_int('token-changed', settings.get_int('token-changed') + 1);
 
+        // Validates a token, stores it and updates the UI. Throws on failure.
+        const signInWith = async (token, cancellable = null) => {
+            const login = await client.getViewer(token, cancellable);
+            await storeToken(token);
+            setLogin(login);
+            notifyTokenChanged();
+            toast(_('Signed in as @%s').format(login));
+        };
+
+        let deviceCancellable = null;
+        let verificationUri = null;
+        const openVerification = () => {
+            if (verificationUri)
+                new Gtk.UriLauncher({uri: verificationUri}).launch(window, null, null);
+        };
+        window.connect('close-request', () => {
+            deviceCancellable?.cancel();
+            return false;
+        });
+
+        signInButton.connect('clicked', async () => {
+            const cancellable = new Gio.Cancellable();
+            deviceCancellable = cancellable;
+            signInButton.sensitive = false;
+            try {
+                const code = await client.requestDeviceCode(OAUTH_CLIENT_ID, cancellable);
+                verificationUri = code.verificationUri;
+                codeRow.title = code.userCode;
+                codeRow.visible = true;
+                window.get_clipboard().set_content(Gdk.ContentProvider.new_for_bytes(
+                    'text/plain;charset=utf-8', new GLib.Bytes(new TextEncoder().encode(code.userCode))));
+                openVerification();
+
+                const token = await client.waitForDeviceToken(OAUTH_CLIENT_ID, code, cancellable);
+                await signInWith(token, cancellable);
+            } catch (e) {
+                if (!isCancelled(e))
+                    toast(describeError(e));
+            } finally {
+                if (deviceCancellable === cancellable) {
+                    deviceCancellable = null;
+                    verificationUri = null;
+                    codeRow.visible = false;
+                    signInButton.sensitive = true;
+                }
+            }
+        });
+        openButton.connect('clicked', openVerification);
+        cancelButton.connect('clicked', () => deviceCancellable?.cancel());
+
         tokenRow.connect('apply', async () => {
             const token = tokenRow.get_text().trim();
             if (!token)
                 return;
             tokenRow.sensitive = false;
             try {
-                const login = await client.getViewer(token);
-                await storeToken(token);
+                await signInWith(token);
                 tokenRow.set_text('');
-                setLogin(login);
-                notifyTokenChanged();
-                toast(_('Signed in as @%s').format(login));
             } catch (e) {
                 toast(describeError(e));
             } finally {

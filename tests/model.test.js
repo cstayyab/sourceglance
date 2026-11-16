@@ -2,14 +2,18 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+    DEVICE_VERIFICATION_URL,
     buildSearchPath,
     buildSearchQuery,
+    classifyDeviceTokenResponse,
     classifyHttpError,
     countLabel,
+    formEncode,
     groupIssues,
     isSafeGitHubUrl,
     isValidRepo,
     nextRefreshDelaySeconds,
+    parseDeviceCodeResponse,
     parseRepoList,
     parseSearchResponse,
     relativeTime,
@@ -145,4 +149,50 @@ test('countLabel hides zero and marks truncation', () => {
     assert.equal(countLabel(0, 0), '');
     assert.equal(countLabel(7, 7), '7');
     assert.equal(countLabel(31, 25), '25+');
+});
+
+test('formEncode builds a form body', () => {
+    assert.equal(formEncode({client_id: 'Iv1.abc', scope: 'repo'}), 'client_id=Iv1.abc&scope=repo');
+    assert.equal(formEncode({grant_type: 'urn:a b&c'}), 'grant_type=urn%3Aa%20b%26c');
+});
+
+test('parseDeviceCodeResponse validates the code and pins the link to github.com', () => {
+    const ok = {
+        device_code: 'dc123',
+        user_code: 'WDJB-MJHT',
+        verification_uri: 'https://github.com/login/device',
+        expires_in: 899,
+        interval: 5,
+    };
+    assert.deepEqual(parseDeviceCodeResponse(ok), {
+        deviceCode: 'dc123',
+        userCode: 'WDJB-MJHT',
+        verificationUri: 'https://github.com/login/device',
+        expiresIn: 899,
+        interval: 5,
+    });
+    const evil = parseDeviceCodeResponse({...ok, verification_uri: 'https://evil.example/login'});
+    assert.equal(evil.verificationUri, DEVICE_VERIFICATION_URL);
+    const defaults = parseDeviceCodeResponse({...ok, expires_in: 'x', interval: -1});
+    assert.equal(defaults.expiresIn, 900);
+    assert.equal(defaults.interval, 5);
+    assert.equal(parseDeviceCodeResponse({error: 'device_flow_disabled'}), null);
+    assert.equal(parseDeviceCodeResponse({...ok, user_code: '<b>hi</b>'}), null);
+    assert.equal(parseDeviceCodeResponse(null), null);
+});
+
+test('classifyDeviceTokenResponse maps every poll outcome', () => {
+    assert.deepEqual(classifyDeviceTokenResponse({access_token: 'gho_x', scope: 'repo'}, 5),
+        {state: 'done', token: 'gho_x'});
+    assert.deepEqual(classifyDeviceTokenResponse({error: 'authorization_pending'}, 5),
+        {state: 'pending', interval: 5});
+    assert.deepEqual(classifyDeviceTokenResponse({error: 'slow_down', interval: 10}, 5),
+        {state: 'slow-down', interval: 10});
+    assert.deepEqual(classifyDeviceTokenResponse({error: 'slow_down'}, 5),
+        {state: 'slow-down', interval: 10});
+    assert.deepEqual(classifyDeviceTokenResponse({error: 'expired_token'}, 5), {state: 'expired'});
+    assert.deepEqual(classifyDeviceTokenResponse({error: 'access_denied'}, 5), {state: 'denied'});
+    assert.deepEqual(classifyDeviceTokenResponse({error: 'device_flow_disabled'}, 5),
+        {state: 'error', error: 'device_flow_disabled'});
+    assert.deepEqual(classifyDeviceTokenResponse(null, 5), {state: 'error', error: 'unknown'});
 });
