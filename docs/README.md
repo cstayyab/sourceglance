@@ -10,6 +10,7 @@
 - [Product vision](product/vision.md): problem, personas, principles, non-goals
 - [Roadmap](product/roadmap.md): milestones and acceptance criteria
 - [UI design — v0.1.0](design/v0.1-ui.md): indicator, menu states, settings window
+- [Installer wizard](design/installer.md): direct-download install, wizard screens, uninstall
 
 ## Architecture
 

@@ -20,7 +20,28 @@ bar.
 | R8 | Clear states | Distinct menu states for signed out, loading, empty, and error (invalid token, rate limited, offline). |
 | R9 | Clean lifecycle | Enabling/disabling 10 times leaves no errors, timers, or panel items behind. |
 
-**Out of scope:** Projects boards, notifications, caching across restarts.
+### Installer (direct download)
+
+**Outcome:** anyone can install sourceglance by downloading one file from GitHub Releases and
+following a graphical wizard — no app store, apt/snap repository or developer tools.
+Design: [installer wizard](../design/installer.md), [ADR 0005](../adr/0005-self-contained-installer.md).
+
+| # | Requirement | Acceptance criteria |
+|---|-------------|---------------------|
+| I1 | Single-file download | `sourceglance-installer-X.Y.Z.sh` on each GitHub Release contains everything; installs with no network access. |
+| I2 | Graphical wizard | Welcome → risks → license → system check → install → finish, using `zenity`; falls back to terminal prompts without a display. |
+| I3 | Risks and license | Risks listed before any change; the user must tick "I accept the MIT License … NO WARRANTY" (with a link) to continue; Cancel changes nothing. |
+| I4 | System check | Clear message and no changes when: run as root, unsupported GNOME Shell version, damaged file, or user extensions disabled. |
+| I5 | User-level install | No sudo or admin password; touches only the user's extension directory and `enabled-extensions`. |
+| I6 | Integrity | Installer verifies its embedded checksum; releases publish `SHA256SUMS` and a build provenance attestation; README explains how to verify. |
+| I7 | Upgrades | Detects an installed version and offers Upgrade / Reinstall / Downgrade (with a warning). |
+| I8 | Finish | Extension loads at next login; **Log Out Now** asks the user to save work first; next steps explain signing in. |
+| I9 | Uninstall | `--uninstall` or Welcome screen removes the extension; removing the token and settings are separate opt-in checkboxes. |
+| I10 | Scriptable | `--accept-license`, `--no-gui`, `--check`, `--extract`; documented exit codes. |
+| I11 | Built and tested by CI | Release workflow builds the installer; CI runs shellcheck and an install/upgrade/uninstall test in an isolated headless session. |
+
+**Out of scope:** Projects boards, notifications, caching across restarts, `.deb`/snap/Flatpak
+packages, automatic updates.
 
 ## v0.2.0 — Project boards
 

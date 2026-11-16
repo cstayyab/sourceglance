@@ -79,6 +79,22 @@ the extension refreshes immediately.
 - All requests go to `https://api.github.com` only; TLS is verified by Soup's defaults.
 - Recommended token: fine-grained, read-only *Issues* and *Metadata*.
 
+## Distribution
+
+```
+ src/ ──make pack──▶ extension zip ─┐
+                                    ├─▶ tools/build-installer.sh ─▶ sourceglance-installer-X.Y.Z.sh
+ tools/installer/installer.sh ──────┘        (wizard + base64 zip + its SHA-256)
+                                                          │
+           release.yml on tag vX.Y.Z ─▶ GitHub Release: installer, zip, SHA256SUMS,
+                                         build provenance attestation
+```
+
+The installer runs as the user, never root. It verifies its payload, checks
+compatibility, then calls `gnome-extensions install --force` and adds the UUID to
+`enabled-extensions`. See [installer design](design/installer.md) and
+[ADR 0005](adr/0005-self-contained-installer.md).
+
 ## Decisions
 
 Architecture decisions are recorded in [`docs/adr/`](adr/). To propose a new one, copy

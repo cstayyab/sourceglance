@@ -56,8 +56,10 @@ Only maintainers with write access. Every release is cut from `main` with CI pas
    ```
 
 8. **CI publishes the release.** The `release` workflow builds the extension zip and creates
-   a GitHub Release from the tag, using the matching changelog section as the notes. Check
-   the release page once it finishes.
+   a GitHub Release from the tag, using the matching changelog section as the notes. Once
+   the installer lands (see [installer design](docs/design/installer.md)), it also attaches
+   `sourceglance-installer-X.Y.Z.sh`, `SHA256SUMS` and a build provenance attestation. Check
+   the release page once it finishes, and run the installer once on a clean Ubuntu VM.
 9. **Upload to extensions.gnome.org** (from `v1.0.0` on): upload the zip from the GitHub
    Release at <https://extensions.gnome.org/upload/>.
 10. **Announce** in Discussions and close the milestone.

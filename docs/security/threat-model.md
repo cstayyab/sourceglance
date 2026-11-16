@@ -43,6 +43,11 @@ people.
 | T11 | Compromised release artifact | Releases built by CI from a tag on `main`; only maintainers can tag | ✅ v0.1 |
 | T12 | Secrets committed to the repo | GitHub secret scanning with push protection | ✅ v0.1 |
 | T13 | Locked or unavailable keyring | Treated as signed out; no fallback to insecure storage | ✅ v0.1 |
+| T14 | Tampered or corrupted installer download | Served over HTTPS from GitHub Releases; `SHA256SUMS` and build provenance attestation published; installer checks its embedded payload hash (catches corruption — tampering is caught by the checksum/attestation step the README describes) | 📋 planned (installer) |
+| T15 | Installer run with `sudo` writes root-owned files or changes the system | Refuses to run as root; installs only under the user's home | 📋 planned (installer) |
+| T16 | Shell injection or unsafe temp files in the installer | No `eval`; all variables quoted; private `mktemp -d` directory cleaned up on exit; shellcheck in CI | 📋 planned (installer) |
+| T17 | Installer changes more than it says | Lists every change before acting; touches only the extension directory and `enabled-extensions`; uninstall extras are opt-in | 📋 planned (installer) |
+| T18 | Users learn to run unverified scripts | Docs show verify-then-run; never recommend `curl … \| bash`; the script is plain text and `--extract` lets users inspect the payload | 📋 planned (installer) |
 
 ## Out of scope
 
