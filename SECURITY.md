@@ -31,11 +31,9 @@ You can expect:
   (read and write) plus read-only Metadata, on the repositories you install it on. It has
   no access to code, settings or administration. Revoke it under
   **GitHub Settings → Applications → Authorized GitHub Apps**.
-- **Sign in with full access** is opt-in. It grants the `repo` scope, which also allows
-  writes, because GitHub has no read-only scope for private issues. sourceglance only sends
-  `GET` requests. Revoke it under **Authorized OAuth Apps**.
-- A **fine-grained** personal access token with read-only access is also supported. It
-  only sees the repositories you grant it.
+- sourceglance only changes issues, pull requests (comments, state, assignees, labels) and
+  project item status, and only when you pick an action in the menu. Closing asks for
+  confirmation first. It never touches code, branches or repository settings.
 - sourceglance stores the token in the GNOME keyring, never in GSettings or plain files.
 - Never paste tokens into issues, logs or screenshots. If you leak one, revoke it right away
   in your GitHub settings.

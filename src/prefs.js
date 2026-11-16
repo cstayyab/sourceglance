@@ -6,7 +6,7 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {GITHUB_APP_CLIENT_ID, GITHUB_APP_SLUG, OAUTH_CLIENT_ID} from './lib/config.js';
+import {GITHUB_APP_CLIENT_ID, GITHUB_APP_SLUG, OAUTH_CLIENT_ID, SHOW_OTHER_SIGN_IN_OPTIONS} from './lib/config.js';
 import {DeviceFlowError, GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {FULL_ACCESS_SCOPE, appInstallUrl, parseRepoList} from './lib/model.js';
 import {clearToken, lookupToken, storeToken} from './lib/tokenStore.js';
@@ -79,7 +79,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
             title: _('Sign in with GitHub'),
             subtitle: GITHUB_APP_CLIENT_ID
                 ? _('Access to issues, pull requests and projects only, in the repositories you choose')
-                : _('Not available in this build. Use a personal access token.'),
+                : _('Not available in this build: the GitHub App isn’t configured.'),
         });
         const signInButton = new Gtk.Button({
             label: _('Sign in'),
@@ -123,14 +123,15 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const moreExpander = new Adw.ExpanderRow({
             title: _('More sign-in options'),
             expanded: !GITHUB_APP_CLIENT_ID,
+            visible: SHOW_OTHER_SIGN_IN_OPTIONS,
         });
         group.add(moreExpander);
 
         const fullAccessRow = new Adw.ActionRow({
             title: _('Sign in with full access'),
             subtitle: OAUTH_CLIENT_ID
-                ? _('Also sees private repositories owned by others. Grants read and write ' +
-                    'access to all your repositories, though sourceglance only reads.')
+                ? _('Also sees private repositories owned by others. Grants write access to ' +
+                    'all your repositories and project boards.')
                 : _('Not available in this build.'),
         });
         const fullAccessButton = new Gtk.Button({
@@ -149,7 +150,7 @@ export default class SourceglancePreferences extends ExtensionPreferences {
 
         const linkRow = new Adw.ActionRow({
             title: _('Create a token'),
-            subtitle: _('Fine-grained token with read-only “Issues” and “Metadata” access'),
+            subtitle: _('Fine-grained token with “Issues” and “Metadata” access'),
             activatable: true,
         });
         linkRow.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));

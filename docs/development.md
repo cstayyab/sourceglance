@@ -19,9 +19,11 @@ src/
 ├── extension.js      # Lifecycle and refresh loop: created in enable(), destroyed in disable()
 ├── prefs.js          # Settings window (libadwaita): GitHub / token sign-in, filters
 ├── lib/
-│   ├── config.js     # Build-time config: OAuth App client ID
+│   ├── config.js     # Build-time config: GitHub App and OAuth App client IDs
 │   ├── indicator.js  # Panel button and menu (pure view: render(state))
-│   ├── github.js     # GitHub REST client and device-flow sign-in (Soup 3)
+│   ├── actions.js    # Menu actions: dialog → requests → notification
+│   ├── dialogs.js    # Comment, close and picker dialogs (ModalDialog)
+│   ├── github.js     # GitHub REST/GraphQL client and device-flow sign-in (Soup 3)
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
@@ -120,7 +122,11 @@ The app's token can never do more than these permissions, and only on repositori
 the app is installed. A collaborator's private repository needs its owner to install the
 app.
 
-### OAuth App: "Sign in with full access" (opt-in)
+### OAuth App: "Sign in with full access" (hidden)
+
+This option and the personal access token are hidden in Settings: the GitHub App is the
+only sign-in. Set `SHOW_OTHER_SIGN_IN_OPTIONS` in `src/lib/config.js` to `true` to show
+them under **More sign-in options**, for example to compare during evaluation.
 
 1. Go to [github.com/settings/developers](https://github.com/settings/developers) →
    **OAuth Apps** → **New OAuth App**.
@@ -129,9 +135,10 @@ app.
 3. Register it, then check **Enable Device Flow** and save.
 4. Put the **Client ID** in `OAUTH_CLIENT_ID`.
 
-It asks for the `repo` scope, because OAuth Apps have no read-only scope for issues in
-private repositories. That reaches every repository you can, including others' private
-ones, but also allows writes. sourceglance only sends `GET` requests to the API.
+It asks for the `repo` and `project` scopes, because OAuth Apps have no narrower scope for
+issues in private repositories, and project boards need `project`. That reaches every
+repository you can, including others' private ones, but allows writing to all of them.
+sourceglance itself only writes to issues, PRs and project items, when you pick an action.
 
 ## Run it locally by hand
 

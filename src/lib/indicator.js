@@ -10,7 +10,7 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {countLabel, isSafeGitHubUrl, relativeTime, truncate} from './model.js';
+import {countLabel, isSafeGitHubUrl, itemKey, relativeTime, truncate} from './model.js';
 
 const VIEW_ALL_URL = 'https://github.com/issues/assigned';
 
@@ -52,10 +52,11 @@ function errorText(error, intervalMinutes) {
 
 export const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
-    _init({onRefresh, onSettings}) {
+    _init({onRefresh, onSettings, onAction}) {
         super._init(0.0, 'sourceglance');
         this._onRefresh = onRefresh;
         this._onSettings = onSettings;
+        this._onAction = onAction;
         this._state = null;
 
         const box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
@@ -86,8 +87,8 @@ class Indicator extends PanelMenu.Button {
     }
 
     _hasList() {
-        const {status, groups} = this._state;
-        return status === 'ready' || (status === 'error' && groups.length > 0);
+        const {status, groups, prGroups} = this._state;
+        return status === 'ready' || (status === 'error' && groups.length + prGroups.length > 0);
     }
 
     _updatePanel() {
@@ -101,7 +102,7 @@ class Indicator extends PanelMenu.Button {
         if (status === 'signed-out')
             name = _('sourceglance: not signed in');
         else if (label)
-            name = ngettext('sourceglance: %s assigned issue', 'sourceglance: %s assigned issues', total).format(label);
+            name = ngettext('sourceglance: %s item for you', 'sourceglance: %s items for you', total).format(label);
         else
             name = 'sourceglance';
         this.accessible_name = name;
@@ -148,6 +149,53 @@ class Indicator extends PanelMenu.Button {
         }
     }
 
+    _itemLabel(item) {
+        const label = `#${item.number}  ${truncate(item.title)}`;
+        return item.kind === 'pr' && item.reason === 'review'
+            ? _('%s · review requested').format(label)
+            : label;
+    }
+
+    _addSection(title, groups) {
+        if (!groups?.length)
+            return;
+        this._addInfo(title, 'sourceglance-section');
+        for (const group of groups) {
+            this._addInfo(group.repo, 'sourceglance-repo');
+            for (const item of group.issues)
+                this._addItem(item);
+        }
+    }
+
+    /** An issue or PR row with its actions in a submenu. */
+    _addItem(item) {
+        const busy = this._state.busy.includes(itemKey(item));
+        const label = busy ? _('%s · working…').format(this._itemLabel(item)) : this._itemLabel(item);
+        const row = new PopupMenu.PopupSubMenuMenuItem(label);
+        row.add_style_class_name('sourceglance-issue');
+        this.menu.addMenuItem(row);
+
+        const add = (text, callback) => {
+            const entry = row.menu.addAction(text, callback);
+            entry.setSensitive(!busy);
+            return entry;
+        };
+        add(_('Open on GitHub'), () => this._openUri(item.url)).setSensitive(Boolean(item.url));
+        if (item.state === 'closed') {
+            add(_('Reopen'), () => this._onAction(item, 'reopen'));
+            return;
+        }
+        add(_('Comment…'), () => this._onAction(item, 'comment'));
+        add(item.kind === 'pr' ? _('Close pull request…') : _('Close issue…'),
+            () => this._onAction(item, 'close'));
+        add(_('Assignees…'), () => this._onAction(item, 'assignees'));
+        add(_('Labels…'), () => this._onAction(item, 'labels'));
+        for (const board of item.boards ?? []) {
+            add(_('%s: %s…').format(truncate(board.title, 30), board.status ?? _('No status')),
+                () => this._onAction(item, 'status', board));
+        }
+    }
+
     _rebuildMenu() {
         const state = this._state;
         this.menu.removeAll();
@@ -159,20 +207,19 @@ class Indicator extends PanelMenu.Button {
         const signedIn = state.status === 'ready' || state.status === 'error';
         if (this._hasList()) {
             if (state.total === 0) {
-                this._addInfo(_('No open issues assigned to you'), 'sourceglance-message');
-                // Read-only sign-ins silently hide repositories they weren't granted.
+                this._addInfo(_('No open issues or pull requests for you'), 'sourceglance-message');
+                // Limited sign-ins silently hide repositories they weren't granted.
                 this._addInfo(_('Missing some? sourceglance only sees the repositories you ' +
                     'gave it. Check Settings.'), 'sourceglance-hint');
             } else {
-                for (const group of state.groups) {
-                    this._addInfo(group.repo, 'sourceglance-repo');
-                    for (const issue of group.issues) {
-                        const item = this._addAction(`#${issue.number}  ${truncate(issue.title)}`,
-                            () => this._openUri(issue.url));
-                        item.add_style_class_name('sourceglance-issue');
-                    }
-                }
+                this._addSection(_('Issues'), state.groups);
+                this._addSection(_('Pull requests'), state.prGroups);
             }
+        }
+        if (signedIn && state.recentlyClosed.length > 0) {
+            this._addInfo(_('Recently closed'), 'sourceglance-section');
+            for (const item of state.recentlyClosed)
+                this._addItem(item);
         }
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());

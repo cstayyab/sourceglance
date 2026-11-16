@@ -177,7 +177,7 @@ export class Wizard {
             icon.icon_name = 'system-software-install-symbolic';
         const welcomeText = this.mode === 'upgrade'
             ? `Setup will upgrade sourceglance ${this.installed} to ${this.version}.`
-            : 'Setup will install sourceglance, which shows your GitHub issues in the GNOME top bar.';
+            : 'Setup will install sourceglance, which shows your GitHub issues and pull requests in the GNOME top bar.';
         this._page('welcome', vbox(18, [
             icon,
             label(`<b>Welcome to the sourceglance ${esc(this.version)} Setup Wizard</b>`, {markup: true, css: ['title-4']}),

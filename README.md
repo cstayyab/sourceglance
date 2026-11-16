@@ -82,16 +82,19 @@ Coming with the first stable release.
    another person's private repository, its owner has to install the app there.
 4. Optionally list repositories to watch (`owner/name, owner/other`); leave it empty to see
    everything assigned to you.
-5. Click the icon to see your issues; click any issue to open it in your browser.
+5. Click the icon to see your open issues and pull requests (assigned to you or awaiting
+   your review). Click any of them for its actions:
+   - **Open on GitHub**
+   - **Comment…**
+   - **Close…**: issues close as completed or not planned; you confirm first. Closed items
+     stay under **Recently closed** with **Reopen** until you log out.
+   - **Assignees…** and **Labels…**
+   - **Board: Status…** for each project board it's on, to move it to another status
 
-**More sign-in options** in Settings:
-
-- **Sign in with full access** reaches every repository you can, including other people's
-  private repositories, without anyone installing anything. GitHub has no read-only
-  option for this, so it also grants write access; sourceglance itself only ever reads.
-- **Personal access token**: paste a
-  [fine-grained token](https://github.com/settings/personal-access-tokens/new) with
-  read-only **Issues** and **Metadata** access.
+**Repositories owned by someone else** (including private ones you collaborate on) appear
+once their owner installs the sourceglance app on them: send them
+`https://github.com/apps/<app>/installations/new` and ask them to pick the repository.
+Organization repositories need an organization owner to install it.
 
 ## Roadmap
 
