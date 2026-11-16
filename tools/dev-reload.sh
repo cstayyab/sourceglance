@@ -24,7 +24,7 @@ cp -r "$ROOT/src/." "$build/"
 glib-compile-schemas "$build/schemas"
 
 # The loader, plus what the Shell reads from the extension folder itself on enable.
-cp "$ROOT/tools/dev-loader/extension.js" "$ROOT/tools/dev-loader/prefs.js" "$DIR/"
+cp "$ROOT/tools/dev-loader/extension.js" "$ROOT/tools/dev-loader/prefs.js" "$ROOT/tools/dev-loader/devBuild.js" "$DIR/"
 cp "$ROOT/src/stylesheet.css" "$DIR/"
 mkdir -p "$DIR/schemas"
 cp "$ROOT"/src/schemas/*.gschema.xml "$DIR/schemas/"
