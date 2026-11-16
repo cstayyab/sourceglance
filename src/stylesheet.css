@@ -1,3 +1,21 @@
-.sourceglance-empty {
+.sourceglance-count {
+    padding-left: 4px;
+    font-weight: bold;
+}
+
+.sourceglance-header {
+    font-size: smaller;
+}
+
+.sourceglance-repo {
+    font-weight: bold;
+    padding-top: 6px;
+}
+
+.sourceglance-issue {
+    padding-left: 24px;
+}
+
+.sourceglance-message {
     font-style: italic;
 }
