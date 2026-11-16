@@ -59,8 +59,12 @@ allow it:
 6. **Ready to Install** — click **Install**.
 7. **Completed** — tick **Log out now** if you like, then **Finish**.
 
-After you log back in, click the sourceglance icon in the top bar, choose **Settings**, and
-paste a GitHub token to sign in.
+After you log back in, click the sourceglance icon in the top bar and choose **Settings**
+(or open **sourceglance** from the app grid). Under **Accounts**:
+
+- **GitHub**: click **Sign in**. sourceglance copies a short code and opens GitHub; paste it
+  and approve. Then click **Choose repositories** to pick which repositories it may see.
+- **GitLab** (optional): click **Sign in** and approve on gitlab.com the same way.
 
 ## Repair, upgrade or remove
 
