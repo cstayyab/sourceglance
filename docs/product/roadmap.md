@@ -22,23 +22,25 @@ bar.
 
 ### Installer (direct download)
 
-**Outcome:** anyone can install sourceglance by downloading one file from GitHub Releases and
-following a graphical wizard — no app store, apt/snap repository or developer tools.
+**Outcome:** anyone can install sourceglance like a Windows MSI: download one file from GitHub
+Releases, double-click it, and click through a setup wizard — no app store, apt/snap
+repository, terminal or developer tools.
 Design: [installer wizard](../design/installer.md), [ADR 0005](../adr/0005-self-contained-installer.md).
 
 | # | Requirement | Acceptance criteria |
 |---|-------------|---------------------|
-| I1 | Single-file download | `sourceglance-installer-X.Y.Z.sh` on each GitHub Release contains everything; installs with no network access. |
-| I2 | Graphical wizard | Welcome → risks → license → system check → install → finish, using `zenity`; falls back to terminal prompts without a display. |
-| I3 | Risks and license | Risks listed before any change; the user must tick "I accept the MIT License … NO WARRANTY" (with a link) to continue; Cancel changes nothing. |
-| I4 | System check | Clear message and no changes when: run as root, unsupported GNOME Shell version, damaged file, or user extensions disabled. |
-| I5 | User-level install | No sudo or admin password; touches only the user's extension directory and `enabled-extensions`. |
-| I6 | Integrity | Installer verifies its embedded checksum; releases publish `SHA256SUMS` and a build provenance attestation; README explains how to verify. |
-| I7 | Upgrades | Detects an installed version and offers Upgrade / Reinstall / Downgrade (with a warning). |
-| I8 | Finish | Extension loads at next login; **Log Out Now** asks the user to save work first; next steps explain signing in. |
-| I9 | Uninstall | `--uninstall` or Welcome screen removes the extension; removing the token and settings are separate opt-in checkboxes. |
-| I10 | Scriptable | `--accept-license`, `--no-gui`, `--check`, `--extract`; documented exit codes. |
-| I11 | Built and tested by CI | Release workflow builds the installer; CI runs shellcheck and an install/upgrade/uninstall test in an isolated headless session. |
+| I1 | Double-click setup file | `sourceglance-Setup-X.Y.Z-<arch>.AppImage` (x86_64, aarch64) on each release; after the one-time *Executable as Program* toggle, double-clicking opens the wizard. Works offline. |
+| I2 | Wizard window | One window with Back / Next / Cancel: Welcome → License → Before you install → Options → System check → Ready → Installing → Completed. |
+| I3 | License agreement | Full MIT text, "AS IS / no warranty / at your own risk" banner, online link; Next enabled only after selecting "I accept" (default is "I do not accept"). |
+| I4 | System check | ✓/✗ list; blocks on: administrator, unsupported GNOME Shell, damaged package, user extensions off (with **Turn On** fix), low disk space. |
+| I5 | User-level install | No admin password; touches only the user's extension directory and enabled-extensions setting; Ready page lists every change. |
+| I6 | Integrity | Embedded payload checksum verified; releases publish `SHA256SUMS` and a build provenance attestation; README explains verification. |
+| I7 | Maintenance mode | Re-running offers Repair / Remove (same version), Upgrade (older installed), Downgrade with warning (newer installed). |
+| I8 | Progress and rollback | Progress bar with steps and a details log; previous version backed up and restored if anything fails. |
+| I9 | Remove | Removes the extension; deleting the saved token and resetting settings are separate opt-in options. |
+| I10 | Command line | `--quiet --accept-license`, `--repair`, `--uninstall`, `--check`, `--extract`, `--log`; documented exit codes. |
+| I11 | Accessible | Full keyboard operation, mnemonics, default button, screen-reader labels. |
+| I12 | Built and tested by CI | Release workflow builds both AppImages with pinned, checksum-verified tools; CI tests install/upgrade/repair/remove headlessly and lints the wizard. |
 
 **Out of scope:** Projects boards, notifications, caching across restarts, `.deb`/snap/Flatpak
 packages, automatic updates.

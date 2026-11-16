@@ -1,136 +1,190 @@
 # Installer wizard — design
 
-Lets anyone install sourceglance by downloading one file from
-[GitHub Releases](https://github.com/omer-gh/sourceglance/releases), with no app store, apt
-repository, snap or extensions.gnome.org account. Requirement IDs (I1–I11) refer to the
-[roadmap](../product/roadmap.md#installer-direct-download). The technical choice is
-recorded in [ADR 0005](../adr/0005-self-contained-installer.md).
+An MSI-style setup wizard: download one file from
+[GitHub Releases](https://github.com/omer-gh/sourceglance/releases), double-click it, and
+click **Next** through a native window with a license page, a progress bar and a Finish
+page. No app store, apt repository, snap, terminal or developer tools. Running it again
+offers **Repair** or **Remove**, like *Programs and Features* on Windows.
+
+Requirement IDs (I1–I12) refer to the [roadmap](../product/roadmap.md#installer-direct-download).
+The technology choice is recorded in [ADR 0005](../adr/0005-self-contained-installer.md).
 
 ## What the user downloads
 
 | Release asset | Purpose |
 |---------------|---------|
-| `sourceglance-installer-X.Y.Z.sh` | **The installer.** One self-contained file: the wizard plus the extension, so it works offline. |
+| `sourceglance-Setup-X.Y.Z-x86_64.AppImage` | **The installer** for most PCs (Intel/AMD). |
+| `sourceglance-Setup-X.Y.Z-aarch64.AppImage` | The installer for ARM PCs. |
 | `sourceglance@omer-gh.github.io.shell-extension.zip` | The plain extension, for manual installs. |
-| `SHA256SUMS` | Checksums of both files. |
+| `SHA256SUMS` | Checksums of every file. |
 | Build provenance attestation | Proof the files were built by this repo's release workflow (`gh attestation verify`). |
 
-## Starting it
+The AppImage contains only the wizard (GJS code), the extension zip and the license — about
+1 MB. It draws its window with the GJS, GTK 4 and libadwaita that every GNOME Shell 46+
+desktop already has, so nothing is bundled or downloaded.
 
-Since GNOME 43, the Files app no longer runs scripts on double-click, so users start the
-installer with one command; everything after that is graphical:
+## Starting it (I1)
 
-```bash
-bash ~/Downloads/sourceglance-installer-0.1.0.sh
+Linux, like Windows SmartScreen, won't run a downloaded program until you allow it once:
+
+1. Open **Downloads** in Files.
+2. Right-click `sourceglance-Setup-0.1.0-x86_64.AppImage` → **Properties** → turn on
+   **Executable as Program**.
+3. Double-click the file. The setup window opens.
+
+The README shows this with screenshots, plus an optional verification step (checksum or
+attestation) before step 2. Advanced users can run the same file from a terminal.
+
+## Window layout
+
+A fixed-size libadwaita window (about 640 × 480), titled **sourceglance Setup**, with the
+classic wizard frame:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  sourceglance Setup                                        ✕    │
+├──────────────────────────────────────────────────────────────┤
+│  License Agreement                                    [icon] │  page title
+│  Please read the following license carefully.                │  page subtitle
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│                     page content                             │
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│  Step 2 of 6                    [ < Back ] [ Next > ] [Cancel]│  button bar
+└──────────────────────────────────────────────────────────────┘
 ```
 
-The README also shows an optional verification step first (checksum or attestation).
-We never recommend `curl … | bash`.
+- **Next** is the default button (Enter) and is disabled until the page is complete.
+- **Cancel** asks "Exit sourceglance Setup? Nothing has been changed." until installation
+  starts; during installation it is disabled.
+- Keyboard: mnemonics (`_Back`, `_Next`), Tab order top to bottom, Escape = Cancel.
+  Screen readers get page titles and control labels (I11).
 
-## Wizard flow (graphical, `zenity`)
-
-`zenity` ships with every Ubuntu desktop, so no extra install is needed.
+## Install flow (I2)
 
 ```
- Welcome ─▶ Before you continue ─▶ License ─▶ System check ─▶ Installing ─▶ Finish
-    │            (risks)          (must tick)   (can stop)                 (log out?)
-    └─▶ Uninstall (if already installed)
+Welcome ─▶ License ─▶ Before you install ─▶ Options ─▶ System check ─▶ Ready ─▶ Installing ─▶ Completed
+                                                                                    └─▶ Setup failed (rolled back)
 ```
 
 ### 1. Welcome
 
-- Title: **Install sourceglance 0.1.0**. One line on what it does.
-- Detects an existing install and adjusts the main action:
+"**Welcome to the sourceglance 0.1.0 Setup Wizard.** Setup will install sourceglance, which
+shows your GitHub issues in the top bar. Click Next to continue." If an older version is
+installed: "Setup will upgrade sourceglance 0.0.9 to 0.1.0."
 
-  | Found | Main action | Note shown |
-  |-------|-------------|------------|
-  | Nothing | **Install** | — |
-  | Older version | **Upgrade from 0.0.9** | — |
-  | Same version | **Reinstall** | — |
-  | Newer version | **Downgrade from 0.2.0** | "Downgrading may lose settings added in newer versions." |
+### 2. License Agreement (I3)
 
-- If installed, a secondary **Uninstall** action ([Uninstall](#uninstall)).
-
-### 2. Before you continue (risks)
-
-A plain-language list, then **Continue** / **Cancel**:
-
-- sourceglance is pre-release software.
-- Extensions run inside your desktop; a bug can freeze or crash your session.
-- It installs **only for your user account** — no administrator password.
-- Changes: copies files to `~/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io`
-  and turns the extension on for your next login. Nothing else.
-- Your GitHub token, if you add one later, is kept in your GNOME keyring and sent only to
-  GitHub.
-
-### 3. License (I3)
-
-- `zenity --text-info` showing the full MIT License, with a link to
+- Banner above the text: **"sourceglance is provided AS IS, without warranty of any kind. You
+  use it at your own risk."**
+- Scrollable, read-only view of the full MIT License, plus a **View online** link to
   <https://github.com/omer-gh/sourceglance/blob/main/LICENSE>.
-- A checkbox the user must tick before **Next** becomes clickable:
-  **"I accept the MIT License, including that sourceglance comes with NO WARRANTY and I use it
-  at my own risk."**
-- **Cancel** quits without changing anything.
+- Two radio buttons, MSI style; the second is selected by default:
+  - ( ) **I accept the terms in the License Agreement**
+  - (•) **I do not accept the terms in the License Agreement**
+- **Next** is enabled only when "I accept" is selected.
 
-### 4. System check (I4)
+### 3. Before you install
 
-Each check shows ✓ or a specific message. Any failure stops the wizard before anything is
-changed.
+Plain-language risks: pre-release software; extensions run inside your desktop and a bug
+can freeze it; installs only for your account (no admin password); what it changes
+(below); your GitHub token, if you add one later, stays in your GNOME keyring and is sent
+only to GitHub.
 
-| Check | Failure message |
-|-------|-----------------|
-| Not running as root | "Run the installer as your normal user, without sudo. sourceglance installs only for you." |
-| GNOME Shell present and version in `metadata.json` `shell-version` | "sourceglance 0.1.0 supports GNOME Shell 46–50. You have 45." |
-| Installer integrity (embedded SHA-256 of the payload) | "The installer file is damaged. Download it again." |
-| User extensions allowed (`org.gnome.shell disable-user-extensions` is false) | "User extensions are turned off. Turn on **Extensions** in the Extensions app and run the installer again." (offer to turn it on) |
-| Enough disk space in `~/.local/share` | "Not enough disk space." |
+### 4. Setup Options
 
-### 5. Installing
+| Option | Default | Notes |
+|--------|---------|-------|
+| Install for | **Only for me** | "Everyone on this computer" shown disabled: *not supported yet* |
+| Location | `~/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io` | Read-only; this is where GNOME looks |
+| ☑ Turn on sourceglance after installation | on | Adds it to the enabled extensions |
+| ☐ Reset sourceglance settings from a previous installation | off | Shown only if settings exist |
 
-A pulsating progress dialog while it runs `gnome-extensions install --force` with the
-embedded zip, then confirms the files are in place and adds the extension to
-`enabled-extensions` so it loads at next login.
+### 5. System Check (I4)
 
-### 6. Finish (I8)
+Runs automatically and lists each check with ✓ / ✗, like a prerequisites page. **Next**
+stays disabled while any check fails.
 
-- **Wayland** (Ubuntu default): GNOME Shell only loads new or updated extensions after you
-  log in again.
-  - Text: "sourceglance is installed. Log out and back in to start it. After that, click the
-    sourceglance icon in the top bar and choose **Settings** to sign in."
-  - Buttons: **Log Out Now** (asks once more: "Save your work first — open apps will
-    close.") and **Later**.
-- **X11** (older releases): same text; no log-out needed if the Shell already picked it up.
+| Check | Failure text | Fix button |
+|-------|--------------|-----------|
+| Not running as administrator | "Run Setup as your normal user. sourceglance installs only for you." | — |
+| GNOME Shell version supported | "sourceglance 0.1.0 supports GNOME Shell 46–50. You have 45." | — |
+| Package integrity | "The setup file is damaged. Download it again." | — |
+| User extensions allowed | "User extensions are turned off." | **Turn On** |
+| Disk space | "Not enough free space." | — |
 
-## Uninstall
+### 6. Ready to Install
 
-Reached from Welcome or with `--uninstall`.
+A summary of exactly what will happen, then **Install** in place of **Next**:
 
-- Confirmation dialog listing what will be removed: the extension files.
-- Two optional checkboxes, **both off by default**:
-  - "Also remove my saved GitHub token from the keyring"
-  - "Also reset sourceglance settings"
-- Runs `gnome-extensions uninstall`, then the selected extras, then suggests logging out.
+- Copy sourceglance 0.1.0 to `~/.local/share/gnome-shell/extensions/…`
+- Turn on sourceglance for your next login
+- (if upgrading) Replace sourceglance 0.0.9; your settings and saved token are kept
 
-## Terminal mode and options (I2, I10)
+### 7. Installing
 
-If there is no graphical session or `zenity` is missing, the same steps run as text
-prompts (`whiptail` when available, plain prompts otherwise). The license step requires
-typing **I agree**.
+- Progress bar with the current step: *Verifying package… → Backing up previous version…
+  → Copying files… → Turning on sourceglance… → Cleaning up…*
+- **Show details** expander with a log, also saved to
+  `~/.cache/sourceglance-setup/setup.log`.
+- **Rollback (I8):** the previous version is backed up first. If any step fails, Setup
+  restores it, then shows *Setup failed*.
+
+### 8. Completed
+
+"**sourceglance 0.1.0 has been installed.** Log out and back in to start it. Then click the
+sourceglance icon in the top bar and choose **Settings** to sign in."
+
+- ☐ **Log out now** (when ticked, clicking **Finish** first asks: "Save your work first —
+  open apps will close.")
+- **Finish**
+
+### Setup failed
+
+"Setup couldn't install sourceglance. Your previous version was restored." Shows the reason,
+the log location, and a **Report a problem** link to the bug report form.
+
+## Maintenance mode (I7, I9)
+
+When sourceglance is already installed, Setup opens on **Program Maintenance** instead of
+Welcome:
+
+| Installed | Choices |
+|-----------|---------|
+| Same version | ( ) **Repair** — reinstall the files · ( ) **Remove** — uninstall sourceglance |
+| Older version | Normal flow as an **Upgrade** (Welcome text changes) |
+| Newer version | Warning "A newer version (0.2.0) is installed." · ( ) **Downgrade** · ( ) **Remove** |
+
+**Remove** flow: *Remove options* → *Ready to Remove* → progress → *Removed*. Options,
+both **off** by default:
+
+- ☐ Also delete my saved GitHub token from the keyring
+- ☐ Also reset sourceglance settings
+
+sourceglance also appears in GNOME's **Extensions** app (the Linux equivalent of *Programs and
+Features*), where it can be turned off or removed without Setup.
+
+## Command-line use (I10)
+
+The same file works from a terminal, like `msiexec`:
 
 | Option | Effect |
 |--------|--------|
-| `--no-gui` | Force terminal mode |
-| `--uninstall` | Go straight to uninstall |
-| `--check` | Run the system check only; change nothing |
-| `--extract DIR` | Write the embedded extension zip to `DIR` for inspection; change nothing |
-| `--accept-license` | Unattended install for scripts. Prints the license and records acceptance; still refuses root and still runs every check |
+| `--quiet --accept-license` | Unattended install with defaults; prints the license; still refuses root and runs every check |
+| `--repair`, `--uninstall` | Maintenance actions (add `--quiet` for unattended) |
+| `--check` | Run the system check only |
+| `--extract DIR` | Write the embedded extension zip to `DIR` for inspection |
+| `--log FILE` | Write the log somewhere else |
 | `--version`, `--help` | Info |
 
-Exit codes: `0` success, `1` failed check or error, `2` bad usage, `3` cancelled by the user.
+Exit codes: `0` success, `1` failed check or error, `2` bad usage, `3` cancelled by the
+user. If FUSE is unavailable, `--appimage-extract-and-run` works as a fallback.
 
 ## Out of scope
 
 - System-wide installs, `.deb`, snap or Flatpak packages.
 - Automatic updates (a "check for updates" link may come later).
-- Non-GNOME desktops. Other distros with GNOME Shell 46+ and bash work on a best-effort
-  basis.
+- Embedded AppImage GPG signatures (planned after v0.1.0; checksums and attestations come
+  first).
+- Non-GNOME desktops. Other distros with GNOME Shell 46+ work on a best-effort basis.

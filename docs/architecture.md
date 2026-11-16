@@ -83,17 +83,18 @@ the extension refreshes immediately.
 
 ```
  src/ ──make pack──▶ extension zip ─┐
-                                    ├─▶ tools/build-installer.sh ─▶ sourceglance-installer-X.Y.Z.sh
- tools/installer/installer.sh ──────┘        (wizard + base64 zip + its SHA-256)
+ tools/installer/ (GJS wizard) ─────┼─▶ appimagetool (pinned) ─▶ sourceglance-Setup-X.Y.Z-<arch>.AppImage
+ LICENSE ───────────────────────────┘    AppRun: exec gjs -m installer/main.js
                                                           │
-           release.yml on tag vX.Y.Z ─▶ GitHub Release: installer, zip, SHA256SUMS,
+           release.yml on tag vX.Y.Z ─▶ GitHub Release: AppImages, zip, SHA256SUMS,
                                          build provenance attestation
 ```
 
-The installer runs as the user, never root. It verifies its payload, checks
-compatibility, then calls `gnome-extensions install --force` and adds the UUID to
-`enabled-extensions`. See [installer design](design/installer.md) and
-[ADR 0005](adr/0005-self-contained-installer.md).
+The setup wizard runs as the user, never root, using the system's GJS, GTK 4 and
+libadwaita. Its decision logic (install vs. upgrade vs. repair, version comparison, checks)
+lives in a pure module tested with Node; file operations go through `gnome-extensions` and
+`Gio`, with the previous version backed up for rollback. See
+[installer design](design/installer.md) and [ADR 0005](adr/0005-self-contained-installer.md).
 
 ## Decisions
 
