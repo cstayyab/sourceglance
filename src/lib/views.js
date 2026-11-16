@@ -16,6 +16,7 @@ import {
     groupDraftsByStatus,
     gtypeName,
     isSafeGitHubUrl,
+    isDoneStatus,
     isValidLogin,
     itemKey,
     labelOptions,
@@ -100,8 +101,6 @@ function addInfo(ui, text, styleClass) {
 const THEMED = {
     open: 'web-browser-symbolic',
     comment: 'chat-message-new-symbolic',
-    complete: 'object-select-symbolic',
-    closePr: 'window-close-symbolic',
     reopen: 'edit-undo-symbolic',
     assignees: 'system-users-symbolic',
     draft: 'document-edit-symbolic',
@@ -166,7 +165,7 @@ function addItem(ui, item) {
     const busy = ui.state.busy.includes(itemKey(item));
     let kindIcon = item.kind === 'pr' ? ui.icons.prs : ui.icons.issue;
     if (item.state === 'closed')
-        kindIcon = icon('complete');
+        kindIcon = item.kind === 'pr' ? ui.icons.prClosed : ui.icons.issueClosed;
     const row = addItemRow(ui, busy ? _('%s · working…').format(itemLabel(item)) : itemLabel(item), kindIcon);
 
     const add = (text, gicon, callback) => {
@@ -181,9 +180,9 @@ function addItem(ui, item) {
     }
     add(_('Comment…'), icon('comment'), () => ui.onAction(item, 'comment'));
     if (item.kind === 'pr')
-        add(_('Close pull request…'), icon('closePr'), () => ui.onAction(item, 'close'));
+        add(_('Close pull request…'), ui.icons.prClosed, () => ui.onAction(item, 'close'));
     else
-        add(_('Close issue…'), icon('complete'), () => ui.onAction(item, 'close'));
+        add(_('Close issue…'), ui.icons.issueClosed, () => ui.onAction(item, 'close'));
     add(_('Assignees…'), icon('assignees'), () => ui.onAction(item, 'assignees'));
     add(_('Labels…'), ui.icons.label, () => ui.onAction(item, 'labels'));
     for (const board of item.boards ?? []) {
@@ -240,14 +239,14 @@ function addSection(ui, title, groups, key) {
 }
 
 /** The always-visible footer: closed items still assigned to you, linking to them on GitHub. */
-function addClosedFooter(ui, count, search, text) {
+function addClosedFooter(ui, count, search, text, gicon) {
     ui.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
     const label = count === null ? text(null) : text(count);
-    const row = addAction(ui, label, () => openUri(searchPageUrl(search, ui.repos)), icon('complete'));
+    const row = addAction(ui, label, () => openUri(searchPageUrl(search, ui.repos)), gicon);
     row.add_style_class_name('sourceglance-footer');
 }
 
-function renderItemList(ui, {key, kind, title, empty, closedSearch, closedText, groups}) {
+function renderItemList(ui, {key, kind, title, empty, closedSearch, closedText, closedIcon, groups}) {
     if (listReady(ui)) {
         if (groups.length === 0)
             addInfo(ui, empty, 'sourceglance-message');
@@ -262,7 +261,7 @@ function renderItemList(ui, {key, kind, title, empty, closedSearch, closedText, 
         }
     }
     if (signedIn(ui.state))
-        addClosedFooter(ui, ui.state.closedCounts[key], closedSearch, closedText);
+        addClosedFooter(ui, ui.state.closedCounts[key], closedSearch, closedText, ui.icons[closedIcon]);
 }
 
 export function renderIssues(ui) {
@@ -273,6 +272,7 @@ export function renderIssues(ui) {
         empty: _('No open issues assigned to you'),
         groups: ui.state.groups,
         closedSearch: 'issue-closed',
+        closedIcon: 'issueClosed',
         closedText: n => n === null
             ? _('Closed issues still assigned to you')
             : ngettext('%d closed issue still assigned to you', '%d closed issues still assigned to you', n).format(n),
@@ -287,10 +287,11 @@ export function renderPrs(ui) {
         empty: _('No open pull requests for you'),
         groups: ui.state.prGroups,
         closedSearch: 'pr-closed',
+        closedIcon: 'prMerged',
         closedText: n => n === null
-            ? _('Closed pull requests still assigned to you')
-            : ngettext('%d closed pull request still assigned to you',
-                '%d closed pull requests still assigned to you', n).format(n),
+            ? _('Merged or closed pull requests still assigned to you')
+            : ngettext('%d merged or closed pull request still assigned to you',
+                '%d merged or closed pull requests still assigned to you', n).format(n),
     });
 }
 
@@ -322,7 +323,8 @@ export function renderProjects(ui) {
                 const {item, board: target} = draftTarget(board, draft);
                 const isBusy = busy.includes(itemKey(item));
                 const title = truncate(draft.title || _('Untitled draft'));
-                const row = addItemRow(ui, isBusy ? _('%s · working…').format(title) : title, icon('draft'));
+                const row = addItemRow(ui, isBusy ? _('%s · working…').format(title) : title,
+                    isDoneStatus(draft.status) ? ui.icons.issueClosed : icon('draft'));
                 const move = row.menu.addAction(_('Move to status…'), () => ui.onAction(item, 'status', target),
                     ui.icons.projects);
                 move.setSensitive(!isBusy && Boolean(board.fieldId) && board.options.length > 0);

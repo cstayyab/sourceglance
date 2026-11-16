@@ -6,7 +6,7 @@ import Gtk from 'gi://Gtk';
 
 import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {draftTarget, groupDraftsByStatus, itemKey} from '../../lib/model.js';
+import {draftTarget, groupDraftsByStatus, isDoneStatus, itemKey} from '../../lib/model.js';
 import {actionButton, statusText} from './common.js';
 
 export class ProjectsPage {
@@ -77,7 +77,9 @@ export class ProjectsPage {
             subtitle: busy ? _('Working…') : statusName ?? _('No status'),
             use_markup: false,
         });
-        row.add_prefix(new Gtk.Image({icon_name: 'document-edit-symbolic'}));
+        row.add_prefix(isDoneStatus(draft.status)
+            ? new Gtk.Image({gicon: this._icons.issueClosed})
+            : new Gtk.Image({icon_name: 'document-edit-symbolic'}));
         const buttons = new Gtk.FlowBox({selection_mode: Gtk.SelectionMode.NONE, column_spacing: 6, row_spacing: 6,
             margin_top: 8, margin_bottom: 8, margin_start: 12, margin_end: 12, sensitive: !busy});
         const move = actionButton({gicon: this._icons.projects, label: _('Move to status'),

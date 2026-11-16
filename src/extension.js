@@ -76,6 +76,9 @@ export default class SourceglanceExtension extends Extension {
             app: icon('sourceglance'),
             // Used inside the menus.
             issue: icon('issue'),
+            issueClosed: icon('issue-closed'),
+            prMerged: icon('git-merge'),
+            prClosed: icon('pr-closed'),
             label: icon('label'),
         };
         this._buttons = [];

@@ -28,6 +28,9 @@ export default class SourceglancePreferences extends ExtensionPreferences {
         const icon = name => Gio.FileIcon.new(this.dir.get_child('icons').get_child(`${name}.svg`));
         const icons = {
             issue: icon('issue-symbolic'),
+            issueClosed: icon('issue-closed-symbolic'),
+            prMerged: icon('git-merge-symbolic'),
+            prClosed: icon('pr-closed-symbolic'),
             pr: icon('git-pull-request-symbolic'),
             label: icon('label-symbolic'),
             projects: icon('checklist-symbolic'),
