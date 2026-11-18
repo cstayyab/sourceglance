@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-18
+
 ### Added
 
 - **Preview** an issue, pull or merge request, or project draft from its row in the window,
@@ -218,7 +220,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/omer-gh/sourceglance/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/omer-gh/sourceglance/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/omer-gh/sourceglance/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/omer-gh/sourceglance/compare/v0.4.1...v0.4.2
