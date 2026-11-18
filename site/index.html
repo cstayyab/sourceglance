@@ -16,6 +16,7 @@
     <div class="wrap header-row">
       <a class="brand" href="#top"><img src="icon.svg" alt="" width="28" height="28"> Source Glance</a>
       <nav>
+        <a class="wide-only" href="#in-action">In action</a>
         <a class="wide-only" href="#features">Features</a>
         <a href="#install">Install</a>
         <a href="#contribute">Contribute</a>
@@ -47,31 +48,203 @@
           </div>
         </div>
 
-        <figure class="mock" aria-label="Source Glance in the GNOME top bar">
+        <figure class="mock demo" data-scene="topbar" aria-label="Animation: a count in the GNOME top bar ticks up, its menu opens, and an issue is closed as completed from it">
           <div class="mock-bar">
-            <span class="mock-clock">Mon 16 · 10:24</span>
+            <span class="mock-clock">Mon 16 · 09:02</span>
             <span class="mock-group">
               <span class="seg app"><i class="ic ic-sourceglance"></i>Source Glance</span>
-              <span class="seg on"><i class="ic ic-check"></i>3</span>
-              <span class="seg"><i class="ic ic-pr"></i>2</span>
-              <span class="seg"><i class="ic ic-checklist"></i>4</span>
+              <span class="seg" data-el="issues-seg"><i class="ic ic-check"></i><b data-el="issues">0</b></span>
+              <span class="seg"><i class="ic ic-pr"></i><b data-el="prs">0</b></span>
+              <span class="seg"><i class="ic ic-checklist"></i><b data-el="boards">0</b></span>
             </span>
           </div>
-          <div class="mock-menu">
+          <div class="mock-menu" data-el="menu">
             <div class="menu-head"><b>Issues</b><span><i class="ic ic-label"></i>All labels ›</span></div>
-            <div class="menu-section">GitHub <em>2</em></div>
+            <div class="menu-section">GitHub <em data-el="gh">2</em></div>
             <div class="menu-repo">example/web-app</div>
-            <div class="menu-item"><i class="ic ic-issue"></i><span>#42</span> Fix the login redirect</div>
-            <div class="menu-item"><i class="ic ic-issue"></i><span>#37</span> Dark mode for settings</div>
+            <div class="menu-item" data-el="item42"><i class="ic ic-issue k-issue"></i><span>#42</span> Fix the login redirect</div>
+            <div class="menu-sub" data-el="sub42">
+              <span>Open on GitHub</span><span>Comment…</span><span data-el="close42">Close issue…</span><span>Assignees…</span><span>Labels…</span>
+            </div>
+            <div class="menu-item"><i class="ic ic-issue k-issue"></i><span>#37</span> Dark mode for settings</div>
             <div class="menu-section">GitLab <em>1</em></div>
             <div class="menu-repo">acme/api</div>
-            <div class="menu-item"><i class="ic ic-issue"></i><span>#12</span> Retry on rate limits</div>
+            <div class="menu-item"><i class="ic ic-issue k-issue"></i><span>#12</span> Retry on rate limits</div>
             <div class="menu-foot">4 closed issues still assigned to you</div>
           </div>
+          <div class="shell-dialog" data-el="dialog">
+            <b>Close issue #42?</b><small>Fix the login redirect · example/web-app</small>
+            <span class="dialog-buttons"><span>Cancel</span><span>Close as not planned</span><span class="blue" data-el="completed">Close as completed</span></span>
+          </div>
+          <div class="notice" data-el="toast"><b>Source Glance</b>Closed: #42 Fix the login redirect</div>
+          <i class="cursor" data-el="cursor" aria-hidden="true"></i>
         </figure>
       </div>
     </section>
 
+    <section id="in-action" class="showcase">
+      <div class="wrap">
+        <h2>See what a glance can do</h2>
+        <p class="section-lede">Short loops drawn from the real app. Pick one, or let them play.</p>
+        <div class="scene-tabs" role="tablist" aria-label="Workflows">
+          <button role="tab" aria-selected="true" aria-controls="scene-triage" id="tab-triage">Triage in seconds</button>
+          <button role="tab" aria-selected="false" aria-controls="scene-reply" id="tab-reply" tabindex="-1">Reply in place</button>
+          <button role="tab" aria-selected="false" aria-controls="scene-read" id="tab-read" tabindex="-1">Read it properly</button>
+          <button role="tab" aria-selected="false" aria-controls="scene-board" id="tab-board" tabindex="-1">Move the board</button>
+          <button role="tab" aria-selected="false" aria-controls="scene-desk" id="tab-desk" tabindex="-1">On your desktop</button>
+        </div>
+
+        <div class="scene" id="scene-triage" role="tabpanel" aria-labelledby="tab-triage">
+          <div class="scene-copy">
+            <h3>Triage your morning before the coffee's ready</h3>
+            <p>All Tasks pulls every issue, pull request and project card assigned to you, from every
+              GitHub and GitLab account, into one list. Filter by kind, account, label or person, and
+              the list narrows as you click.</p>
+          </div>
+          <figure class="demo win-wrap" data-scene="triage" aria-label="Animation: the Labels filter is set to bug and the All Tasks list narrows to three items">
+            <div class="win">
+              <div class="win-side">
+                <span class="side-h">Lists</span>
+                <span class="side-i on"><i class="ic ic-list"></i>All Tasks<em data-el="count">7</em></span>
+                <span class="side-i"><i class="ic ic-check"></i>Issues<em>4</em></span>
+                <span class="side-i"><i class="ic ic-pr"></i>Pull requests<em>2</em></span>
+                <span class="side-i"><i class="ic ic-checklist"></i>Projects<em>1</em></span>
+              </div>
+              <div class="win-main">
+                <div class="win-head"><b>All Tasks</b><small data-el="sub"></small></div>
+                <div class="filters">
+                  <span class="fbtn">Kind ▾</span><span class="fbtn">Accounts ▾</span>
+                  <span class="fbtn" data-el="labels">Labels <em data-el="lcount">1</em> ▾</span><span class="fbtn">Assignee ▾</span>
+                  <div class="pop" data-el="pop">
+                    <span><i class="box" data-el="check"></i>bug <small>3</small></span>
+                    <span><i class="box"></i>design <small>2</small></span>
+                    <span><i class="box"></i>docs <small>1</small></span>
+                  </div>
+                </div>
+                <div class="chips" data-el="chips"><span class="fchip"><small>Label</small> bug ×</span></div>
+                <div class="rows">
+                  <div class="row keep"><i class="ic ic-issue k-issue"></i><p><b>#42 Fix the login redirect</b><small>example/web-app</small></p></div>
+                  <div class="row drop"><i class="ic ic-pr k-pr"></i><p><b>#88 New onboarding screens</b><small>example/web-app</small></p></div>
+                  <div class="row keep"><i class="ic ic-pr k-pr"></i><p><b>!19 Retry on rate limits</b><small>acme/api</small></p></div>
+                  <div class="row drop"><i class="ic ic-draft k-draft"></i><p><b>Plan the Q3 roadmap</b><small>Team board · In progress</small></p></div>
+                  <div class="row keep"><i class="ic ic-issue k-issue"></i><p><b>#12 Crash when offline</b><small>acme/api</small></p></div>
+                  <div class="row drop"><i class="ic ic-issue k-issue"></i><p><b>#9 Document the setup</b><small>acme/docs</small></p></div>
+                </div>
+              </div>
+            </div>
+            <i class="cursor" data-el="cursor" aria-hidden="true"></i>
+          </figure>
+        </div>
+
+        <div class="scene" id="scene-reply" role="tabpanel" aria-labelledby="tab-reply" hidden>
+          <div class="scene-copy">
+            <h3>Answer a teammate without opening a browser</h3>
+            <p>Press Comment on any item and a Markdown box opens right under it. Write, press
+              Ctrl+Enter, and it's posted; the box tucks itself away and the count goes up.</p>
+          </div>
+          <figure class="demo win-wrap" data-scene="reply" aria-label="Animation: the comment button on an issue opens a comment box under it, a reply is typed and posted, and the comment count goes from 2 to 3">
+            <div class="win">
+              <div class="win-main wide">
+                <div class="win-head"><b>Issues</b><small>example/web-app</small></div>
+                <div class="rows">
+                  <div class="row"><i class="arrow"></i><i class="ic ic-issue k-issue"></i><p><b>#37 Dark mode for settings</b><small>Board: Todo</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-chat"></i><i class="ic ic-more"></i></span></div>
+                  <div class="row tall"><i class="arrow"></i><i class="ic ic-issue k-issue"></i><p><b>#42 Fix the login redirect</b><small>Board: In progress</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><span class="chat" data-el="chat"><i class="ic ic-chat"></i><em data-el="badge">2</em></span><i class="ic ic-more"></i></span>
+                    <div class="composer" data-el="composer">
+                      <div class="editor"><span class="tools">B&nbsp; I&nbsp; S&nbsp; &lt;/&gt;&nbsp; • 1. ❝</span><span class="typed" data-el="typed"></span><i class="caret"></i></div>
+                      <div class="composer-foot"><small>Markdown · Ctrl+Enter posts</small><span class="btn">Cancel</span><span class="btn blue" data-el="post">Comment</span></div>
+                    </div>
+                  </div>
+                  <div class="row"><i class="arrow"></i><i class="ic ic-issue k-issue"></i><p><b>#51 Remember the last tab</b><small>Board: Done</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-chat"></i><i class="ic ic-more"></i></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="toast" data-el="toast">Comment posted: #42 Fix the login redirect</div>
+            <i class="cursor" data-el="cursor" aria-hidden="true"></i>
+          </figure>
+        </div>
+
+        <div class="scene" id="scene-read" role="tabpanel" aria-labelledby="tab-read" hidden>
+          <div class="scene-copy">
+            <h3>Read the whole story beside your list</h3>
+            <p>Click a title and its preview docks on the right: the description and its comments,
+              rendered from Markdown with headings, checklists, code and links. Edit the
+              description or add a comment from there.</p>
+          </div>
+          <figure class="demo win-wrap" data-scene="read" aria-label="Animation: clicking an issue's title opens a preview panel with its rendered description, then its comment">
+            <div class="win">
+              <div class="win-main">
+                <div class="win-head"><b>Pull requests</b></div>
+                <div class="rows">
+                  <div class="row" data-el="title"><i class="ic ic-pr k-pr"></i><p><b class="link">#88 New onboarding screens</b><small>example/web-app · review requested</small></p></div>
+                  <div class="row"><i class="ic ic-pr k-pr"></i><p><b>!19 Retry on rate limits</b><small>acme/api</small></p></div>
+                  <div class="row"><i class="ic ic-pr k-pr"></i><p><b>#90 Faster search</b><small>example/web-app</small></p></div>
+                </div>
+              </div>
+              <div class="win-panel" data-el="panel">
+                <div class="panel-head"><b>#88 New onboarding screens</b><small>example/web-app</small></div>
+                <div class="md">
+                  <small class="dim">Description · opened by sam</small>
+                  <h4>What changed</h4>
+                  <p>Three screens replace the old wizard. <b>No new settings.</b></p>
+                  <ul class="tasks"><li><i>☑</i>Welcome screen</li><li><i>☑</i>Sign-in screen</li><li><i>☐</i>Done screen</li></ul>
+                  <pre>npm run screenshots</pre>
+                  <b class="comments-h">1 comment</b>
+                  <div class="comment" data-el="comment"><small class="dim">alex · 2 hours ago</small><p>Looks great. Ship it 🚀</p></div>
+                </div>
+              </div>
+            </div>
+            <i class="cursor" data-el="cursor" aria-hidden="true"></i>
+          </figure>
+        </div>
+
+        <div class="scene" id="scene-board" role="tabpanel" aria-labelledby="tab-board" hidden>
+          <div class="scene-copy">
+            <h3>Keep the board honest, in one click</h3>
+            <p>Projects lists the draft cards on your GitHub project boards, board by board, with
+              their status. Move one on and the board on GitHub is up to date for everyone. Issues
+              and pull requests on a board get the same button in their own lists.</p>
+          </div>
+          <figure class="demo win-wrap" data-scene="board" aria-label="Animation: in the Projects list, a draft card's Move to status button opens the Move dialog, Done is chosen, and the card's status changes to Done">
+            <div class="win">
+              <div class="win-main wide">
+                <div class="win-head"><b>Projects</b></div>
+                <div class="group-h"><i class="arrow down"></i><b>Team board</b><em>3</em><i class="ic ic-external"></i></div>
+                <div class="rows">
+                  <div class="row"><i class="ic ic-draft k-draft"></i><p><b>Write the release notes</b><small>Todo</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-checklist"></i><i class="ic ic-more"></i></span></div>
+                  <div class="row" data-el="moved"><i class="ic ic-draft k-draft" data-el="icon"></i><p><b>Plan the Q3 roadmap</b><small data-el="status">In progress</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><span class="chat" data-el="move"><i class="ic ic-checklist"></i></span><i class="ic ic-more"></i></span></div>
+                  <div class="row"><i class="ic ic-done k-done"></i><p><b>Book the design review</b><small>Done</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-checklist"></i><i class="ic ic-more"></i></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="status-pop" data-el="pop"><b>Move on Team board</b><small>Plan the Q3 roadmap</small>
+              <span><i class="radio"></i>Todo</span><span><i class="radio" data-el="was"></i>In progress</span><span><i class="radio" data-el="pick"></i>Done</span>
+              <span class="dialog-buttons"><span>Cancel</span><span class="blue" data-el="apply">Apply</span></span>
+            </div>
+            <div class="toast" data-el="toast">Moved to Done: Plan the Q3 roadmap</div>
+            <i class="cursor" data-el="cursor" aria-hidden="true"></i>
+          </figure>
+        </div>
+
+        <div class="scene" id="scene-desk" role="tabpanel" aria-labelledby="tab-desk" hidden>
+          <div class="scene-copy">
+            <h3>Your day, right on the wallpaper</h3>
+            <p>Summary, Issues, Pull requests and Projects cards sit on your desktop. Drag them where
+              you like; they update with the top bar, so a glance between windows is enough.</p>
+          </div>
+          <figure class="demo desk" data-scene="desk" aria-label="Animation: desktop widgets appear on the wallpaper and a new review request raises the pull request count">
+            <div class="widget w-sum" data-el="w1"><b>Source Glance</b><span><i class="ic ic-check"></i>Issues<em>3</em></span><span><i class="ic ic-pr"></i>Pull requests<em data-el="prs">2</em></span><span><i class="ic ic-checklist"></i>Project drafts<em>4</em></span></div>
+            <div class="widget w-list" data-el="w2"><b>Pull requests</b><span data-el="newpr" class="newpr"><i class="ic ic-pr k-pr"></i>#93 Cache tokens<small>review</small></span><span><i class="ic ic-pr k-pr"></i>#88 New onboarding</span><span><i class="ic ic-pr k-pr"></i>!19 Retry on rate limits</span></div>
+            <div class="widget w-list w-issues" data-el="w3"><b>Issues</b><span><i class="ic ic-issue k-issue"></i>#42 Fix the login redirect</span><span><i class="ic ic-issue k-issue"></i>#37 Dark mode</span></div>
+          </figure>
+        </div>
+      </div>
+    </section>
 
     <section id="features" class="features">
       <div class="wrap">
@@ -87,11 +260,10 @@
           </article>
           <article>
             <i class="feat ic-pr"></i>
-            <h3>Act from the menu</h3>
+            <h3>Act where you are</h3>
             <p>Comment, close or reopen, edit assignees and labels, and move items between
-              statuses on your project boards. In the window, preview an item with its
-              comments and reactions, edit its description, and add labels and assignees as
-              chips.</p>
+              statuses on your project boards, from the top bar or the window. Comment opens a
+              box right under the item; the ⋮ menu copies references and links.</p>
           </article>
           <article>
             <i class="feat ic-sourceglance"></i>
@@ -103,9 +275,10 @@
           <article>
             <i class="feat ic-checklist"></i>
             <h3>Main window</h3>
-            <p>All Tasks puts everything assigned to you in one list, filtered by kind,
-              account, label or assignee, and each list filters by label and assignee. Your lists and settings sit in a sidebar, and it's an app of its
-              own: Source Glance in the dock and in Alt+Tab.</p>
+            <p>All Tasks puts everything assigned to you in one list, coloured by kind and
+              filtered by kind, account, label or assignee. Click a title to preview it with its
+              Markdown rendered. The sidebar folds down to icons with counts, and Quit stops
+              everything at once.</p>
           </article>
           <article>
             <i class="feat ic-label"></i>
@@ -233,5 +406,6 @@
       </span>
     </div>
   </footer>
+  <script src="demo.js" defer></script>
 </body>
 </html>
