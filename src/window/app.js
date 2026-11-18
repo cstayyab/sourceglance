@@ -46,6 +46,7 @@ export function fillWindow(window, {settings, dir, version}) {
         pr: icon('git-pull-request-symbolic'),
         label: icon('label-symbolic'),
         projects: icon('checklist-symbolic'),
+        code: icon('code-symbolic'),
     };
     const overlay = new Adw.ToastOverlay();
     const toast = title => overlay.add_toast(new Adw.Toast({title}));
@@ -76,7 +77,13 @@ export function fillWindow(window, {settings, dir, version}) {
         showCounts();
         refresh.sensitive = !state.refreshing;
     }});
-    const actions = new WindowActions({window, clients, data, toast});
+    // The preview shows in the window's right panel (built with the layout, below).
+    const panel = {
+        show: params => main?.showPanel(params),
+        hide: () => main?.hidePanel(),
+        isFor: owner => main?.isPanelFor(owner) ?? false,
+    };
+    const actions = new WindowActions({window, clients, data, toast, icons, panel});
     const repos = () => settings.get_strv('repositories');
     const onClearSearch = () => {
         search.text = '';
@@ -123,13 +130,11 @@ export function fillWindow(window, {settings, dir, version}) {
         },
         entries: [
             {heading: _('Lists')},
-            // Everything in one list; the lists by kind sit under it, collapsed until opened.
-            {id: 'tasks', title: _('Tasks'), iconName: 'view-list-bullet-symbolic', page: tasksPage.widget,
-                expandable: true, expanded: settings.get_boolean('tasks-expanded'),
-                onExpandedChanged: expanded => settings.set_boolean('tasks-expanded', expanded)},
-            {id: 'issues', parent: 'tasks', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
-            {id: 'prs', parent: 'tasks', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
-            {id: 'projects', parent: 'tasks', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
+            // Everything in one list, then the lists by kind.
+            {id: 'tasks', title: _('All Tasks'), iconName: 'view-list-bullet-symbolic', page: tasksPage.widget},
+            {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
+            {id: 'prs', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
+            {id: 'projects', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
             {heading: _('Settings')},
             {id: 'widgets', title: _('Desktop Widgets'), iconName: 'view-grid-symbolic',
                 page: buildWidgetsPage(ctx)},

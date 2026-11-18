@@ -7,6 +7,37 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Preview** an issue, pull or merge request, or project draft from its row in the window,
+  in a panel on the right beside the list: the description, which you can edit, then its
+  comments and reactions (read only) and a box to add a comment. Drag the panel's edge to
+  resize it. Project drafts show their description only.
+- A small **Markdown editor** for comments and descriptions, with a toolbar for bold, italic,
+  strikethrough, inline code, bulleted and numbered lists, quotes and code blocks, plus
+  Ctrl+B, Ctrl+I and Ctrl+Enter to post.
+- **Labels and assignees as chips** under an item's title, labels in their own colour: **×**
+  removes one, **+** lists what you can add. An arrow at the end of the row shows or hides
+  them; rows start collapsed.
+- The **Comment** button shows how many comments an item has, on its corner.
+- **Project drafts can be assigned** (to you, or whoever is already on them).
+- **Filters**: on **All Tasks**, **Kind**, **Accounts**, **Labels** and **Assignee** are
+  separate buttons, each a check list with counts; what you pick shows as chips on the row
+  below them. Issues and Pull requests have the same bar with **Labels** and **Assignee**,
+  and Projects with **Assignee**.
+
+### Changed
+
+- Rows in the window's lists no longer expand into a row of buttons: their actions are icons
+  on the title line (hover one for its name), and Open uses the external-link arrow. Tasks
+  rows have the same actions as the lists, rather than only opening in the browser.
+- Filter chips are rounded rectangles, like the rest of the window.
+- **Tasks** is now **All Tasks**, and Issues, Pull requests and Projects are back at the top
+  level of the sidebar, right after it.
+- In the window, the **Label** dropdown on Issues and Pull requests is replaced by the
+  filter bar. The top-bar menus keep their label filter.
+- The preview's comment box stays at the bottom of the panel while the comments scroll.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added

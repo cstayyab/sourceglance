@@ -86,7 +86,7 @@
 }
 
 .sourceglance-window .sourceglance-chip {
-    border-radius: 999px;
+    border-radius: 6px;
     padding: 2px 2px 2px 8px;
     background-color: alpha(currentColor, 0.1);
 }
@@ -101,4 +101,92 @@
     min-width: 24px;
     min-height: 24px;
     padding: 0;
+}
+
+/* Label and assignee chips under an item's title: small rounded rectangles. Label colours
+   come from generated classes (pages/common.js). */
+.sourceglance-window .sourceglance-item-chip {
+    background-color: alpha(currentColor, 0.08);
+    border-radius: 6px;
+    padding: 0 2px 0 8px;
+    font-size: smaller;
+    font-weight: bold;
+}
+
+.sourceglance-window .sourceglance-item-chip-remove {
+    min-width: 20px;
+    min-height: 20px;
+    padding: 0;
+    border-radius: 4px;
+    color: inherit;
+}
+
+.sourceglance-window .sourceglance-item-chip-remove image {
+    -gtk-icon-size: 12px;
+}
+
+.sourceglance-window .sourceglance-item-chip-add {
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px dashed alpha(currentColor, 0.35);
+    font-size: smaller;
+}
+
+.sourceglance-window .sourceglance-label-dot {
+    min-width: 10px;
+    min-height: 10px;
+    border-radius: 3px;
+    background-color: alpha(currentColor, 0.3);
+}
+
+/* Icon-only actions on an item's title line: flat, a size up from the chips. */
+.sourceglance-window .sourceglance-icon-action {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 6px;
+}
+
+.sourceglance-window .sourceglance-icon-action image {
+    -gtk-icon-size: 20px;
+}
+
+/* A count on an icon button's corner, in the button's own colour. */
+.sourceglance-window .sourceglance-badge {
+    background-color: @window_fg_color;
+    color: @window_bg_color;
+    border-radius: 6px;
+    min-width: 12px;
+    min-height: 16px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* A reaction in the preview: its emoji and count. */
+.sourceglance-window .sourceglance-reaction {
+    background-color: alpha(currentColor, 0.08);
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-size: smaller;
+}
+
+/* How many of a Tasks filter button's choices are checked. */
+.sourceglance-window .sourceglance-filter-count {
+    background-color: @window_fg_color;
+    color: @window_bg_color;
+    border-radius: 5px;
+    padding: 0 5px;
+    font-size: smaller;
+    font-weight: bold;
+}
+
+/* The right panel (an item's preview): docked beside the list, its own small header. */
+.sourceglance-window .sourceglance-panel {
+    background-color: @window_bg_color;
+}
+
+.sourceglance-window .sourceglance-panel-head {
+    min-height: 46px;
+    padding: 0 6px;
 }

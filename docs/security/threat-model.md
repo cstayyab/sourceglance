@@ -2,7 +2,8 @@
 
 Reviewed for every minor release and whenever a PR touches authentication, networking,
 storage, or anything rendered from GitHub or GitLab data. Last reviewed: **2026-11-18
-(v0.6.0: the Tasks list, no change to the model: it opens links through the same checks;
+(v0.7.0: the window's preview shows descriptions, comments and reactions, and label colours
+reach CSS: see T6 and T28; v0.6.0: the Tasks list, no change to the model: it opens links through the same checks;
 v0.5.0: several accounts and self-hosted instances,
 [ADR 0007](../adr/0007-multiple-accounts-and-self-hosted-instances.md); update notice at
 login; recommended wallpaper)**.
@@ -44,7 +45,7 @@ that account's token and nothing else.
 | T3 | Token sent to the wrong host / intercepted | Requests go only to `api.github.com`, `gitlab.com` and instances the user added; each account's token goes only to its own instance; Soup verifies TLS with the system CA store | ✅ v0.1, extended by ADR 0007 |
 | T4 | Over-privileged token | Docs and Settings recommend a fine-grained, read-only token (Issues + Metadata) | ✅ v0.1 |
 | T5 | Search-query injection via the repository filter | Repo names validated against `owner/name` before building `repo:` qualifiers | ✅ v0.1 |
-| T6 | Markup injection from issue titles | Titles rendered as plain text (`St.Label` without markup) | ✅ v0.1 |
+| T6 | Markup injection from issue titles | Titles rendered as plain text (`St.Label` without markup); in the window, titles, descriptions, comments, label names and logins are plain `Gtk.Label`s and tooltips, never Pango markup or rendered Markdown | ✅ v0.1, extended v0.7 |
 | T7 | Malicious link opened from an issue | Only links on `https://github.com/`, `https://gitlab.com/` or a signed-in account's own instance are opened (`isSafeLink`, `isSafeAccountUrl`) | ✅ v0.1, extended by ADR 0007 |
 | T8 | Desktop freeze from blocking I/O or leaks | All I/O async and cancellable; everything released in `disable()`; smoke test enables/disables 10× | ✅ v0.1 |
 | T9 | Rate-limit abuse / hammering GitHub | Minimum 1-minute interval, debounced settings changes, honours rate-limit reset | ✅ v0.1 |
@@ -66,6 +67,7 @@ that account's token and nothing else.
 | T25 | Tokens with more reach than needed, or left valid after sign-out | Each sign-in method states what it reaches; token pages pre-fill the scopes needed; signing out says a personal access token stays valid until revoked | ✅ ADR 0007 |
 | T26 | Release notes from GitHub shown in the update notification | Fetched anonymously from this repo's releases API only; cut to short plain-text first sentences (`releaseNotesSummary`) and shown without markup; Install runs the existing download-and-verify flow (T14), never a URL from the notes | ✅ v0.5 |
 | T27 | Source Glance changing the desktop wallpaper | Only on Apply or Reset in Settings; only the six `org.gnome.desktop.background` keys, set to fixed values (Adwaita from the system's gnome-backgrounds) or the user's own saved values; the saved copy is dropped as soon as the wallpaper changes any other way | ✅ v0.5 |
+| T28 | CSS injection from a label colour | Label colours reach the window's CSS only as six hex digits (`parseLabels`, `parseGitLabLabels`, `labelTextColor`); anything else gets the neutral chip | ✅ v0.7 |
 
 ## Out of scope
 

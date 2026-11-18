@@ -31,21 +31,27 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   group or as tabs in one menu, each with its count (0 included).
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
+- **Preview and edit in the window**: read an item's description, comments and reactions,
+  edit the description and add a comment, all with a small Markdown editor. Labels and
+  assignees show as chips under the title: × removes one, + adds one.
 - **Several accounts, self-hosted too**: add as many GitHub and GitLab accounts as you like,
   each with its own collapsible section in every list, menu and widget. A wizard in
   **Settings → Accounts** connects GitHub Enterprise Server and GitLab self-managed. Counts
   add up across all of them.
 - **Collapsible repositories**: click a repository heading to hide or show its items, in
   the window and the menus. Source Glance remembers what you collapsed.
-- **Tasks**: everything assigned to you in one list, newest first. Filter it like a tag
-  search, by kind (issues, pull requests, project drafts) or assignee (one of your accounts),
-  each filter a chip you remove with ×. Click a task to open it in your browser. The lists by
-  kind sit under it in the sidebar.
+- **All Tasks**: everything assigned to you in one list, newest first, with the same actions
+  as the lists. Filter it with **Kind**, **Accounts**, **Labels** and **Assignee**, each a
+  check list; what you pick shows as chips below them, each removed with ×. Issues, Pull
+  requests and Projects follow it in the sidebar, with **Labels** and **Assignee** filters
+  (Projects: **Assignee**), since their kind and accounts are already the page and its
+  sections.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
 - **Search** from the window's title bar: one box filters Issues, Pull requests and Projects
   by title, repository, number, label, person or board status, with match counts. Clear it
   to see everything again.
-- **Filter by label**, and see how many closed or merged items are still assigned to you.
+- **Filter by label** in the menus, and see how many closed or merged items are still
+  assigned to you.
 - **Main window** with a sidebar for your lists and settings (Desktop Widgets, System Tray,
   Accounts, System Start, About), a splash screen, and an app grid icon, all in the top
   bar's blue. It's an app of its own, so the dock and Alt+Tab show it as Source Glance.
@@ -208,7 +214,7 @@ separate buttons or **tabs in one menu**.
 
 ### Actions
 
-Click any issue, pull request or merge request, in a menu or in the window, for its actions:
+Click any issue, pull request or merge request in a menu for its actions:
 
 - **Open on GitHub** / **Open on GitLab**
 - **Comment…**
@@ -217,10 +223,26 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 - **Assignees…** and **Labels…**
 - **Board: Status…** for each project board it's on
 
+In the window, each row has its actions as icons on the title line (hover one for its name):
+
+- **Preview**: opens a panel on the right of the window, beside the list, with the
+  description, which you can edit, then the comments and reactions (read only) and a box to
+  add a comment. Drag its edge to resize it. Project drafts show their description only.
+- **Comment**, with the number of comments on the button's corner.
+- **Close**, and a button for each project board it's on, to move it to another status.
+- **Open** in your browser.
+- The **arrow** shows or hides its labels and assignees, as chips: labels in their own
+  colour. **×** removes one; **+** lists what you can add. Rows start collapsed.
+
+Comments and descriptions are written with a small Markdown editor: bold, italic,
+strikethrough, inline code, bulleted and numbered lists, quotes and code blocks, from the
+toolbar or with Ctrl+B and Ctrl+I. Ctrl+Enter posts. Project drafts can be assigned (to you
+or whoever is already on them) and previewed; GitHub drafts have no labels or comments.
+
 ### Main window
 
-The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
-and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
+The window has **All Tasks**, then your **Issues**, **Pull requests** and **Projects**, in a
+sidebar with counts and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
 Tray**, **Accounts** (all your GitHub and GitLab accounts, including self-hosted ones) and **System Start** (start at login,
 app grid icon). **About** shows the version and the author, with links to report an issue or
 fork the repository and contribute.

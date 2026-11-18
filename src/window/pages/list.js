@@ -1,6 +1,6 @@
-// Lists → Issues / Pull requests: one section per account, items grouped by repository, a
-// label filter, actions per item, and the closed-but-assigned count. Text from GitHub and
-// GitLab is always shown as plain text.
+// Lists → Issues / Pull requests: one section per account, items grouped by repository, the
+// Labels and Assignee filters, actions per item, and the closed-but-assigned count. Text
+// from GitHub and GitLab is always shown as plain text.
 import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
@@ -8,18 +8,18 @@ import Gtk from 'gi://Gtk';
 import {gettext as _, ngettext} from '../i18n.js';
 
 import {
-    filterByLabel,
+    asTask,
+    filterGroupsBy,
     groupCollapseId,
     isGroupCollapsed,
     itemKey,
-    itemRef,
-    labelOptions,
     searchGroups,
     sourceBadge,
     toggleId,
 } from '../../lib/model.js';
 import {closedPageUrl} from '../../lib/requests.js';
-import {actionButton, collapsibleGroup, noMatchesGroup, statusText} from './common.js';
+import {collapsibleGroup, issueRow, noMatchesGroup, statusText} from './common.js';
+import {FilterBar} from './filterBar.js';
 
 // Built on use: gettext only works once the window has set up translations, not at import.
 function copyFor(key) {
@@ -46,19 +46,6 @@ function copyFor(key) {
     }[key];
 }
 
-function itemSubtitle(item) {
-    const parts = [];
-    if (item.kind === 'pr' && item.reason === 'review')
-        parts.push(_('review requested'));
-    if (item.labels.length)
-        parts.push(item.labels.map(label => label.name).join(', '));
-    if (item.assignees.length)
-        parts.push(item.assignees.map(login => `@${login}`).join(' '));
-    for (const board of item.boards ?? [])
-        parts.push(`${board.title}: ${board.status ?? _('No status')}`);
-    return parts.join('  ·  ');
-}
-
 export class ListPage {
     /**
      * `key` is 'issues' or 'prs'; `icons` has issue, pr, label, projects (Gio.Icon);
@@ -70,8 +57,6 @@ export class ListPage {
         this._actions = actions;
         this._repos = repos;
         this._settings = settings;
-        // Label chosen per account section; null shows everything.
-        this._filters = {};
         this._state = null;
         this._groups = [];
         this._onClearSearch = onClearSearch;
@@ -80,10 +65,15 @@ export class ListPage {
         this._terms = [];
 
         this._statusPage = new Adw.StatusPage();
-        this._page = new Adw.PreferencesPage();
+        this._page = new Adw.PreferencesPage({vexpand: true});
+        // Accounts and kinds are already this page's sections and the page itself.
+        this._bar = new FilterBar({types: ['label', 'assignee'], onChange: () => this._state && this.update(this._state)});
+        const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+        list.append(this._bar.widget);
+        list.append(this._page);
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');
-        this.widget.add_named(this._page, 'list');
+        this.widget.add_named(list, 'list');
     }
 
     /** Shows only the items matching `terms`; [] shows the full list again. */
@@ -114,6 +104,9 @@ export class ListPage {
         };
 
         const copy = copyFor(this._key);
+        const items = sources.flatMap(src => (this._key === 'issues' ? src.groups : src.prGroups) ?? [])
+            .flatMap(group => group.issues);
+        this._bar.update(items.map(asTask), sources);
         if (sources.length === 1) {
             this._renderSource(sources[0], copy, state, add);
             return;
@@ -149,7 +142,7 @@ export class ListPage {
         }
     }
 
-    /** One account: its status, label filter, items by repository, and closed footer. */
+    /** One account: its status, items by repository (filtered), and closed footer. */
     _renderSource(src, copy, state, add) {
         const gitlab = src.platform === 'gitlab';
         const groups = this._key === 'issues' ? src.groups : src.prGroups;
@@ -166,32 +159,7 @@ export class ListPage {
             add(note);
             return;
         }
-        const options = labelOptions(groups);
-        const filter = options.some(option => option.name === this._filters[src.key]) ? this._filters[src.key] : null;
-        this._filters[src.key] = filter;
-
-        const filterGroup = new Adw.PreferencesGroup();
-        const names = [null, ...options.map(option => option.name)];
-        const combo = new Adw.ComboRow({
-            title: _('Label'),
-            model: Gtk.StringList.new([_('All labels'), ...options.map(option => `${option.name} (${option.count})`)]),
-            selected: Math.max(0, names.indexOf(filter)),
-            sensitive: options.length > 0,
-            subtitle: options.length ? '' : _('No labels on these items yet'),
-        });
-        combo.add_prefix(new Gtk.Image({gicon: this._icons.label}));
-        combo.connect('notify::selected', () => {
-            this._filters[src.key] = names[combo.selected] ?? null;
-            // Rebuild after this signal: the combo itself is replaced.
-            GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-                this.update(this._state);
-                return GLib.SOURCE_REMOVE;
-            });
-        });
-        filterGroup.add(combo);
-        add(filterGroup);
-
-        const shown = filterByLabel(searchGroups(groups, this._terms), filter);
+        const shown = filterGroupsBy(searchGroups(groups ?? [], this._terms), this._bar.filters);
         if (shown.length === 0 && this._terms.length) {
             add(noMatchesGroup(this._query, () => this._onClearSearch()));
         } else if (shown.length === 0) {
@@ -233,38 +201,6 @@ export class ListPage {
     }
 
     _itemRow(item, busy) {
-        const row = new Adw.ExpanderRow({
-            title: `${itemRef(item)}  ${item.title}`,
-            subtitle: busy ? _('Working…') : itemSubtitle(item),
-            use_markup: false,
-        });
-        row.add_prefix(new Gtk.Image({gicon: item.kind === 'pr' ? this._icons.pr : this._icons.issue}));
-
-        const buttons = new Gtk.FlowBox({
-            selection_mode: Gtk.SelectionMode.NONE,
-            max_children_per_line: 8,
-            column_spacing: 6,
-            row_spacing: 6,
-            margin_top: 8,
-            margin_bottom: 8,
-            margin_start: 12,
-            margin_end: 12,
-            sensitive: !busy,
-        });
-        const a = this._actions;
-        buttons.append(actionButton({iconName: 'web-browser-symbolic',
-            label: a.openLabel(item), onClick: () => a.open(item.url)}));
-        buttons.append(actionButton({iconName: 'chat-message-new-symbolic', label: _('Comment'), onClick: () => a.comment(item)}));
-        buttons.append(item.kind === 'pr'
-            ? actionButton({gicon: this._icons.prClosed, label: _('Close'), onClick: () => a.close(item)})
-            : actionButton({gicon: this._icons.issueClosed, label: _('Close'), onClick: () => a.close(item)}));
-        buttons.append(actionButton({iconName: 'system-users-symbolic', label: _('Assignees'), onClick: () => a.assignees(item)}));
-        buttons.append(actionButton({gicon: this._icons.label, label: _('Labels'), onClick: () => a.labels(item)}));
-        for (const board of item.boards ?? []) {
-            buttons.append(actionButton({gicon: this._icons.projects, label: `${board.title}: ${board.status ?? _('No status')}`,
-                onClick: () => a.status(item, board)}));
-        }
-        row.add_row(new Gtk.ListBoxRow({child: buttons, activatable: false, selectable: false}));
-        return row;
+        return issueRow({item, busy, icons: this._icons, actions: this._actions});
     }
 }

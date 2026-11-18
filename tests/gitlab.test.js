@@ -74,7 +74,7 @@ test('parseGitLabItems maps issues and merge requests to the shared item shape',
     assert.deepEqual(item, {
         platform: 'gitlab', kind: 'issue', reason: 'assigned', number: 7, title: 'Fix CI',
         url: 'https://gitlab.com/g/p/-/issues/7', repo: 'g/p', projectId: 42, nodeId: null, state: 'open',
-        labels: [{name: 'ci', color: null}], assignees: ['omer'], assigneeIds: [5],
+        labels: [{name: 'ci', color: null}], assignees: ['omer'], assigneeIds: [5], comments: 0,
         updatedAt: '2026-11-16T00:00:00Z', boards: [],
     });
     const [mr] = parseGitLabItems([{...json[0], references: {full: 'g/sub/p!3'}, iid: 3}], 'mr-review');
