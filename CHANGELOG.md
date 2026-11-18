@@ -12,6 +12,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - When you log in and a newer version is out, a notification says so with short release
   notes. **Install** opens the window and starts the update, as **Update available** does.
   Turn it off with **Check for updates** in Settings → System Start.
+- Repository headings in the lists collapse: click one to hide or show its issues or pull
+  requests, in the window and in the top-bar menus alike. Project boards in the window's
+  Projects list collapse the same way. The heading keeps its count, Source Glance remembers
+  what you collapsed, and a search shows matches in collapsed repositories too.
 
 ### Changed
 

@@ -848,3 +848,21 @@ export function searchCount(id, state, terms) {
         return 0;
     }
 }
+
+/**
+ * The id a repository group (or project board, by its node id) is remembered by in the
+ * `collapsed-groups` setting, e.g. issues:github:owner/repo or projects:github:PVT_….
+ */
+export function groupCollapseId(list, platform, name) {
+    return `${list}:${platform}:${name}`;
+}
+
+/** `ids` with `id` added, or without it if it was there (collapsed ↔ expanded). */
+export function toggleId(ids, id) {
+    return ids.includes(id) ? ids.filter(other => other !== id) : [...ids, id];
+}
+
+/** Whether a group shows collapsed. A search expands every group, so its matches show. */
+export function isGroupCollapsed(collapsed, id, terms = []) {
+    return terms.length === 0 && collapsed.includes(id);
+}

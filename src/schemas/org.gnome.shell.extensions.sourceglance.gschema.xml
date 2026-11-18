@@ -32,6 +32,11 @@
       <summary>Collapsed sections</summary>
       <description>GitHub or GitLab sections collapsed in the lists, as list:platform (e.g. issues:gitlab).</description>
     </key>
+    <key name="collapsed-groups" type="as">
+      <default>[]</default>
+      <summary>Collapsed repositories</summary>
+      <description>Repositories and project boards collapsed in the lists, as list:platform:name (e.g. issues:github:owner/repo, or projects:github: and the board's node id).</description>
+    </key>
     <key name="widgets" type="as">
       <default>['summary']</default>
       <summary>Desktop widgets</summary>

@@ -7,8 +7,19 @@ import Gtk from 'gi://Gtk';
 import {gettext as _, ngettext} from '../i18n.js';
 
 import {gitlabClosedPageUrl} from '../../lib/gitlabModel.js';
-import {filterByLabel, itemKey, itemRef, labelOptions, listBadge, searchGroups, searchPageUrl} from '../../lib/model.js';
-import {actionButton, noMatchesGroup, statusText} from './common.js';
+import {
+    filterByLabel,
+    groupCollapseId,
+    isGroupCollapsed,
+    itemKey,
+    itemRef,
+    labelOptions,
+    listBadge,
+    searchGroups,
+    searchPageUrl,
+    toggleId,
+} from '../../lib/model.js';
+import {actionButton, collapsibleGroup, noMatchesGroup, statusText} from './common.js';
 
 // Built on use: gettext only works once the window has set up translations, not at import.
 function copyFor(key) {
@@ -137,9 +148,7 @@ export class ListPage {
             const toggle = new Gtk.Button({icon_name: collapsed ? 'pan-end-symbolic' : 'pan-down-symbolic',
                 tooltip_text: collapsed ? _('Show') : _('Hide'), css_classes: ['flat'], valign: Gtk.Align.CENTER});
             toggle.connect('clicked', () => {
-                const current = this._settings.get_strv('collapsed-sections');
-                this._settings.set_strv('collapsed-sections',
-                    current.includes(id) ? current.filter(other => other !== id) : [...current, id]);
+                this._settings.set_strv('collapsed-sections', toggleId(this._settings.get_strv('collapsed-sections'), id));
                 GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
                     this.update(this._state);
                     return GLib.SOURCE_REMOVE;
@@ -201,10 +210,22 @@ export class ListPage {
             empty.add(new Adw.ActionRow({title: gitlab ? copy.emptyGitLab : copy.empty, use_markup: false, css_classes: ['dim-label']}));
             add(empty);
         }
+        const collapsedGroups = this._settings.get_strv('collapsed-groups');
         for (const group of shown) {
-            const repoGroup = new Adw.PreferencesGroup({title: GLib.markup_escape_text(group.repo, -1)});
-            for (const item of group.issues)
-                repoGroup.add(this._itemRow(item, state.busy.includes(itemKey(item))));
+            // Same ids as the top-bar menus, so a repository collapses in both places.
+            const id = groupCollapseId(this._key, src.platform, group.repo);
+            const collapsed = isGroupCollapsed(collapsedGroups, id, this._terms);
+            const repoGroup = collapsibleGroup({
+                title: group.repo, count: group.issues.length, collapsed, toggleable: this._terms.length === 0,
+                onToggle: () => {
+                    this._settings.set_strv('collapsed-groups', toggleId(this._settings.get_strv('collapsed-groups'), id));
+                    this.update(this._state);
+                },
+            });
+            if (!collapsed) {
+                for (const item of group.issues)
+                    repoGroup.add(this._itemRow(item, state.busy.includes(itemKey(item))));
+            }
             add(repoGroup);
         }
 

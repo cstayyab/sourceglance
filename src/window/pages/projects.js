@@ -1,19 +1,28 @@
 // Lists → Projects: your boards' draft items (cards that are neither issues nor PRs),
 // grouped by board and status, with Move to status and Open board.
 import Adw from 'gi://Adw';
-import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _} from '../i18n.js';
 
-import {draftTarget, groupDraftsByStatus, isDoneStatus, itemKey, searchBoards} from '../../lib/model.js';
-import {actionButton, noMatchesGroup, statusText} from './common.js';
+import {
+    draftTarget,
+    groupCollapseId,
+    groupDraftsByStatus,
+    isDoneStatus,
+    isGroupCollapsed,
+    itemKey,
+    searchBoards,
+    toggleId,
+} from '../../lib/model.js';
+import {actionButton, collapsibleGroup, noMatchesGroup, statusText} from './common.js';
 
 export class ProjectsPage {
     /** `onClearSearch` empties the window's search box. */
-    constructor({icons, actions, onClearSearch}) {
+    constructor({icons, actions, settings, onClearSearch}) {
         this._icons = icons;
         this._actions = actions;
+        this._settings = settings;
         this._onClearSearch = onClearSearch;
         this._groups = [];
         this._state = null;
@@ -79,17 +88,29 @@ export class ProjectsPage {
             this._add(noMatchesGroup(this._query, () => this._onClearSearch()));
             return;
         }
+        const collapsedGroups = this._settings.get_strv('collapsed-groups');
         for (const board of boards) {
-            const group = new Adw.PreferencesGroup({title: GLib.markup_escape_text(board.title, -1)});
+            let open = null;
             if (board.url) {
-                const open = new Gtk.Button({icon_name: 'web-browser-symbolic', tooltip_text: _('Open board'),
+                open = new Gtk.Button({icon_name: 'web-browser-symbolic', tooltip_text: _('Open board'),
                     css_classes: ['flat'], valign: Gtk.Align.CENTER});
                 open.connect('clicked', () => this._actions.open(board.url));
-                group.set_header_suffix(open);
             }
-            for (const status of groupDraftsByStatus(board)) {
-                for (const draft of status.drafts)
-                    group.add(this._draftRow(board, draft, status.status, state.busy));
+            const id = groupCollapseId('projects', 'github', board.projectId);
+            const collapsed = isGroupCollapsed(collapsedGroups, id, this._terms);
+            const group = collapsibleGroup({
+                title: board.title, count: board.drafts.length, collapsed, toggleable: this._terms.length === 0,
+                suffix: open,
+                onToggle: () => {
+                    this._settings.set_strv('collapsed-groups', toggleId(this._settings.get_strv('collapsed-groups'), id));
+                    this.update(this._state);
+                },
+            });
+            if (!collapsed) {
+                for (const status of groupDraftsByStatus(board)) {
+                    for (const draft of status.drafts)
+                        group.add(this._draftRow(board, draft, status.status, state.busy));
+                }
             }
             this._add(group);
         }

@@ -10,7 +10,7 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {gtypeName} from './model.js';
+import {gtypeName, toggleId} from './model.js';
 import {TabBar} from './tabs.js';
 import {VIEWS, addAppFooter, badgeText} from './views.js';
 
@@ -160,10 +160,10 @@ class ToolbarButton extends PanelMenu.Button {
             icons: this._icons,
             scheduleRebuild: () => this._scheduleRebuild(),
             repos: this._callbacks.getRepos(),
-            collapsed: this._getCollapsed(),
-            toggleCollapsed: id => {
-                const current = this._getCollapsed();
-                this._setCollapsed(current.includes(id) ? current.filter(other => other !== id) : [...current, id]);
+            collapsed: this._getCollapsed('collapsed-sections'),
+            collapsedGroups: this._getCollapsed('collapsed-groups'),
+            toggleCollapsed: (id, key = 'collapsed-sections') => {
+                this._setCollapsed(key, toggleId(this._getCollapsed(key), id));
                 this._scheduleRebuild();
             },
             ...this._callbacks,

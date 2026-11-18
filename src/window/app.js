@@ -79,7 +79,7 @@ export function fillWindow(window, {settings, dir, version}) {
     };
     const issuesPage = new ListPage({key: 'issues', icons, actions, repos, settings, onClearSearch});
     const prsPage = new ListPage({key: 'prs', icons, actions, repos, settings, onClearSearch});
-    const projectsPage = new ProjectsPage({icons, actions, onClearSearch});
+    const projectsPage = new ProjectsPage({icons, actions, settings, onClearSearch});
     pages.push(issuesPage, prsPage, projectsPage);
 
     search.connect('search-changed', () => {

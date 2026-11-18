@@ -20,7 +20,7 @@ import {lookupToken} from './lib/tokenStore.js';
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
 const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
-    'collapsed-sections', 'open-page', 'install-update'];
+    'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -258,8 +258,9 @@ export default class SourceglanceExtension extends Extension {
             onAction: (item, action, arg) => this._actions.run(item, action, arg),
             getRepos: () => this._settings?.get_strv('repositories') ?? [],
             getAutostart: () => this._settings?.get_boolean('start-automatically') ?? true,
-            getCollapsed: () => this._settings?.get_strv('collapsed-sections') ?? [],
-            setCollapsed: ids => this._settings?.set_strv('collapsed-sections', ids),
+            // `key` is collapsed-sections (GitHub/GitLab) or collapsed-groups (repositories).
+            getCollapsed: key => this._settings?.get_strv(key) ?? [],
+            setCollapsed: (key, ids) => this._settings?.set_strv(key, ids),
             setAutostart: active => this._settings?.set_boolean('start-automatically', active),
             onQuit: () => this._quit(),
         };
