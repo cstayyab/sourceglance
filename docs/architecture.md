@@ -6,8 +6,11 @@ It runs in two processes that share code under `src/lib/`:
 - **Shell process** — `extension.js` runs inside `gnome-shell`. It owns the panel
   indicator and the refresh loop. A crash or blocking call here freezes the desktop, so
   everything is async and every resource is released in `disable()`.
-- **Preferences process** — `prefs.js` runs in a separate `gjs` process when the user opens
-  Settings. It validates and stores the token.
+- **Window process** — the window (`window/app.js`) runs in a separate `gjs` process. The app
+  icon and the top bar open it in Source Glance's own app (`launcher.js`, app ID
+  `io.github.omer_gh.sourceglance`, matching the app icon's `.desktop` file), so the dock shows
+  it as Source Glance. GNOME's Extensions app can still open the same window through `prefs.js`.
+  It validates and stores the token.
 
 ```
  ┌──────────────────────── gnome-shell process ────────────────────────┐
@@ -35,7 +38,8 @@ It runs in two processes that share code under `src/lib/`:
 | Module | Responsibility | Depends on |
 | -------- | ---------------- | ------------ |
 | `extension.js` | Lifecycle (`enable`/`disable`), refresh timer, reacts to settings and keyring changes, builds the state passed to the indicator | everything below |
-| `prefs.js` | Settings window: token sign-in/out, repo filter, interval | `tokenStore`, `github` |
+| `launcher.js` | Source Glance's own app: splash, then the window (`window/app.js`); `--open` skips the splash | `window/app.js` |
+| `prefs.js` | The same window when GNOME's Extensions app opens it | `window/app.js` |
 | `lib/indicator.js` | `PanelMenu.Button` subclass. Pure view: `render(state)` rebuilds the menu. No network or storage access. | `model` |
 | `lib/github.js` | `GitHubClient`: authenticated REST calls with Soup 3, maps HTTP failures to typed errors | `model` |
 | `lib/tokenStore.js` | Read/write/clear the token in the keyring via libsecret | — |

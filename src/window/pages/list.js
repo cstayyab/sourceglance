@@ -4,13 +4,13 @@ import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _, ngettext} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _, ngettext} from '../i18n.js';
 
 import {gitlabClosedPageUrl} from '../../lib/gitlabModel.js';
 import {filterByLabel, itemKey, itemRef, labelOptions, listBadge, searchGroups, searchPageUrl} from '../../lib/model.js';
 import {actionButton, noMatchesGroup, statusText} from './common.js';
 
-// Built on use: gettext only works once GNOME has registered the extension, not at import.
+// Built on use: gettext only works once the window has set up translations, not at import.
 function copyFor(key) {
     return {
         issues: {

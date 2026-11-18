@@ -12,7 +12,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$UUID"
 
 if ! gnome-extensions info "$UUID" >/dev/null 2>&1; then
-    echo "This session doesn't know sourceglance yet. Run 'make install', log out and back in" >&2
+    echo "This session doesn't know Source Glance yet. Run 'make install', log out and back in" >&2
     echo "once, then use 'make reload' from then on." >&2
     exit 1
 fi
@@ -46,7 +46,7 @@ for _ in $(seq 1 20); do
     [[ $state == ACTIVE || $state == ERROR ]] && break
     sleep 0.25
 done
-echo "Reloaded sourceglance (build $stamp): $state"
+echo "Reloaded Source Glance (build $stamp): $state"
 if [[ $state != ACTIVE ]]; then
     echo "Errors: journalctl --user -b -o cat | grep -i -A8 sourceglance" >&2
     exit 1

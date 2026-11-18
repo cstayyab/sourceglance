@@ -10,6 +10,7 @@ import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
 import {GitLabClient} from './lib/gitlab.js';
 import {loadGitLab} from './lib/gitlabLoader.js';
 import {ToolbarButton} from './lib/indicator.js';
+import {UpdateNotice} from './lib/updateNotice.js';
 import {DesktopWidgets} from './lib/widgets.js';
 import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
 import {GITLAB_CLIENT_ID} from './lib/config.js';
@@ -19,7 +20,7 @@ import {lookupToken} from './lib/tokenStore.js';
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
 const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
-    'collapsed-sections', 'open-page'];
+    'collapsed-sections', 'open-page', 'install-update'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -113,9 +114,26 @@ export default class SourceglanceExtension extends Extension {
         });
 
         this._syncLauncher();
+        const atLogin = sessionRunning === null;
         sessionRunning ??= this._settings.get_boolean('start-automatically');
         if (sessionRunning)
             this._start();
+        // Once per login (not after the lock screen), say if a newer version is out.
+        if (atLogin && sessionRunning) {
+            this._updateNotice = new UpdateNotice({
+                client: this._client,
+                settings: this._settings,
+                version: this.metadata['version-name'] ?? 'dev',
+                gicon: Gio.FileIcon.new(this.dir.get_child('icons').get_child('sourceglance-app.svg')),
+                onInstall: () => this._installUpdate(),
+            });
+        }
+    }
+
+    /** Opens the window and starts its update, as if you'd clicked "Update available" there. */
+    _installUpdate() {
+        this._settings?.set_boolean('install-update', true);
+        this._openWindow();
     }
 
     /** Adds or removes the app grid icon, following the "Show in app grid" setting. */
@@ -158,13 +176,15 @@ export default class SourceglanceExtension extends Extension {
         this._buttons = [];
         this._widgets?.destroy();
         this._widgets = null;
-        Main.notify('sourceglance', _('sourceglance has quit. To start it again, open its Settings ' +
+        Main.notify('Source Glance', _('Source Glance has quit. To start it again, open its Settings ' +
             'from the Extensions app and choose Start now.'));
     }
 
     disable() {
         // sessionRunning is left as is, so the lock screen doesn't undo Quit.
         this._running = false;
+        this._updateNotice?.destroy();
+        this._updateNotice = null;
         this._cancellable?.cancel();
         this._cancellable = null;
 
@@ -209,6 +229,14 @@ export default class SourceglanceExtension extends Extension {
     /** Opens the sourceglance window, on `page` if given (the window reads `open-page`). */
     _openWindow(page = '') {
         this._settings.set_string('open-page', page);
+        // In Source Glance's own app (launcher.js), so the dock shows it as Source Glance.
+        try {
+            Gio.Subprocess.new(['gjs', '-m', this.dir.get_child('launcher.js').get_path(), '--open'],
+                Gio.SubprocessFlags.NONE);
+            return;
+        } catch (e) {
+            console.warn(`sourceglance: could not open the window: ${e.message}`);
+        }
         // openPreferences() returns a promise on newer Shells; it rejects if prefs fail to open.
         Promise.resolve(this.openPreferences()).catch(e =>
             console.warn(`sourceglance: could not open Settings: ${e.message}`));

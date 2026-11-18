@@ -71,7 +71,12 @@
     <key name="check-updates" type="b">
       <default>true</default>
       <summary>Check for updates</summary>
-      <description>When the sourceglance window opens, ask GitHub whether a newer release is out and show "Update available" in its title bar.</description>
+      <description>When you log in and when the sourceglance window opens, ask GitHub whether a newer release is out. At login a notification says so; in the window, "Update available" shows in its title bar.</description>
+    </key>
+    <key name="install-update" type="b">
+      <default>false</default>
+      <summary>Install update request</summary>
+      <description>Internal. Set by the update notification's Install button so the window starts the update, as if "Update available" were clicked.</description>
     </key>
     <key name="open-page" type="s">
       <default>''</default>

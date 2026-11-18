@@ -24,11 +24,11 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") [--nested | --session] [--accept-license] [--help]
 
-  --nested          Run a second GNOME Shell in a window and load sourceglance there
+  --nested          Run a second GNOME Shell in a window and load Source Glance there
                     (default). Safe for your desktop. Good for checking the UI;
                     signing in may not work because the nested session can't reach
                     your keyring.
-  --session         Install and enable sourceglance in your real desktop session. Use
+  --session         Install and enable Source Glance in your real desktop session. Use
                     this to test signing in. A bug here can affect your desktop.
   --accept-license  Accept the MIT License non-interactively (for scripts). Only use
                     this if you have read the license at $LICENSE_URL
@@ -69,14 +69,14 @@ done
 # ---------------------------------------------------------------------------
 cat <<EOF
 
-${bold}sourceglance local preview${reset}
+${bold}Source Glance local preview${reset}
 
 ${yellow}${bold}WARNING — read before continuing${reset}
-sourceglance is ${bold}pre-release software${reset}. This script will:
+Source Glance is ${bold}pre-release software${reset}. This script will:
   • check for required tools and, ${bold}only if you confirm${reset}, install missing ones
     with ${bold}sudo apt install${reset} (system-wide changes, needs your password);
   • copy the extension into ${INSTALL_DIR}
-    (replacing any sourceglance already there);
+    (replacing any Source Glance already there);
 EOF
 if [[ $MODE == nested ]]; then
     cat <<EOF
@@ -85,7 +85,7 @@ if [[ $MODE == nested ]]; then
 EOF
 else
     cat <<EOF
-  • ${red}${bold}enable sourceglance in your real desktop session.${reset} GNOME Shell extensions run
+  • ${red}${bold}enable Source Glance in your real desktop session.${reset} GNOME Shell extensions run
     inside the desktop itself: a bug can freeze or crash your session and you
     could lose unsaved work. Save your work first.
 EOF
@@ -95,7 +95,7 @@ cat <<EOF
     only to api.github.com. Use a fine-grained, read-only token.
 
 ${bold}License and warranty${reset}
-sourceglance is licensed under the MIT License:
+Source Glance is licensed under the MIT License:
   ${LICENSE_URL}
   (also in ${ROOT}/LICENSE; about the MIT License: ${MIT_URL})
 
@@ -121,9 +121,9 @@ echo
 # ---------------------------------------------------------------------------
 # 2. One-time setup: check and install requirements
 # ---------------------------------------------------------------------------
-command -v gnome-shell >/dev/null || die "GNOME Shell is not installed. sourceglance only runs on GNOME."
+command -v gnome-shell >/dev/null || die "GNOME Shell is not installed. Source Glance only runs on GNOME."
 SHELL_MAJOR=$(gnome-shell --version | grep -oE '[0-9]+' | head -1)
-(( SHELL_MAJOR >= 46 )) || die "GNOME Shell $SHELL_MAJOR found; sourceglance needs 46 or newer (Ubuntu 24.04+)."
+(( SHELL_MAJOR >= 46 )) || die "GNOME Shell $SHELL_MAJOR found; Source Glance needs 46 or newer (Ubuntu 24.04+)."
 echo "Found GNOME Shell $SHELL_MAJOR."
 
 missing_pkgs=()
@@ -150,7 +150,7 @@ fi
 # 3. Install the extension files
 # ---------------------------------------------------------------------------
 if [[ -d $INSTALL_DIR ]]; then
-    confirm "Replace the existing sourceglance in $INSTALL_DIR with this checkout?" \
+    confirm "Replace the existing Source Glance in $INSTALL_DIR with this checkout?" \
         || die "Cancelled. Nothing was changed."
 fi
 mkdir -p "$INSTALL_DIR"
@@ -165,7 +165,7 @@ if [[ $MODE == session ]]; then
     if gnome-extensions info "$UUID" >/dev/null 2>&1; then
         gnome-extensions enable "$UUID"
         echo
-        echo "${bold}sourceglance is enabled in your session.${reset} Click its icon in the top bar."
+        echo "${bold}Source Glance is enabled in your session.${reset} Click its icon in the top bar."
         echo "Code changes only take effect after you log out and back in."
     else
         echo
@@ -190,7 +190,7 @@ mkdir -p "$PREVIEW_DIR/config"
 cat <<EOF
 
 Starting a nested GNOME Shell. ${bold}Close its window to stop the preview.${reset}
-sourceglance is enabled automatically; look for its icon in the nested top bar.
+Source Glance is enabled automatically; look for its icon in the nested top bar.
 Signing in may not work in the nested session; use --session to test sign-in.
 Logs are written to $PREVIEW_DIR/shell.log
 
@@ -211,7 +211,7 @@ dbus-run-session -- bash -c '
         sleep 1
     done
     gnome-extensions enable "$UUID" 2>/dev/null \
-        || echo "Could not enable sourceglance automatically. In the nested window run: gnome-extensions enable $UUID"
+        || echo "Could not enable Source Glance automatically. In the nested window run: gnome-extensions enable $UUID"
     wait "$pid"
 ' || true
 

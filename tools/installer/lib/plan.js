@@ -62,15 +62,15 @@ export function evaluateChecks(facts, shellVersions, packageVersion) {
             id: 'user',
             title: 'Running as your normal user',
             ok: !facts.isRoot,
-            message: 'Run Setup as your normal user, without sudo. sourceglance installs only for you.',
+            message: 'Run Setup as your normal user, without sudo. Source Glance installs only for you.',
         },
         {
             id: 'shell',
             title: `GNOME Shell ${range}`,
             ok: isShellSupported(facts.shellMajor, shellVersions),
             message: facts.shellMajor === null
-                ? 'GNOME Shell was not found. sourceglance only runs on the GNOME desktop.'
-                : `sourceglance ${packageVersion} supports GNOME Shell ${range}. You have ${facts.shellMajor}.`,
+                ? 'GNOME Shell was not found. Source Glance only runs on the GNOME desktop.'
+                : `Source Glance ${packageVersion} supports GNOME Shell ${range}. You have ${facts.shellMajor}.`,
         },
         {
             id: 'integrity',
@@ -131,19 +131,19 @@ export function operationFor(mode, choice) {
 export function readySummary({mode, choice, packageVersion, installedVersion, enableAfter, extensionDir}) {
     if (operationFor(mode, choice) === 'remove') {
         return [
-            `Remove sourceglance ${installedVersion} from ${extensionDir}`,
+            `Remove Source Glance ${installedVersion} from ${extensionDir}`,
             'Keep a backup copy in ~/.cache/sourceglance-setup/backups',
-            'Turn sourceglance off',
+            'Turn Source Glance off',
         ];
     }
-    const lines = [`Copy sourceglance ${packageVersion} to ${extensionDir}`];
+    const lines = [`Copy Source Glance ${packageVersion} to ${extensionDir}`];
     if (installedVersion) {
         const verb = {upgrade: 'Replace', downgrade: 'Replace', maintain: 'Repair'}[mode] ?? 'Replace';
-        lines.push(`${verb} sourceglance ${installedVersion}; your settings and saved token are kept`);
+        lines.push(`${verb} Source Glance ${installedVersion}; your settings and saved token are kept`);
         lines.push('Keep a backup of the current version in ~/.cache/sourceglance-setup/backups');
     }
     if (enableAfter)
-        lines.push('Turn on sourceglance for your next login');
+        lines.push('Turn on Source Glance for your next login');
     return lines;
 }
 
@@ -197,11 +197,11 @@ With no options, opens the setup wizard.
                             Prints the MIT License; by passing --accept-license you
                             accept it, including that there is NO WARRANTY.
   --repair                  Reinstall the packaged version (add --quiet --accept-license)
-  --uninstall               Remove sourceglance (add --quiet for no wizard)
+  --uninstall               Remove Source Glance (add --quiet for no wizard)
   --check                   Run the system check only; change nothing
   --extract DIR             Copy the packaged extension files to DIR; change nothing
   --log FILE                Write the setup log to FILE
-  --version                 Print the packaged sourceglance version
+  --version                 Print the packaged Source Glance version
   --help                    Show this help
 
 Exit codes: 0 success, 1 failed, 2 bad usage, 3 cancelled.`;

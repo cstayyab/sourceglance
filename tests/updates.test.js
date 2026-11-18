@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {availableUpdate, compareVersions, newestRelease, parseVersion} from '../src/lib/updates.js';
+import {availableUpdate, compareVersions, newestRelease, parseVersion, releaseNotesSummary} from '../src/lib/updates.js';
 
 test('parseVersion accepts plain X.Y.Z with an optional v', () => {
     assert.deepEqual(parseVersion('v0.2.0'), [0, 2, 0]);
@@ -81,4 +81,28 @@ test('parseChecksums reads sha256sum output', async () => {
     assert.equal(sums.get('sourceglance-Setup-0.3.0-x86_64.AppImage'), 'a'.repeat(64));
     assert.equal(sums.get('SHA-file'), b);
     assert.equal(sums.size, 2);
+});
+
+test('releaseNotesSummary keeps the first sentence of each change, as plain text', () => {
+    const body = [
+        '### Fixed',
+        '',
+        '- An item\'s **actions** no longer get clipped. Clicking an issue opens them',
+        '  beside the list ([#57](https://github.com/omer-gh/sourceglance/pull/57)).',
+        '',
+        '### Added',
+        '',
+        '- A `Source Glance` [menu](https://example.com) item.',
+    ].join('\n');
+    assert.equal(releaseNotesSummary(body),
+        '• An item\'s actions no longer get clipped.\n• A Source Glance menu item.');
+});
+
+test('releaseNotesSummary limits items and long sentences', () => {
+    const body = ['- one.', '- two.', '- three.', '- four.', '- five.'].join('\n');
+    assert.equal(releaseNotesSummary(body), '• one.\n• two.\n• three.\nand 2 more');
+    const long = releaseNotesSummary(`- ${'word '.repeat(40)}`, {maxLength: 20});
+    assert.equal(long, '• word word word word…');
+    assert.equal(releaseNotesSummary('Just a paragraph.'), '');
+    assert.equal(releaseNotesSummary(null), '');
 });

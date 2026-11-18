@@ -4,7 +4,7 @@ import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from '../i18n.js';
 
 import {draftTarget, groupDraftsByStatus, isDoneStatus, itemKey, searchBoards} from '../../lib/model.js';
 import {actionButton, noMatchesGroup, statusText} from './common.js';
@@ -59,7 +59,7 @@ export class ProjectsPage {
         }
         if (state.boardsError) {
             this._status('dialog-warning-symbolic', _('Can’t read your project boards'),
-                _('Organization boards need the sourceglance app installed on the organization.'));
+                _('Organization boards need the Source Glance app installed on the organization.'));
             return;
         }
         if (state.boards === null) {

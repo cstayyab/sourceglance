@@ -18,7 +18,7 @@ const NAMES = {
     issues: () => _('Issues'),
     projects: () => _('Projects'),
     prs: () => _('Pull requests'),
-    app: () => 'sourceglance',
+    app: () => 'Source Glance',
 };
 
 export const ToolbarButton = GObject.registerClass({GTypeName: gtypeName('ToolbarButton', import.meta.url)},
@@ -31,7 +31,7 @@ class ToolbarButton extends PanelMenu.Button {
      */
     _init({id, icons, tabs = null, onRefresh, onSettings, onAbout, onAction, getRepos, getAutostart, setAutostart, onQuit,
         getCollapsed, setCollapsed}) {
-        super._init(0.0, `sourceglance ${id}`);
+        super._init(0.0, `Source Glance ${id}`);
         this._id = id;
         this._icons = icons;
         this._tabs = tabs;
@@ -64,7 +64,7 @@ class ToolbarButton extends PanelMenu.Button {
         box.add_child(this._icon);
         if (id === 'app') {
             box.add_child(new St.Label({
-                text: 'sourceglance',
+                text: 'Source Glance',
                 style_class: 'sourceglance-app-label',
                 y_align: Clutter.ActorAlign.CENTER,
             }));

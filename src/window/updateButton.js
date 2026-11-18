@@ -7,7 +7,7 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from './i18n.js';
 
 import {HOME_URL} from '../lib/config.js';
 import {isCancelled} from '../lib/github.js';
@@ -31,6 +31,7 @@ export class UpdateButton {
         this._version = version;
         this._lastCheck = 0;
         this._cancellable = null;
+        this._installing = false;
         this._content = new Adw.ButtonContent({icon_name: 'software-update-available-symbolic', label: _('Update available')});
         this.widget = new Gtk.Button({
             visible: false,
@@ -48,7 +49,8 @@ export class UpdateButton {
             this.widget.visible = false;
             return;
         }
-        if (!force && Date.now() - this._lastCheck < MIN_INTERVAL_MS)
+        // A check would cancel the download.
+        if (this._installing || (!force && Date.now() - this._lastCheck < MIN_INTERVAL_MS))
             return;
         this._lastCheck = Date.now();
         this._cancellable?.cancel();
@@ -58,7 +60,7 @@ export class UpdateButton {
             const version = availableUpdate(await this._client.listReleases(cancellable), this._version);
             this.widget.visible = Boolean(version);
             if (version) {
-                this.widget.tooltip_text = _('sourceglance %s is available. Click to download, check and open its Setup, which updates sourceglance.')
+                this.widget.tooltip_text = _('Source Glance %s is available. Click to download, check and open its Setup, which updates Source Glance.')
                     .format(version);
             }
         } catch (e) {
@@ -71,8 +73,17 @@ export class UpdateButton {
         }
     }
 
+    /** Starts the update as if the button were clicked (the update notification's Install). */
+    install() {
+        if (this._installing)
+            return;
+        this.widget.visible = true;
+        this._install();
+    }
+
     /** Downloads, verifies and opens the new Setup. */
     async _install() {
+        this._installing = true;
         this.widget.sensitive = false;
         this._content.label = _('Downloading…');
         this._cancellable?.cancel();
@@ -81,14 +92,14 @@ export class UpdateButton {
         try {
             const {version, path} = await downloadVerifiedSetup(this._client, this._version, cancellable);
             const finished = runSetup(path);
-            this._toast(_('sourceglance Setup %s is open. Follow it to finish updating.').format(version));
+            this._toast(_('Source Glance Setup %s is open. Follow it to finish updating.').format(version));
             this._reopenWhenUpdated(finished);
         } catch (e) {
             if (isCancelled(e))
                 return;
             if (e instanceof UpdateError && e.kind === 'up-to-date') {
                 this.widget.visible = false;
-                this._toast(_('sourceglance is up to date'));
+                this._toast(_('Source Glance is up to date'));
                 return;
             }
             console.warn(`sourceglance: update failed: ${e.message}`);
@@ -101,6 +112,7 @@ export class UpdateButton {
                 this._cancellable = null;
             this._content.label = _('Update available');
             this.widget.sensitive = true;
+            this._installing = false;
         }
     }
 
@@ -112,7 +124,7 @@ export class UpdateButton {
         const running = parseVersion(this._version);
         if (!installed || !running || compareVersions(parseVersion(installed), running) <= 0)
             return;
-        this._toast(_('Updated to sourceglance %s. Reopening…').format(installed));
+        this._toast(_('Updated to Source Glance %s. Reopening…').format(installed));
         const page = this._currentPage?.();
         if (page)
             this._settings.set_string('open-page', page);

@@ -2,7 +2,7 @@
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from '../i18n.js';
 
 /** A flat button with an icon (theme name or Gio.Icon) and a label. */
 export function actionButton({iconName = null, gicon = null, label, onClick}) {
@@ -29,7 +29,7 @@ export function statusText(state) {
         return {icon: 'network-error-symbolic', title: _('Couldn’t load your lists'),
             description: state.error?.kind === 'network'
                 ? _('Couldn’t reach GitHub. Check your connection.')
-                : _('GitHub returned an error. sourceglance will try again soon.')};
+                : _('GitHub returned an error. Source Glance will try again soon.')};
     }
     return null;
 }

@@ -174,7 +174,7 @@ function signedIn(state) {
 function listReady(ui) {
     const {state} = ui;
     if (state.status === 'signed-out') {
-        addInfo(ui, _('Not signed in. Open the sourceglance menu to sign in.'), 'sourceglance-message');
+        addInfo(ui, _('Not signed in. Open the Source Glance menu to sign in.'), 'sourceglance-message');
         return false;
     }
     if (state.status === 'loading') {
@@ -302,7 +302,7 @@ class SectionToggle extends PopupMenu.PopupBaseMenuItem {
 function renderPlatform(ui, cfg, src) {
     if (src.status === 'signed-out') {
         addInfo(ui, src.platform === 'gitlab'
-            ? _('Not signed in to GitLab.') : _('Not signed in. Open the sourceglance menu to sign in.'), 'sourceglance-message');
+            ? _('Not signed in to GitLab.') : _('Not signed in. Open the Source Glance menu to sign in.'), 'sourceglance-message');
         return;
     }
     if (!src.updatedAt) {
@@ -405,7 +405,7 @@ export function renderProjects(ui) {
         return;
     const {boards, boardsError, busy} = ui.state;
     if (boardsError) {
-        addInfo(ui, _('sourceglance can’t read your project boards. Organization boards need the ' +
+        addInfo(ui, _('Source Glance can’t read your project boards. Organization boards need the ' +
             'app installed on the organization.'), 'sourceglance-message');
         return;
     }

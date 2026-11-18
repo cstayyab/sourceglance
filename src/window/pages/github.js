@@ -5,7 +5,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from '../i18n.js';
 
 import {GITHUB_APP_CLIENT_ID, GITHUB_APP_SLUG, OAUTH_CLIENT_ID, SHOW_OTHER_SIGN_IN_OPTIONS} from '../../lib/config.js';
 import {DeviceFlowError, GitHubError, isCancelled} from '../../lib/github.js';
@@ -75,7 +75,7 @@ function buildAccountGroup({window, settings, client, toast}) {
     const installUrl = appInstallUrl(GITHUB_APP_SLUG);
     const reposRow = new Adw.ActionRow({
         title: _('Choose repositories'),
-        subtitle: _('Pick the repositories sourceglance may change and, if private, see'),
+        subtitle: _('Pick the repositories Source Glance may change and, if private, see'),
         activatable: true,
         visible: Boolean(GITHUB_APP_CLIENT_ID && installUrl),
     });

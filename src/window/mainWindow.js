@@ -1,5 +1,5 @@
 // The sourceglance window: a sidebar of lists and settings, and the selected page.
-// Built inside the Settings window GNOME opens for the extension (see prefs.js).
+// Built by window/app.js, in Source Glance's own app or GNOME's Extensions app.
 import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
@@ -77,13 +77,13 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerStart 
 
     const title = new Gtk.Box({spacing: 8, halign: Gtk.Align.CENTER});
     title.append(new Gtk.Image({gicon: appIcon, pixel_size: 24}));
-    title.append(new Gtk.Label({label: 'sourceglance', css_classes: ['heading']}));
+    title.append(new Gtk.Label({label: 'Source Glance', css_classes: ['heading']}));
     const sidebarHeader = new Adw.HeaderBar({title_widget: title, css_classes: ['sourceglance-sidebar-header']});
     const sidebarView = new Adw.ToolbarView({
         content: new Gtk.ScrolledWindow({child: list, hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true}),
     });
     sidebarView.add_top_bar(sidebarHeader);
-    const sidebarPage = new Adw.NavigationPage({title: 'sourceglance', child: sidebarView});
+    const sidebarPage = new Adw.NavigationPage({title: 'Source Glance', child: sidebarView});
 
     const contentView = new Adw.ToolbarView({content: stack});
     // The page's name, with a subtitle such as the number of search results.
@@ -103,9 +103,10 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerStart 
         max_sidebar_width: 280,
     });
     overlay.child = split;
-    // GNOME's Extensions app checks that the window got a page (visible_page); add one,
+    // GNOME's Extensions app checks that its window got a page (visible_page); add one,
     // then show our own layout instead of the default page view.
-    window.add(new Adw.PreferencesPage());
+    if (window instanceof Adw.PreferencesWindow)
+        window.add(new Adw.PreferencesPage());
     window.set_content(overlay);
 
     list.connect('row-selected', (_list, row) => {

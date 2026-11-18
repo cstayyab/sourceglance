@@ -88,12 +88,12 @@ test('operationFor maps choices to install or remove', () => {
 test('readySummary lists every change', () => {
     const base = {packageVersion: '0.1.0', extensionDir: '~/x', enableAfter: true};
     assert.deepEqual(readySummary({...base, mode: 'install', installedVersion: null}),
-        ['Copy sourceglance 0.1.0 to ~/x', 'Turn on sourceglance for your next login']);
+        ['Copy Source Glance 0.1.0 to ~/x', 'Turn on Source Glance for your next login']);
     const up = readySummary({...base, mode: 'upgrade', installedVersion: '0.0.9'});
-    assert.match(up[1], /^Replace sourceglance 0\.0\.9/);
+    assert.match(up[1], /^Replace Source Glance 0\.0\.9/);
     assert.match(up[2], /backup/);
     assert.match(readySummary({...base, mode: 'maintain', choice: 'repair', installedVersion: '0.1.0'})[1], /^Repair/);
-    assert.match(readySummary({...base, mode: 'maintain', choice: 'remove', installedVersion: '0.1.0'})[0], /^Remove sourceglance 0\.1\.0/);
+    assert.match(readySummary({...base, mode: 'maintain', choice: 'remove', installedVersion: '0.1.0'})[0], /^Remove Source Glance 0\.1\.0/);
     assert.equal(readySummary({...base, enableAfter: false, mode: 'install', installedVersion: null}).length, 1);
 });
 
@@ -129,7 +129,7 @@ test('parseArgs handles actions, flags and errors', () => {
 
 test('parseExtensionInfo reads the state and path', () => {
     const text = `sourceglance@omer-gh.github.io
-  Name: sourceglance
+  Name: Source Glance
   Path: /home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io
   Version: 0.3.0 (3)
   Enabled: Yes

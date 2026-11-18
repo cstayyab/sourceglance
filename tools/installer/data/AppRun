@@ -2,7 +2,7 @@
 # AppImage entry point: run the setup wizard with the system's GJS (ADR 0005).
 HERE="$(dirname "$(readlink -f "$0")")"
 if ! command -v gjs >/dev/null 2>&1; then
-    echo "sourceglance Setup needs GJS, which is part of the GNOME desktop." >&2
+    echo "Source Glance Setup needs GJS, which is part of the GNOME desktop." >&2
     exit 1
 fi
 exec gjs -m "$HERE/usr/share/sourceglance-setup/main.js" "$@"

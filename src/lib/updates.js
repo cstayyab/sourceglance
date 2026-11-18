@@ -92,3 +92,44 @@ export function parseChecksums(text) {
     }
     return sums;
 }
+
+/** "**Bold** [text](url) `code`" → "Bold text code". */
+function plainText(markdown) {
+    return markdown
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/[*_`]+/g, '')
+        .replace(/\s*\(\s*\)/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/** A list item's first sentence, at most `max` characters. */
+function firstSentence(text, max) {
+    const end = text.search(/[.!?](\s|$)/);
+    const sentence = end === -1 ? text : text.slice(0, end + 1);
+    return sentence.length <= max ? sentence : `${sentence.slice(0, max - 1).trimEnd()}…`;
+}
+
+/**
+ * Short release notes for a notification, from a release's Markdown body (a CHANGELOG
+ * section): the first sentence of each list item, as "• " lines, at most `maxItems` of them,
+ * then "and N more" if there are more. '' if there are none.
+ */
+export function releaseNotesSummary(body, {maxItems = 3, maxLength = 110} = {}) {
+    const items = [];
+    for (const line of String(body ?? '').split('\n')) {
+        const item = /^\s*[-*+]\s+(.*)$/.exec(line);
+        if (item)
+            items.push(item[1]);
+        else if (items.length && /^\s+\S/.test(line))
+            items[items.length - 1] += ` ${line.trim()}`;
+        else if (line.trim() && items.length)
+            items.push(null); // a heading or paragraph ends the item before it
+    }
+    const sentences = items.filter(Boolean).map(plainText).filter(Boolean)
+        .map(text => firstSentence(text, maxLength));
+    const lines = sentences.slice(0, maxItems).map(text => `• ${text}`);
+    if (sentences.length > maxItems)
+        lines.push(`and ${sentences.length - maxItems} more`);
+    return lines.join('\n');
+}

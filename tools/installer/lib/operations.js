@@ -36,7 +36,7 @@ async function pruneBackups(log) {
 }
 
 async function resetSettings(log) {
-    log.write('Resetting sourceglance settings');
+    log.write('Resetting Source Glance settings');
     const result = await run(['dconf', 'reset', '-f', SETTINGS_PATH]);
     if (result.status !== 0)
         log.write(`Could not reset settings (${result.stderr.trim() || 'dconf unavailable'})`);
@@ -59,8 +59,8 @@ async function startNewVersion({hadLoader, hadDevBuild, target, log, progress}) 
     progress(0.9, 'Starting the new version…');
     const restarted = await restartInShell();
     log.write(restarted
-        ? 'sourceglance restarted with the new version; no need to log out'
-        : 'sourceglance could not be restarted; it starts with the new version at your next login');
+        ? 'Source Glance restarted with the new version; no need to log out'
+        : 'Source Glance could not be restarted; it starts with the new version at your next login');
     return restarted;
 }
 
@@ -78,7 +78,7 @@ export async function install({enableAfter = true, reset = false, log, progress 
     let backup = null;
     let staged = false;
 
-    log.write(`Installing sourceglance ${version}${previous ? ` over ${previous}` : ''} to ${tildify(target)}`);
+    log.write(`Installing Source Glance ${version}${previous ? ` over ${previous}` : ''} to ${tildify(target)}`);
     try {
         progress(0.1, 'Verifying package…');
         if (!verifyPayload())
@@ -107,16 +107,16 @@ export async function install({enableAfter = true, reset = false, log, progress 
             await resetSettings(log);
 
         if (enableAfter) {
-            progress(0.8, 'Turning on sourceglance…');
+            progress(0.8, 'Turning on Source Glance…');
             if (setExtensionEnabled(true))
-                log.write('sourceglance will start at your next login');
+                log.write('Source Glance will start at your next login');
             else
-                log.write('GNOME Shell settings not found; turn sourceglance on in the Extensions app');
+                log.write('GNOME Shell settings not found; turn Source Glance on in the Extensions app');
         }
 
         progress(0.95, 'Cleaning up…');
         await pruneBackups(log);
-        log.write(`sourceglance ${version} installed`);
+        log.write(`Source Glance ${version} installed`);
     } catch (e) {
         log.write(`Error: ${e.message}`);
         const rolledBack = await rollback({target, backup, staged, log});
@@ -176,9 +176,9 @@ function removeAppLauncher(log) {
 export async function remove({deleteToken = false, reset = false, log, progress = () => {}}) {
     const target = extensionDir();
     const previous = installedVersion();
-    log.write(`Removing sourceglance ${previous ?? ''}`);
+    log.write(`Removing Source Glance ${previous ?? ''}`);
     try {
-        progress(0.2, 'Turning off sourceglance…');
+        progress(0.2, 'Turning off Source Glance…');
         setExtensionEnabled(false);
 
         if (exists(target)) {
@@ -199,7 +199,7 @@ export async function remove({deleteToken = false, reset = false, log, progress 
         progress(0.9, 'Cleaning up…');
         await pruneBackups(log);
         progress(1, 'Done');
-        log.write('sourceglance removed');
+        log.write('Source Glance removed');
     } catch (e) {
         log.write(`Error: ${e.message}`);
         throw new SetupError(e.message);

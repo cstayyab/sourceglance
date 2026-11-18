@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=sourceglance Setup
-Comment=Install, repair or remove the sourceglance GNOME Shell extension
+Name=Source Glance Setup
+Comment=Install, repair or remove the Source Glance GNOME Shell extension
 Exec=sourceglance-setup
 Icon=sourceglance-setup
 Categories=Utility;

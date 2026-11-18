@@ -202,7 +202,7 @@ export function launcherDesktopEntry({launcherPath, iconPath}) {
     return [
         '[Desktop Entry]',
         'Type=Application',
-        'Name=sourceglance',
+        'Name=Source Glance',
         'Comment=Your GitHub issues, pull requests and project boards in the top bar',
         `Exec=${exec}`,
         `Icon=${iconPath}`,
