@@ -21,7 +21,7 @@ token. Some of those hosts sit on a home or office network without HTTPS.
 
 ## Options considered
 
-**Where the account list lives**
+### Where the account list lives
 
 1. **Keyring only.** List the accounts by searching the keyring. This needs no new setting,
    but it fails while the keyring is locked, and labels aren't meant to hold data.
@@ -52,7 +52,7 @@ to say under each one which repositories it reaches:
 
 ## Decision
 
-**Accounts**
+### Accounts
 
 - **The list.** The `accounts` GSettings key holds one JSON object per account:
   `{id, platform, base, login, method, clientId}`.
