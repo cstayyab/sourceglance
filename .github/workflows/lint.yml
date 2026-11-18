@@ -26,13 +26,35 @@ jobs:
 
   setup-wizard:
     runs-on: ubuntu-24.04   # GNOME Shell 46: the oldest supported release
+    # Normally about a minute; a stuck mirror shouldn't hold a PR for half an hour.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install GNOME Shell, GJS and build tools
+        # The download is about 130 MB, under a minute from a healthy mirror. Some mirrors
+        # crawl (about 70 kB/s on 2026-11-18, 31 minutes): give up after 4 minutes and try
+        # again from another mirror (the runner's list in apt-mirrors.txt), keeping what's
+        # already downloaded.
         run: |
+          mirrors=("" "http://azure.archive.ubuntu.com/ubuntu/" "http://archive.ubuntu.com/ubuntu/")
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gjs gnome-shell gir1.2-secret-1 \
-            libglib2.0-bin squashfs-tools dconf-cli
+          for attempt in 1 2 3; do
+            if sudo timeout 240 apt-get install -y --no-install-recommends gjs gnome-shell \
+              gir1.2-secret-1 libglib2.0-bin squashfs-tools dconf-cli; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              exit 1
+            fi
+            next=${mirrors[$attempt]}
+            echo "::warning::apt-get install was slow or failed (attempt $attempt); trying $next"
+            if [ -f /etc/apt/apt-mirrors.txt ]; then
+              echo "$next" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+            else
+              sudo sed -i "s|http://[^ ]*archive.ubuntu.com/ubuntu/\?|$next|" /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
+            fi
+            sudo apt-get update
+          done
       - name: Command-line install, upgrade, repair and remove
         run: make setup-test
       - name: Build the AppImage and run it
