@@ -1,7 +1,16 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {allTasks, filterTasks, listBadge, searchCount, taskCounts, taskFilterOptions} from '../src/lib/model.js';
+import {
+    allTasks,
+    filterTasks,
+    listBadge,
+    searchCount,
+    taskCounts,
+    taskFilterGroups,
+    taskFilterOptions,
+    toggleTaskFilter,
+} from '../src/lib/model.js';
 
 const item = (kind, repo, number, updatedAt, extra = {}) => ({
     kind, repo, number, updatedAt, title: `${kind} ${number}`, url: `https://github.com/${repo}/${kind === 'pr' ? 'pull' : 'issues'}/${number}`,
@@ -87,4 +96,42 @@ test('taskCounts, and Tasks in the sidebar counts and search counts', () => {
     assert.equal(listBadge('tasks', state), '4');
     assert.equal(searchCount('tasks', state, ['octo']), 2);
     assert.equal(listBadge('tasks', {sources: [source({updatedAt: null, status: 'loading'})]}), '');
+});
+
+const assigned = source({
+    key: 'github.com', title: 'GitHub · @me', assignee: '@me · GitHub',
+    groups: [{repo: 'octo/app', issues: [
+        item('issue', 'octo/app', 1, '2026-11-18T09:00:00Z', {labels: [{name: 'bug'}, {name: 'ui'}], assignees: ['me', 'amy']}),
+        item('issue', 'octo/app', 2, '2026-11-18T08:00:00Z', {labels: [{name: 'bug'}], assignees: ['me']}),
+    ]}],
+    boards: [{title: 'Roadmap', url: null, drafts: [{itemId: 'D1', title: 'Plan', status: null,
+        assignees: [{id: 'U_1', login: 'amy'}]}]}],
+});
+
+test('taskFilterGroups lists every choice of each kind, with counts and what is checked', () => {
+    const tasks = allTasks([assigned, gitlab]);
+    const label = option => `${option.value}:${option.count}${option.active ? '*' : ''}`;
+    const groups = taskFilterGroups(tasks, [assigned, gitlab], [{type: 'label', value: 'bug'}, {type: 'kind', value: 'pr'}]);
+    assert.deepEqual(groups.kind.map(label), ['issue:3', 'pr:0*', 'draft:1']);
+    assert.deepEqual(groups.account.map(label), ['github.com:3', 'gitlab.com:1']);
+    assert.equal(groups.account[0].title, '@me · GitHub');
+    assert.deepEqual(groups.label.map(label), ['bug:2*', 'ui:1']);
+    assert.deepEqual(groups.assignee.map(label), ['amy:2', 'me:2']);
+    // One account still gets the Accounts menu.
+    assert.equal(taskFilterGroups(allTasks([assigned]), [assigned]).account.length, 1);
+});
+
+test('filterTasks by label and assignee: each adds up within its kind and narrows across', () => {
+    const tasks = allTasks([assigned, gitlab]);
+    const ref = task => task.ref || task.title;
+    assert.deepEqual(filterTasks(tasks, [{type: 'label', value: 'ui'}]).map(ref), ['#1']);
+    assert.deepEqual(filterTasks(tasks, [{type: 'label', value: 'ui'}, {type: 'label', value: 'bug'}]).map(ref), ['#1', '#2']);
+    assert.deepEqual(filterTasks(tasks, [{type: 'assignee', value: 'amy'}]).map(ref), ['#1', 'Plan']);
+    assert.deepEqual(filterTasks(tasks, [{type: 'assignee', value: 'amy'}, {type: 'label', value: 'bug'}]).map(ref), ['#1']);
+});
+
+test('toggleTaskFilter adds a filter or takes it off', () => {
+    const bug = {type: 'label', value: 'bug', title: 'bug'};
+    assert.deepEqual(toggleTaskFilter([], bug), [bug]);
+    assert.deepEqual(toggleTaskFilter([bug, kind('pr')], {type: 'label', value: 'bug'}), [kind('pr')]);
 });

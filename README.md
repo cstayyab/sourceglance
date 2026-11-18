@@ -31,16 +31,19 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   group or as tabs in one menu, each with its count (0 included).
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
+- **Preview and edit in the window**: read an item's description, comments and reactions,
+  edit the description and add a comment, all with a small Markdown editor. Labels and
+  assignees show as chips under the title: × removes one, + adds one.
 - **Several accounts, self-hosted too**: add as many GitHub and GitLab accounts as you like,
   each with its own collapsible section in every list, menu and widget. A wizard in
   **Settings → Accounts** connects GitHub Enterprise Server and GitLab self-managed. Counts
   add up across all of them.
 - **Collapsible repositories**: click a repository heading to hide or show its items, in
   the window and the menus. Source Glance remembers what you collapsed.
-- **Tasks**: everything assigned to you in one list, newest first. Filter it like a tag
-  search, by kind (issues, pull requests, project drafts) or assignee (one of your accounts),
-  each filter a chip you remove with ×. Click a task to open it in your browser. The lists by
-  kind sit under it in the sidebar.
+- **Tasks**: everything assigned to you in one list, newest first, with the same actions
+  as the lists. Filter it with **Kind**, **Accounts**, **Labels** and **Assignee**, each a
+  check list; what you pick shows as chips below them, each removed with ×. The lists by kind
+  sit under it in the sidebar.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
 - **Search** from the window's title bar: one box filters Issues, Pull requests and Projects
   by title, repository, number, label, person or board status, with match counts. Clear it
@@ -208,7 +211,7 @@ separate buttons or **tabs in one menu**.
 
 ### Actions
 
-Click any issue, pull request or merge request, in a menu or in the window, for its actions:
+Click any issue, pull request or merge request in a menu for its actions:
 
 - **Open on GitHub** / **Open on GitLab**
 - **Comment…**
@@ -216,6 +219,21 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
   **Reopen**
 - **Assignees…** and **Labels…**
 - **Board: Status…** for each project board it's on
+
+In the window, each row has its actions as icons on the title line (hover one for its name):
+
+- **Preview**: the description, which you can edit, then the comments and reactions (read
+  only) and a box to add a comment. Project drafts show their description only.
+- **Comment**, with the number of comments on the button's corner.
+- **Close**, and a button for each project board it's on, to move it to another status.
+- **Open** in your browser.
+- The **arrow** shows or hides its labels and assignees, as chips: labels in their own
+  colour. **×** removes one; **+** lists what you can add. Rows start collapsed.
+
+Comments and descriptions are written with a small Markdown editor: bold, italic,
+strikethrough, inline code, bulleted and numbered lists, quotes and code blocks, from the
+toolbar or with Ctrl+B and Ctrl+I. Ctrl+Enter posts. Project drafts can be assigned (to you
+or whoever is already on them) and previewed; GitHub drafts have no labels or comments.
 
 ### Main window
 

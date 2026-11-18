@@ -135,6 +135,7 @@ export function parseGitLabItems(json, search, base = GITLAB_HOST) {
                 .map(user => user?.username).filter(isValidGitLabUsername),
             assigneeIds: (Array.isArray(item.assignees) ? item.assignees : [])
                 .map(user => user?.id).filter(positiveInt),
+            comments: Number.isInteger(item.user_notes_count) && item.user_notes_count >= 0 ? item.user_notes_count : 0,
             updatedAt: item.updated_at,
             boards: [],
         }));
@@ -168,6 +169,50 @@ export function gitlabCloseRequest(item) {
 
 export function gitlabReopenRequest(item) {
     return {method: 'PUT', path: itemPath(item), body: {state_event: 'reopen'}};
+}
+
+/** The GET requests for the preview: the issue or merge request, then its notes (oldest first). */
+export function gitlabDetailsRequests(item) {
+    const path = itemPath(item);
+    return {
+        item: {method: 'GET', path},
+        comments: {method: 'GET', path: `${path}/notes?sort=asc&order_by=created_at&per_page=100`},
+    };
+}
+
+function username(user) {
+    return isValidGitLabUsername(user?.username) ? user.username : null;
+}
+
+/** Like parseDetails() in model.js. GitLab lists 👍 and 👎 on the item; notes leave out system notes. */
+export function parseGitLabDetails(itemJson, notesJson) {
+    const comments = (Array.isArray(notesJson) ? notesJson : [])
+        .filter(note => !note?.system && typeof note?.body === 'string')
+        .map(note => ({
+            author: username(note.author),
+            createdAt: typeof note.created_at === 'string' ? note.created_at : null,
+            body: capped(note.body, 65536),
+            reactions: [],
+        }));
+    const count = n => (Number.isInteger(n) && n > 0 ? n : 0);
+    const reactions = [{emoji: '👍', count: count(itemJson?.upvotes)}, {emoji: '👎', count: count(itemJson?.downvotes)}]
+        .filter(reaction => reaction.count > 0);
+    const total = Number.isInteger(itemJson?.user_notes_count) ? itemJson.user_notes_count : comments.length;
+    return {
+        body: capped(itemJson?.description ?? '', 65536),
+        author: username(itemJson?.author),
+        createdAt: typeof itemJson?.created_at === 'string' ? itemJson.created_at : null,
+        reactions,
+        comments,
+        more: Math.max(0, total - comments.length),
+    };
+}
+
+export function gitlabBodyRequest(item, text) {
+    const description = typeof text === 'string' ? text : '';
+    if (description.length > 1000000)
+        return null;
+    return {method: 'PUT', path: itemPath(item), body: {description}};
 }
 
 export function gitlabCommentRequest(item, text) {

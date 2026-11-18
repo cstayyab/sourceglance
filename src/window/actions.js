@@ -2,14 +2,59 @@
 // the top-bar menus send (model.js builders), as the account the item came from. Results
 // show as toasts.
 import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from './i18n.js';
+import {gettext as _, ngettext} from './i18n.js';
 
 import {accountForItem, hostLabel, isDefaultBase} from '../lib/accounts.js';
 import {GitHubError, isCancelled} from '../lib/github.js';
-import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest} from '../lib/model.js';
-import {assigneeRequests, closeReasons, closeRequests, commentRequests, isSafeLink, labelRequests, reopenRequests} from '../lib/requests.js';
+import {applyFormat} from '../lib/markdown.js';
+import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest, relativeTime} from '../lib/model.js';
+import {
+    assigneeRequests,
+    bodyRequests,
+    closeReasons,
+    closeRequests,
+    commentRequests,
+    isSafeLink,
+    labelRequests,
+    previewRequests,
+    reopenRequests,
+} from '../lib/requests.js';
+import {addChip, chip, chipLine, labelClass} from './pages/common.js';
+
+/** Text from GitHub or GitLab, shown as is (never as markup), selectable. */
+function plainText(text, dim = false) {
+    return new Gtk.Label({label: text, use_markup: false, wrap: true, wrap_mode: 2 /* WORD_CHAR */, xalign: 0,
+        selectable: true, css_classes: dim ? ['dim-label'] : []});
+}
+
+/** Read-only reactions: an emoji and its count each. */
+function reactionLine(reactions) {
+    const line = new Gtk.Box({spacing: 6});
+    for (const {emoji, count} of reactions) {
+        const label = new Gtk.Label({label: `${emoji} ${count}`, css_classes: ['sourceglance-reaction']});
+        line.append(label);
+    }
+    return line;
+}
+
+function formatAgo(date) {
+    if (Number.isNaN(date.getTime()))
+        return '';
+    const {unit, value} = relativeTime(date);
+    switch (unit) {
+    case 'now':
+        return _('just now');
+    case 'minute':
+        return ngettext('%d min ago', '%d min ago', value).format(value);
+    case 'hour':
+        return ngettext('%d hour ago', '%d hours ago', value).format(value);
+    default:
+        return ngettext('%d day ago', '%d days ago', value).format(value);
+    }
+}
 
 function itemText(item) {
     return item.kind === 'draft' ? item.title : `${itemRef(item)} ${item.title}`;
@@ -58,8 +103,11 @@ function errorText(error, item = null) {
 
 export class WindowActions {
     /** `data` is the WindowData; `clients` an AccountClients; `window` parents the dialogs. */
-    constructor({window, clients, data, toast}) {
+    constructor({window, clients, data, toast, icons}) {
         this._window = window;
+        this._icons = icons;
+        // Items whose labels and assignees are showing (collapsed by default), by itemKey().
+        this._expanded = new Set();
         this._clients = clients;
         this._data = data;
         this._toast = toast;
@@ -87,25 +135,255 @@ export class WindowActions {
             new Gtk.UriLauncher({uri: url}).launch(this._window, null, null);
     }
 
+    /**
+     * A small Markdown editor: a formatting toolbar over the text, with Ctrl+B, Ctrl+I and
+     * Ctrl+Enter (runs `onSubmit`). Returns {widget, buffer, view}.
+     */
+    _editor({text = '', minHeight = 180, onSubmit}) {
+        const view = new Gtk.TextView({wrap_mode: Gtk.WrapMode.WORD_CHAR, monospace: true, top_margin: 10,
+            bottom_margin: 10, left_margin: 12, right_margin: 12, accepts_tab: false});
+        const buffer = view.buffer;
+        buffer.text = text;
+        const format = name => {
+            const [selected, from, to] = buffer.get_selection_bounds();
+            const start = selected ? from.get_offset() : buffer.cursor_position;
+            const end = selected ? to.get_offset() : start;
+            const result = applyFormat(buffer.text, start, end, name);
+            buffer.begin_user_action();
+            buffer.text = result.text;
+            buffer.end_user_action();
+            // Keep a selection selected; with none, the cursor goes after the new marks.
+            const caret = selected || result.start === result.end ? result.start : result.end;
+            buffer.select_range(buffer.get_iter_at_offset(selected ? result.end : caret),
+                buffer.get_iter_at_offset(caret));
+            view.grab_focus();
+        };
+
+        const toolbar = new Gtk.Box({spacing: 2, margin_start: 6, margin_end: 6, margin_top: 4, margin_bottom: 4});
+        const tools = [
+            ['bold', 'format-text-bold-symbolic', _('Bold (Ctrl+B)')],
+            ['italic', 'format-text-italic-symbolic', _('Italic (Ctrl+I)')],
+            ['strike', 'format-text-strikethrough-symbolic', _('Strikethrough')],
+            ['code', this._icons.code, _('Inline code')],
+            null,
+            ['bullet', 'view-list-bullet-symbolic', _('Bulleted list')],
+            ['number', 'view-list-ordered-symbolic', _('Numbered list')],
+            ['quote', 'format-indent-more-symbolic', _('Quote')],
+            ['codeBlock', 'utilities-terminal-symbolic', _('Code block')],
+        ];
+        for (const tool of tools) {
+            if (!tool) {
+                toolbar.append(new Gtk.Separator({orientation: Gtk.Orientation.VERTICAL, margin_start: 4, margin_end: 4}));
+                continue;
+            }
+            const [name, icon, tooltip] = tool;
+            const button = typeof icon === 'string'
+                ? new Gtk.Button({icon_name: icon, tooltip_text: tooltip, css_classes: ['flat']})
+                : new Gtk.Button({child: new Gtk.Image({gicon: icon}), tooltip_text: tooltip, css_classes: ['flat']});
+            button.update_property([Gtk.AccessibleProperty.LABEL], [tooltip]);
+            button.connect('clicked', () => format(name));
+            toolbar.append(button);
+        }
+
+        const keys = new Gtk.EventControllerKey();
+        keys.connect('key-pressed', (_controller, keyval, _code, state) => {
+            if (!(state & Gdk.ModifierType.CONTROL_MASK))
+                return false;
+            if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter)
+                onSubmit?.();
+            else if (keyval === Gdk.KEY_b || keyval === Gdk.KEY_B)
+                format('bold');
+            else if (keyval === Gdk.KEY_i || keyval === Gdk.KEY_I)
+                format('italic');
+            else
+                return false;
+            return true;
+        });
+        view.add_controller(keys);
+
+        const widget = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+        widget.append(toolbar);
+        widget.append(new Gtk.Separator());
+        widget.append(new Gtk.ScrolledWindow({child: view, vexpand: true, min_content_height: minHeight,
+            hscrollbar_policy: Gtk.PolicyType.NEVER}));
+        return {widget, buffer, view};
+    }
+
+    /** The comment editor in a dialog, Post in the header. */
     comment(item) {
-        const view = new Gtk.TextView({wrap_mode: Gtk.WrapMode.WORD_CHAR, top_margin: 8, bottom_margin: 8,
-            left_margin: 8, right_margin: 8});
-        const dialog = new Adw.AlertDialog({
-            heading: _('Comment'),
-            body: itemText(item),
-            extra_child: new Gtk.ScrolledWindow({child: view, min_content_height: 140, css_classes: ['card']}),
+        let send = null;
+        const editor = this._editor({onSubmit: () => send()});
+        const post = new Gtk.Button({label: _('Post'), css_classes: ['suggested-action'], sensitive: false});
+        const cancel = new Gtk.Button({label: _('Cancel')});
+        const header = new Adw.HeaderBar({show_start_title_buttons: false, show_end_title_buttons: false,
+            title_widget: new Adw.WindowTitle({title: _('Comment'), subtitle: itemText(item)})});
+        header.pack_start(cancel);
+        header.pack_end(post);
+
+        const content = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+        content.append(editor.widget);
+        content.append(new Gtk.Separator());
+        content.append(new Gtk.Label({label: _('Markdown · Ctrl+Enter posts'), xalign: 0, margin_start: 12,
+            margin_top: 6, margin_bottom: 6, css_classes: ['dim-label', 'caption']}));
+        const toolbarView = new Adw.ToolbarView({content});
+        toolbarView.add_top_bar(header);
+        const dialog = new Adw.Dialog({child: toolbarView, content_width: 520, content_height: 360,
+            title: _('Comment'), focus_widget: editor.view});
+
+        const canPost = () => commentRequests(item, editor.buffer.text).length > 0;
+        editor.buffer.connect('changed', () => {
+            post.sensitive = canPost();
         });
-        dialog.add_response('cancel', _('Cancel'));
-        dialog.add_response('post', _('Post comment'));
-        dialog.set_response_appearance('post', Adw.ResponseAppearance.SUGGESTED);
-        dialog.set_response_enabled('post', false);
-        view.buffer.connect('changed', () =>
-            dialog.set_response_enabled('post', view.buffer.text.trim().length > 0));
-        dialog.connect('response', (_dialog, response) => {
-            if (response === 'post')
-                this._send(item, commentRequests(item, view.buffer.text), _('Comment posted'));
-        });
+        send = () => {
+            if (!canPost())
+                return;
+            const text = editor.buffer.text;
+            dialog.close();
+            this._send(item, commentRequests(item, text), _('Comment posted'));
+        };
+        post.connect('clicked', send);
+        cancel.connect('clicked', () => dialog.close());
         dialog.present(this._window);
+    }
+
+    /**
+     * The preview: the description (editable), the comments and reactions (read only), and a
+     * box to add a comment. Drafts show only their description. Text stays plain.
+     */
+    preview(item) {
+        const draft = item.kind === 'draft';
+        const header = new Adw.HeaderBar({title_widget: new Adw.WindowTitle({title: itemText(item),
+            subtitle: draft ? '' : item.repo})});
+        const stack = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
+        stack.add_named(new Gtk.Spinner({spinning: true, width_request: 32, height_request: 32,
+            halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}), 'loading');
+        const scroller = new Gtk.ScrolledWindow({hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true});
+        stack.add_named(scroller, 'details');
+        const toolbarView = new Adw.ToolbarView({content: stack});
+        toolbarView.add_top_bar(header);
+        const dialog = new Adw.Dialog({child: toolbarView, content_width: 640, content_height: 680, title: itemText(item)});
+
+        const load = async () => {
+            stack.visible_child_name = 'loading';
+            const {requests, parse} = previewRequests(item);
+            const details = await this._fetch(item, async ({client, token}) => {
+                const responses = [];
+                for (const request of requests)
+                    responses.push(await client.send(token, request));
+                return parse(responses);
+            }, false);
+            if (!details) {
+                dialog.close();
+                return;
+            }
+            scroller.child = this._previewContent(item, details, load);
+            stack.visible_child_name = 'details';
+        };
+        dialog.present(this._window);
+        load();
+    }
+
+    _previewContent(item, details, reload) {
+        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 18,
+            margin_top: 18, margin_bottom: 18, margin_start: 18, margin_end: 18});
+
+        // Description: shown, or the editor while editing.
+        const heading = new Gtk.Box({spacing: 6});
+        const by = details.author ? _('Description · opened by %s').format(details.author) : _('Description');
+        heading.append(new Gtk.Label({label: by, xalign: 0, hexpand: true, css_classes: ['heading']}));
+        const edit = new Gtk.Button({child: new Adw.ButtonContent({icon_name: 'document-edit-symbolic', label: _('Edit')}),
+            css_classes: ['flat']});
+        heading.append(edit);
+        box.append(heading);
+        const description = new Gtk.Stack({vhomogeneous: false, transition_type: Gtk.StackTransitionType.CROSSFADE});
+        const shown = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8});
+        shown.append(plainText(details.body || _('No description'), !details.body));
+        if (details.reactions.length)
+            shown.append(reactionLine(details.reactions));
+        description.add_named(shown, 'shown');
+        let save = null;
+        const editor = this._editor({text: details.body, minHeight: 160, onSubmit: () => save()});
+        const editing = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8});
+        const frame = new Gtk.Frame({child: editor.widget});
+        editing.append(frame);
+        const editButtons = new Gtk.Box({spacing: 8, halign: Gtk.Align.END});
+        const cancel = new Gtk.Button({label: _('Cancel')});
+        const saveButton = new Gtk.Button({label: _('Save'), css_classes: ['suggested-action']});
+        editButtons.append(cancel);
+        editButtons.append(saveButton);
+        editing.append(editButtons);
+        description.add_named(editing, 'editing');
+        edit.connect('clicked', () => {
+            editor.buffer.text = details.body;
+            description.visible_child_name = 'editing';
+            edit.visible = false;
+            editor.view.grab_focus();
+        });
+        cancel.connect('clicked', () => {
+            description.visible_child_name = 'shown';
+            edit.visible = true;
+        });
+        save = async () => {
+            const requests = bodyRequests(item, editor.buffer.text);
+            if (requests.length === 0)
+                return;
+            saveButton.sensitive = false;
+            if (await this._send(item, requests, _('Description saved')))
+                reload();
+            else
+                saveButton.sensitive = true;
+        };
+        saveButton.connect('clicked', save);
+        box.append(description);
+
+        if (item.kind === 'draft')
+            return new Adw.Clamp({child: box, maximum_size: 720});
+
+        // Comments, oldest first, then the box to add one.
+        const count = details.comments.length + details.more;
+        box.append(new Gtk.Label({label: ngettext('%d comment', '%d comments', count).format(count), xalign: 0,
+            css_classes: ['heading']}));
+        for (const comment of details.comments) {
+            const card = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, css_classes: ['card'],
+                margin_bottom: 2});
+            const inner = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6,
+                margin_top: 10, margin_bottom: 10, margin_start: 12, margin_end: 12});
+            const when = comment.createdAt ? formatAgo(new Date(comment.createdAt)) : '';
+            inner.append(new Gtk.Label({label: [comment.author ?? _('Someone'), when].filter(Boolean).join(' · '),
+                xalign: 0, css_classes: ['dim-label', 'caption']}));
+            inner.append(plainText(comment.body));
+            if (comment.reactions.length)
+                inner.append(reactionLine(comment.reactions));
+            card.append(inner);
+            box.append(card);
+        }
+        if (details.more > 0 && item.url) {
+            const more = new Gtk.Button({label: ngettext('%d more comment in the browser', '%d more comments in the browser',
+                details.more).format(details.more), css_classes: ['flat'], halign: Gtk.Align.START});
+            more.connect('clicked', () => this.open(item.url));
+            box.append(more);
+        }
+        let post = null;
+        const composer = this._editor({minHeight: 80, onSubmit: () => post()});
+        box.append(new Gtk.Frame({child: composer.widget}));
+        const postButton = new Gtk.Button({label: _('Comment'), css_classes: ['suggested-action'], halign: Gtk.Align.END,
+            sensitive: false, tooltip_text: _('Ctrl+Enter')});
+        composer.buffer.connect('changed', () => {
+            postButton.sensitive = commentRequests(item, composer.buffer.text).length > 0;
+        });
+        post = async () => {
+            const requests = commentRequests(item, composer.buffer.text);
+            if (requests.length === 0)
+                return;
+            postButton.sensitive = false;
+            if (await this._send(item, requests, _('Comment posted')))
+                reload();
+            else
+                postButton.sensitive = true;
+        };
+        postButton.connect('clicked', post);
+        box.append(postButton);
+        return new Adw.Clamp({child: box, maximum_size: 720});
     }
 
     close(item) {
@@ -141,8 +419,7 @@ export class WindowActions {
         if (!members)
             return;
         const logins = members.map(member => member.username);
-        const me = this._data.account(accountForItem(item))?.login ??
-            this._data.state.sources.find(src => src.account.id === accountForItem(item))?.login ?? null;
+        const me = this._me(item);
         this._pick({
             heading: _('Assignees'),
             item,
@@ -167,6 +444,173 @@ export class WindowActions {
             empty: _('This repository has no labels.'),
             onApply: wanted => this._send(item, labelRequests(item, wanted), _('Labels updated')),
         });
+    }
+
+    isExpanded(item) {
+        return this._expanded.has(itemKey(item));
+    }
+
+    setExpanded(item, open) {
+        if (open)
+            this._expanded.add(itemKey(item));
+        else
+            this._expanded.delete(itemKey(item));
+    }
+
+    /** The item's labels as coloured chips, with (x) to remove and (+) to add. */
+    labelLine(item) {
+        const chips = item.labels.map(label => chip({
+            text: label.name, color: label.color, removeTooltip: _('Remove label %s').format(label.name),
+            onRemove: () => this._send(item, labelRequests(item, item.labels.map(l => l.name).filter(n => n !== label.name)),
+                _('Label removed')),
+        }));
+        chips.push(addChip({label: _('Label'), tooltip: _('Add a label'), onClick: anchor => this._addLabel(item, anchor)}));
+        return chipLine({gicon: this._icons.label, name: _('Labels'), chips});
+    }
+
+    /** The item's assignees as chips, with (x) to unassign and (+) to assign. */
+    assigneeLine(item) {
+        const me = this._me(item);
+        const chips = item.assignees.map(login => chip({
+            text: login === me ? _('%s (you)').format(login) : login,
+            removeTooltip: _('Unassign %s').format(login),
+            onRemove: () => this._setAssignees(item, item.assignees.filter(other => other !== login), _('Unassigned')),
+        }));
+        chips.push(addChip({label: _('Assignee'), tooltip: _('Assign someone'), onClick: anchor => this._addAssignee(item, anchor)}));
+        return chipLine({iconName: 'system-users-symbolic', name: _('Assignees'), chips});
+    }
+
+    /** Your login on the account the item came from. */
+    _me(item) {
+        return this._data.account(accountForItem(item))?.login ??
+            this._data.state.sources.find(src => src.account.id === accountForItem(item))?.login ?? null;
+    }
+
+    /**
+     * People who can be assigned: drafts carry theirs; issues and PRs ask their repository.
+     * `busy` false leaves the row as it is, e.g. while a popover is anchored in it.
+     */
+    async _members(item, busy = true) {
+        if (item.kind === 'draft')
+            return item.people.map(user => ({username: user.login}));
+        return this._fetch(item, ({client, token}) => item.platform === 'gitlab'
+            ? client.listMembers(token, item.projectId)
+            : client.listAssignable(token, item.repo).then(names => names.map(username => ({username}))), busy);
+    }
+
+    async _setAssignees(item, wanted, doneText) {
+        // GitLab assigns by id, so it needs the members even to unassign.
+        const members = item.platform === 'gitlab' ? await this._members(item) : [];
+        if (members)
+            this._send(item, assigneeRequests(item, wanted, members), doneText);
+    }
+
+    _addAssignee(item, anchor) {
+        let members = [];
+        this._popoverPick({
+            anchor,
+            load: async () => {
+                members = await this._members(item, false);
+                if (!members)
+                    return null;
+                const me = this._me(item);
+                return assigneeChoices(item, me, members.map(member => member.username))
+                    .filter(login => !item.assignees.includes(login))
+                    .map(login => ({id: login, label: login === me ? _('%s (you)').format(login) : login}));
+            },
+            placeholder: _('Find a person'),
+            empty: _('Nobody else can be assigned here.'),
+            onPick: login => this._send(item, assigneeRequests(item, [...item.assignees, login], members), _('Assigned')),
+        });
+    }
+
+    _addLabel(item, anchor) {
+        const current = item.labels.map(label => label.name);
+        this._popoverPick({
+            anchor,
+            load: async () => {
+                const labels = await this._fetch(item, ({client, token}) => item.platform === 'gitlab'
+                    ? client.listLabels(token, item.projectId)
+                    : client.listLabels(token, item.repo), false);
+                return labels?.filter(label => !current.includes(label.name))
+                    .map(label => ({id: label.name, label: label.name, color: label.color})) ?? null;
+            },
+            placeholder: _('Find a label'),
+            empty: _('No other labels in this repository.'),
+            onPick: name => this._send(item, labelRequests(item, [...current, name]), _('Label added')),
+        });
+    }
+
+    /**
+     * A popover under `anchor`: a spinner while `load()` resolves to the options (null on
+     * failure, which closes it), then the list with a filter box; picking one runs onPick(id).
+     * The list can rebuild under it (a refresh), so it closes when its anchor goes away.
+     */
+    _popoverPick({anchor, load, placeholder, empty, onPick}) {
+        if (!anchor.get_root())
+            return;
+        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6});
+        box.append(new Gtk.Spinner({spinning: true, width_request: 220, height_request: 48}));
+        const popover = new Gtk.Popover({child: box});
+        popover.set_parent(anchor);
+        const unrealizeId = anchor.connect('unrealize', () => popover.popdown());
+        popover.connect('closed', () => {
+            anchor.disconnect(unrealizeId);
+            if (popover.get_parent())
+                popover.unparent();
+        });
+        popover.popup();
+
+        load().then(options => {
+            if (!popover.get_parent() || !popover.visible)
+                return;
+            if (!options) {
+                popover.popdown();
+                return;
+            }
+            box.remove(box.get_first_child());
+            this._fillPick({popover, box, options, placeholder, empty, onPick});
+        });
+    }
+
+    _fillPick({popover, box, options, placeholder, empty, onPick}) {
+        const entry = new Gtk.SearchEntry({placeholder_text: placeholder});
+        const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE, css_classes: ['navigation-sidebar']});
+        for (const option of options) {
+            const line = new Gtk.Box({spacing: 8, margin_top: 2, margin_bottom: 2});
+            if (option.color !== undefined) {
+                const color = option.color ? labelClass(option.color) : null;
+                line.append(new Gtk.Box({css_classes: ['sourceglance-label-dot', ...color ? [color] : []],
+                    valign: Gtk.Align.CENTER}));
+            }
+            line.append(new Gtk.Label({label: option.label, xalign: 0, ellipsize: 3 /* END */, max_width_chars: 32}));
+            const row = new Gtk.ListBoxRow({child: line});
+            row._option = option;
+            list.append(row);
+        }
+        const matches = row => row._option.label.toLowerCase().includes(entry.text.trim().toLowerCase());
+        list.set_filter_func(matches);
+        entry.connect('search-changed', () => list.invalidate_filter());
+        entry.connect('activate', () => {
+            const first = options.map((_option, i) => list.get_row_at_index(i)).find(row => row && matches(row));
+            if (first)
+                list.emit('row-activated', first);
+        });
+        list.connect('row-activated', (_list, row) => {
+            popover.popdown();
+            onPick(row._option.id);
+        });
+        if (options.length > 8)
+            box.append(entry);
+        if (options.length === 0) {
+            box.append(new Gtk.Label({label: empty, css_classes: ['dim-label'], margin_top: 6, margin_bottom: 6,
+                margin_start: 6, margin_end: 6}));
+        } else {
+            box.append(new Gtk.ScrolledWindow({child: list, hscrollbar_policy: Gtk.PolicyType.NEVER,
+                propagate_natural_height: true, max_content_height: 300, min_content_width: 220}));
+        }
+        if (options.length > 8)
+            entry.grab_focus();
     }
 
     status(item, board) {
@@ -220,8 +664,10 @@ export class WindowActions {
         dialog.present(this._window);
     }
 
-    async _fetch(item, fetch) {
-        this._data.setBusy(itemKey(item), true);
+    /** `busy` false skips marking the item busy, which rebuilds its row. */
+    async _fetch(item, fetch, busy = true) {
+        if (busy)
+            this._data.setBusy(itemKey(item), true);
         try {
             return await fetch(await this._session(item));
         } catch (e) {
@@ -229,23 +675,29 @@ export class WindowActions {
                 this._toast(errorText(e, item));
             return null;
         } finally {
-            this._data.setBusy(itemKey(item), false);
+            if (busy)
+                this._data.setBusy(itemKey(item), false);
         }
     }
 
-    /** Sends requests in order, stops at the first failure, then reloads (and nudges the top bar). */
+    /**
+     * Sends requests in order, stops at the first failure, then reloads (and nudges the top bar).
+     * Resolves to whether all of them went through.
+     */
     async _send(item, requests, doneText) {
         if (requests.length === 0)
-            return;
+            return false;
         this._data.setBusy(itemKey(item), true);
         try {
             const {client, token} = await this._session(item);
             for (const request of requests)
                 await client.send(token, request);
             this._toast(`${doneText}: ${itemText(item)}`);
+            return true;
         } catch (e) {
             if (!isCancelled(e))
                 this._toast(errorText(e, item));
+            return false;
         } finally {
             this._data.setBusy(itemKey(item), false);
             this._data.refreshAfterChange();

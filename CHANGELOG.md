@@ -7,6 +7,29 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Preview** an issue, pull or merge request, or project draft from its row in the window:
+  the description, which you can edit, then its comments and reactions (read only) and a box
+  to add a comment. Project drafts show their description only.
+- A small **Markdown editor** for comments and descriptions, with a toolbar for bold, italic,
+  strikethrough, inline code, bulleted and numbered lists, quotes and code blocks, plus
+  Ctrl+B, Ctrl+I and Ctrl+Enter to post.
+- **Labels and assignees as chips** under an item's title, labels in their own colour: **×**
+  removes one, **+** lists what you can add. An arrow at the end of the row shows or hides
+  them; rows start collapsed.
+- The **Comment** button shows how many comments an item has, on its corner.
+- **Project drafts can be assigned** (to you, or whoever is already on them).
+- **Tasks filters**: **Kind**, **Accounts**, **Labels** and **Assignee** are separate buttons,
+  each a check list with counts. What you pick shows as chips on the row below them.
+
+### Changed
+
+- Rows in the window's lists no longer expand into a row of buttons: their actions are icons
+  on the title line (hover one for its name), and Open uses the external-link arrow. Tasks
+  rows have the same actions as the lists, rather than only opening in the browser.
+- Filter chips on the Tasks page are rounded rectangles, like the rest of the window.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added

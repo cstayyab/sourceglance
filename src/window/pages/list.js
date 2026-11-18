@@ -12,14 +12,13 @@ import {
     groupCollapseId,
     isGroupCollapsed,
     itemKey,
-    itemRef,
     labelOptions,
     searchGroups,
     sourceBadge,
     toggleId,
 } from '../../lib/model.js';
 import {closedPageUrl} from '../../lib/requests.js';
-import {actionButton, collapsibleGroup, noMatchesGroup, statusText} from './common.js';
+import {collapsibleGroup, issueRow, noMatchesGroup, statusText} from './common.js';
 
 // Built on use: gettext only works once the window has set up translations, not at import.
 function copyFor(key) {
@@ -44,19 +43,6 @@ function copyFor(key) {
                 '%d merged or closed pull requests still assigned to you', n).format(n),
         },
     }[key];
-}
-
-function itemSubtitle(item) {
-    const parts = [];
-    if (item.kind === 'pr' && item.reason === 'review')
-        parts.push(_('review requested'));
-    if (item.labels.length)
-        parts.push(item.labels.map(label => label.name).join(', '));
-    if (item.assignees.length)
-        parts.push(item.assignees.map(login => `@${login}`).join(' '));
-    for (const board of item.boards ?? [])
-        parts.push(`${board.title}: ${board.status ?? _('No status')}`);
-    return parts.join('  ·  ');
 }
 
 export class ListPage {
@@ -233,38 +219,6 @@ export class ListPage {
     }
 
     _itemRow(item, busy) {
-        const row = new Adw.ExpanderRow({
-            title: `${itemRef(item)}  ${item.title}`,
-            subtitle: busy ? _('Working…') : itemSubtitle(item),
-            use_markup: false,
-        });
-        row.add_prefix(new Gtk.Image({gicon: item.kind === 'pr' ? this._icons.pr : this._icons.issue}));
-
-        const buttons = new Gtk.FlowBox({
-            selection_mode: Gtk.SelectionMode.NONE,
-            max_children_per_line: 8,
-            column_spacing: 6,
-            row_spacing: 6,
-            margin_top: 8,
-            margin_bottom: 8,
-            margin_start: 12,
-            margin_end: 12,
-            sensitive: !busy,
-        });
-        const a = this._actions;
-        buttons.append(actionButton({iconName: 'web-browser-symbolic',
-            label: a.openLabel(item), onClick: () => a.open(item.url)}));
-        buttons.append(actionButton({iconName: 'chat-message-new-symbolic', label: _('Comment'), onClick: () => a.comment(item)}));
-        buttons.append(item.kind === 'pr'
-            ? actionButton({gicon: this._icons.prClosed, label: _('Close'), onClick: () => a.close(item)})
-            : actionButton({gicon: this._icons.issueClosed, label: _('Close'), onClick: () => a.close(item)}));
-        buttons.append(actionButton({iconName: 'system-users-symbolic', label: _('Assignees'), onClick: () => a.assignees(item)}));
-        buttons.append(actionButton({gicon: this._icons.label, label: _('Labels'), onClick: () => a.labels(item)}));
-        for (const board of item.boards ?? []) {
-            buttons.append(actionButton({gicon: this._icons.projects, label: `${board.title}: ${board.status ?? _('No status')}`,
-                onClick: () => a.status(item, board)}));
-        }
-        row.add_row(new Gtk.ListBoxRow({child: buttons, activatable: false, selectable: false}));
-        return row;
+        return issueRow({item, busy, icons: this._icons, actions: this._actions});
     }
 }

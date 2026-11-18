@@ -281,6 +281,7 @@ export function parseSearchResponse(json, search = 'issue', isSafeUrl = isSafeGi
             state: item.state === 'closed' ? 'closed' : 'open',
             labels: parseLabels(item.labels),
             assignees: parseLogins(item.assignees),
+            comments: Number.isInteger(item.comments) && item.comments >= 0 ? item.comments : 0,
             updatedAt: item.updated_at,
         }));
     return {total: json?.total_count ?? items.length, items};
@@ -356,6 +357,67 @@ export function commentRequest(item, text) {
     return {method: 'POST', path: `${path}/comments`, body: {body}};
 }
 
+// The preview: an item's description, comments and reactions, and editing the description.
+
+export const MAX_PREVIEW_COMMENTS = 100;
+const MAX_BODY_LENGTH = 65536;
+
+// GitHub's reaction names → what the preview shows.
+const REACTIONS = [['+1', '👍'], ['-1', '👎'], ['laugh', '😄'], ['hooray', '🎉'], ['confused', '😕'],
+    ['heart', '❤️'], ['rocket', '🚀'], ['eyes', '👀']];
+
+/** A GitHub `reactions` summary → [{emoji, count}] for the ones used, in GitHub's order. */
+export function parseReactions(summary) {
+    return REACTIONS
+        .map(([name, emoji]) => ({emoji, count: Number.isInteger(summary?.[name]) ? summary[name] : 0}))
+        .filter(reaction => reaction.count > 0);
+}
+
+function parseLogin(user) {
+    return isValidLogin(user?.login) ? user.login : null;
+}
+
+/** The GET requests for the preview of an issue or pull request: the item, then its comments. */
+export function detailsRequests(item) {
+    const path = issuePath(item);
+    return {
+        item: {method: 'GET', path},
+        comments: {method: 'GET', path: `${path}/comments?per_page=${MAX_PREVIEW_COMMENTS}`},
+    };
+}
+
+/**
+ * The preview from the API's issue and comments: {body, author, createdAt, reactions,
+ * comments: [{author, createdAt, body, reactions}], more}. Text stays plain (shown as is).
+ */
+export function parseDetails(itemJson, commentsJson) {
+    const comments = (Array.isArray(commentsJson) ? commentsJson : [])
+        .filter(comment => typeof comment?.body === 'string')
+        .map(comment => ({
+            author: parseLogin(comment.user),
+            createdAt: typeof comment.created_at === 'string' ? comment.created_at : null,
+            body: cappedString(comment.body, MAX_BODY_LENGTH),
+            reactions: parseReactions(comment.reactions),
+        }));
+    const total = Number.isInteger(itemJson?.comments) ? itemJson.comments : comments.length;
+    return {
+        body: cappedString(itemJson?.body ?? '', MAX_BODY_LENGTH),
+        author: parseLogin(itemJson?.user),
+        createdAt: typeof itemJson?.created_at === 'string' ? itemJson.created_at : null,
+        reactions: parseReactions(itemJson?.reactions),
+        comments,
+        more: Math.max(0, total - comments.length),
+    };
+}
+
+/** Replaces an issue's or pull request's description (empty clears it). */
+export function bodyRequest(item, text) {
+    const body = typeof text === 'string' ? text : '';
+    if (body.length > MAX_BODY_LENGTH)
+        return null;
+    return {method: 'PATCH', path: issuePath(item), body: {body}};
+}
+
 /** Add (add=true) or remove assignees. Invalid logins are dropped; null if none are left. */
 export function assigneesRequest(item, logins, add) {
     const path = issuePath(item);
@@ -408,6 +470,10 @@ const MOVE_STATUS_MUTATION = `mutation($project: ID!, $item: ID!, $field: ID!, $
     updateProjectV2ItemFieldValue(input: {
         projectId: $project, itemId: $item, fieldId: $field, value: {singleSelectOptionId: $option}
     }) { projectV2Item { id } }
+}`;
+
+const DRAFT_ASSIGNEES_MUTATION = `mutation($draft: ID!, $assignees: [ID!]) {
+    updateProjectV2DraftIssue(input: {draftIssueId: $draft, assigneeIds: $assignees}) { draftIssue { id } }
 }`;
 
 function isNodeId(id) {
@@ -476,13 +542,15 @@ const BOARD_FIELDS = `
             id
             type
             isArchived
-            content { ... on DraftIssue { title } }
+            content { ... on DraftIssue { id title assignees(first: 10) { nodes { id login } } } }
             fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { optionId name } }
         }
     }`;
 
 export const VIEWER_BOARDS_QUERY = `query {
     viewer {
+        id
+        login
         projectsV2(first: 20) { nodes { ${BOARD_FIELDS} } }
         organizations(first: 20) { nodes { projectsV2(first: 20) { nodes { ${BOARD_FIELDS} } } } }
     }
@@ -492,7 +560,14 @@ export function viewerBoardsRequest() {
     return {method: 'POST', path: '/graphql', graphql: true, body: {query: VIEWER_BOARDS_QUERY, variables: {}}};
 }
 
-function parseBoard(project, isSafeUrl) {
+/** GraphQL users as [{id, login}], dropping malformed entries. */
+function parsePeople(list) {
+    return (Array.isArray(list) ? list : [])
+        .filter(user => isNodeId(user?.id) && isValidLogin(user.login))
+        .map(user => ({id: user.id, login: user.login}));
+}
+
+function parseBoard(project, isSafeUrl, viewer) {
     const field = project?.field;
     if (!isNodeId(project?.id) || project.closed)
         return null;
@@ -509,7 +584,9 @@ function parseBoard(project, isSafeUrl) {
         const current = options.find(option => option.id === node.fieldValueByName?.optionId) ?? null;
         drafts.push({
             itemId: node.id,
+            draftId: isNodeId(node.content?.id) ? node.content.id : null,
             title: cappedString(node.content?.title, 300),
+            assignees: parsePeople(node.content?.assignees?.nodes),
             optionId: current?.id ?? null,
             status: current?.name ?? null,
         });
@@ -521,6 +598,8 @@ function parseBoard(project, isSafeUrl) {
         fieldId: isNodeId(field?.id) ? field.id : null,
         options,
         drafts,
+        // You, so a draft can be assigned to you: drafts have no repository to list people from.
+        viewer,
         // Items past the first page (of any kind) may hide more drafts.
         truncated: (project.items?.totalCount ?? 0) > MAX_BOARD_ITEMS,
     };
@@ -536,10 +615,11 @@ export function parseViewerBoards(json, isSafeUrl = isSafeGitHubUrl) {
         ...(viewer?.projectsV2?.nodes ?? []),
         ...(viewer?.organizations?.nodes ?? []).flatMap(org => org?.projectsV2?.nodes ?? []),
     ];
+    const viewerUser = parsePeople([viewer])[0] ?? null;
     const seen = new Set();
     const boards = [];
     for (const project of projects) {
-        const board = parseBoard(project, isSafeUrl);
+        const board = parseBoard(project, isSafeUrl, viewerUser);
         if (board && !seen.has(board.projectId)) {
             seen.add(board.projectId);
             boards.push(board);
@@ -554,8 +634,13 @@ export function parseViewerBoards(json, isSafeUrl = isSafeGitHubUrl) {
  */
 export function draftTarget(board, draft) {
     return {
-        item: {kind: 'draft', repo: 'project', number: draft.itemId, title: draft.title, labels: [], assignees: [],
-            accountId: board.accountId ?? null},
+        item: {
+            kind: 'draft', repo: 'project', number: draft.itemId, draftId: draft.draftId ?? null, title: draft.title,
+            labels: [], assignees: (draft.assignees ?? []).map(user => user.login), accountId: board.accountId ?? null,
+            // Who can be assigned: you and the current assignees, with their node IDs.
+            people: [...(board.viewer ? [board.viewer] : []), ...(draft.assignees ?? [])]
+                .filter((user, i, all) => all.findIndex(other => other.id === user.id) === i),
+        },
         board: {
             itemId: draft.itemId,
             projectId: board.projectId,
@@ -598,6 +683,68 @@ export function moveStatusRequest(board, optionId) {
             variables: {project: board.projectId, item: board.itemId, field: board.fieldId, option: optionId},
         },
     };
+}
+
+const DRAFT_BODY_QUERY = 'query($draft: ID!) { node(id: $draft) { ... on DraftIssue { body creator { login } createdAt } } }';
+const DRAFT_BODY_MUTATION = `mutation($draft: ID!, $body: String!) {
+    updateProjectV2DraftIssue(input: {draftIssueId: $draft, body: $body}) { draftIssue { id } }
+}`;
+
+function draftId(item) {
+    if (item?.kind !== 'draft' || !isNodeId(item.draftId))
+        throw new TypeError('sourceglance: not a valid draft item');
+    return item.draftId;
+}
+
+/** The preview of a draft: its description only (drafts have no comments or reactions). */
+export function draftDetailsRequest(item) {
+    return {method: 'POST', path: '/graphql', graphql: true,
+        body: {query: DRAFT_BODY_QUERY, variables: {draft: draftId(item)}}};
+}
+
+export function parseDraftDetails(json) {
+    const node = json?.data?.node;
+    return {
+        body: cappedString(node?.body ?? '', MAX_BODY_LENGTH),
+        author: parseLogin(node?.creator),
+        createdAt: typeof node?.createdAt === 'string' ? node.createdAt : null,
+        reactions: [],
+        comments: [],
+        more: 0,
+    };
+}
+
+export function draftBodyRequest(item, text) {
+    const body = typeof text === 'string' ? text : '';
+    if (body.length > MAX_BODY_LENGTH)
+        return null;
+    return {method: 'POST', path: '/graphql', graphql: true,
+        body: {query: DRAFT_BODY_MUTATION, variables: {draft: draftId(item), body}}};
+}
+
+/** Sets a draft item's assignees to `wanted` logins, from its `people`. Null if nothing changes. */
+export function draftAssigneesRequest(item, wanted) {
+    if (item?.kind !== 'draft' || !isNodeId(item.draftId))
+        throw new TypeError('sourceglance: not a valid draft item');
+    const {add, remove} = diffSelection(item.assignees, wanted);
+    if (add.length === 0 && remove.length === 0)
+        return null;
+    const ids = wanted.map(login => item.people.find(user => user.login === login)?.id).filter(isNodeId);
+    return {
+        method: 'POST',
+        path: '/graphql',
+        graphql: true,
+        body: {query: DRAFT_ASSIGNEES_MUTATION, variables: {draft: item.draftId, assignees: ids}},
+    };
+}
+
+/** Text colour that reads on a label of colour `hex` ("rrggbb"): dark on light labels, else light. */
+export function labelTextColor(hex) {
+    if (!/^[0-9a-fA-F]{6}$/.test(hex ?? ''))
+        return null;
+    const [r, g, b] = [0, 2, 4].map(i => Number.parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#1f2328' : '#ffffff';
 }
 
 /** Error kind for a GraphQL `errors` array (GitHub answers HTTP 200 with these). */
@@ -993,8 +1140,12 @@ export function filterTasks(tasks, filters = [], terms = []) {
     const wanted = type => (filters ?? []).filter(filter => filter.type === type).map(filter => filter.value);
     const kinds = wanted('kind');
     const accounts = wanted('account');
+    const labels = wanted('label');
+    const assignees = wanted('assignee');
     return tasks.filter(task => (kinds.length === 0 || kinds.includes(task.kind)) &&
         (accounts.length === 0 || accounts.includes(task.account)) &&
+        (labels.length === 0 || taskLabels(task).some(name => labels.includes(name))) &&
+        (assignees.length === 0 || taskAssignees(task).some(login => assignees.includes(login))) &&
         (task.item
             ? itemMatches(task.item, terms)
             : matchesAll([task.title ?? '', task.status ?? '', task.repo ?? ''].join('\n'), terms)));
@@ -1015,6 +1166,51 @@ export function taskFilterOptions(tasks, sources, active = []) {
         }
     }
     return options.filter(option => !isActive(option.type, option.value));
+}
+
+/** The logins assigned to a task: an issue's or PR's assignees, or a draft's. */
+function taskAssignees(task) {
+    return task.item ? task.item.assignees ?? [] : (task.draft?.assignees ?? []).map(user => user.login);
+}
+
+function taskLabels(task) {
+    return (task.item?.labels ?? []).map(label => label.name);
+}
+
+export const TASK_FILTER_TYPES = ['kind', 'account', 'label', 'assignee'];
+
+/**
+ * The Tasks filter menus: {kind, account, label, assignee}, each a list of {type, value,
+ * title, count, active} with how many of `tasks` each has; labels and assignees sorted by name.
+ * `active` is the chosen filters ({type, value}).
+ */
+export function taskFilterGroups(tasks, sources, active = []) {
+    const isActive = (type, value) => (active ?? []).some(filter => filter.type === type && filter.value === value);
+    const option = (type, value, title, count) => ({type, value, title, count, active: isActive(type, value)});
+    const tally = names => {
+        const counts = new Map();
+        for (const list of names) {
+            for (const name of new Set(list))
+                counts.set(name, (counts.get(name) ?? 0) + 1);
+        }
+        return [...counts].sort((a, b) => a[0].localeCompare(b[0]));
+    };
+    return {
+        kind: TASK_KINDS.map(kind => option('kind', kind, null, tasks.filter(task => task.kind === kind).length)),
+        account: (sources ?? []).filter(source => source.status !== 'signed-out')
+            .map(source => option('account', source.key, source.assignee ?? source.title,
+                tasks.filter(task => task.account === source.key).length)),
+        label: tally(tasks.map(taskLabels)).map(([name, count]) => option('label', name, name, count)),
+        assignee: tally(tasks.map(taskAssignees)).map(([login, count]) => option('assignee', login, login, count)),
+    };
+}
+
+/** Adds the filter, or takes it off if it's there (a check in a filter menu). */
+export function toggleTaskFilter(filters, filter) {
+    const has = filters.some(other => other.type === filter.type && other.value === filter.value);
+    return has
+        ? filters.filter(other => other.type !== filter.type || other.value !== filter.value)
+        : [...filters, filter];
 }
 
 /** How many tasks of each kind: {all, issue, pr, draft}. */

@@ -3,19 +3,29 @@
 import {GITHUB_COM, isSafeAccountUrl, isValidAccountLogin} from './accounts.js';
 import {
     gitlabAssigneesRequest,
+    gitlabBodyRequest,
     gitlabClosedPageUrl,
     gitlabCloseRequest,
     gitlabCommentRequest,
+    gitlabDetailsRequests,
     gitlabLabelsRequest,
     gitlabReopenRequest,
     isSafeGitLabUrl,
+    parseGitLabDetails,
 } from './gitlabModel.js';
 import {
     assigneeChangeRequests,
+    bodyRequest,
     closeRequest,
     commentRequest,
+    detailsRequests,
+    draftAssigneesRequest,
+    draftBodyRequest,
+    draftDetailsRequest,
     isSafeGitHubUrl,
     labelChangeRequests,
+    parseDetails,
+    parseDraftDetails,
     reopenRequest,
     searchPageUrl,
 } from './model.js';
@@ -60,6 +70,8 @@ export function labelRequests(item, wanted) {
 
 /** `members` are GitLab's [{id, username}] (assignees are set by id there). */
 export function assigneeRequests(item, wanted, members = []) {
+    if (item.kind === 'draft')
+        return [draftAssigneesRequest(item, wanted)].filter(Boolean);
     return isGitLab(item)
         ? [gitlabAssigneesRequest(item, wanted, members)].filter(Boolean)
         : assigneeChangeRequests(item, wanted);
@@ -78,4 +90,22 @@ export function closedPageUrl(account, kind, repos = []) {
 /** The account's profile page, or null before its login is known. */
 export function profileUrl(account) {
     return isValidAccountLogin(account.login) ? `${account.base}/${encodeURIComponent(account.login)}` : null;
+}
+
+/**
+ * The preview's GET requests: [item] for a draft, [item, comments] otherwise. `parse` turns
+ * their responses (in that order) into the preview (see parseDetails() in model.js).
+ */
+export function previewRequests(item) {
+    if (item.kind === 'draft')
+        return {requests: [draftDetailsRequest(item)], parse: ([json]) => parseDraftDetails(json)};
+    const {item: one, comments} = isGitLab(item) ? gitlabDetailsRequests(item) : detailsRequests(item);
+    return {requests: [one, comments], parse: ([a, b]) => (isGitLab(item) ? parseGitLabDetails(a, b) : parseDetails(a, b))};
+}
+
+/** Replaces the description; [] if it's too long. */
+export function bodyRequests(item, text) {
+    const request = item.kind === 'draft' ? draftBodyRequest(item, text)
+        : isGitLab(item) ? gitlabBodyRequest(item, text) : bodyRequest(item, text);
+    return request ? [request] : [];
 }

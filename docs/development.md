@@ -38,10 +38,12 @@ src/
 │   ├── updater.js    # Downloads, verifies and runs the new Setup
 │   ├── wallpaper.js  # The recommended wallpaper: Apply, Reset, forget the saved copy
 │   ├── gitlabModel.js # Pure GitLab parsing and request builders (unit-tested)
-│   ├── requests.js   # Write requests for either platform
+│   ├── markdown.js   # Pure Markdown formatting for the comment editor's toolbar (unit-tested)
+│   ├── requests.js   # Write and preview requests for either platform
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
-├── window/           # The window: app.js builds it, i18n.js, pages/ (lists, settings, accounts wizard)
+├── window/           # The window: app.js builds it, actions.js (dialogs, preview, chips), i18n.js,
+│                     # pages/ (Tasks, lists, settings, accounts wizard; rows in pages/common.js)
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
 ├── stylesheet.css    # Styles for the panel menu
 ├── icons/            # Symbolic icons: sourceglance, checklist (projects), pull request

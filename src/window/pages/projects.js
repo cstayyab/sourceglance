@@ -7,16 +7,13 @@ import Gtk from 'gi://Gtk';
 import {gettext as _} from '../i18n.js';
 
 import {
-    draftTarget,
     groupCollapseId,
     groupDraftsByStatus,
-    isDoneStatus,
     isGroupCollapsed,
-    itemKey,
     searchBoards,
     toggleId,
 } from '../../lib/model.js';
-import {actionButton, collapsibleGroup, noMatchesGroup, statusText} from './common.js';
+import {collapsibleGroup, draftRow, noMatchesGroup, statusText} from './common.js';
 
 export class ProjectsPage {
     /** `onClearSearch` empties the window's search box. */
@@ -135,28 +132,7 @@ export class ProjectsPage {
         }
     }
 
-    _draftRow(board, draft, statusName, busyKeys) {
-        const {item, board: target} = draftTarget(board, draft);
-        const busy = busyKeys.includes(itemKey(item));
-        const row = new Adw.ExpanderRow({
-            title: draft.title || _('Untitled draft'),
-            subtitle: busy ? _('Working…') : statusName ?? _('No status'),
-            use_markup: false,
-        });
-        row.add_prefix(isDoneStatus(draft.status)
-            ? new Gtk.Image({gicon: this._icons.issueClosed})
-            : new Gtk.Image({icon_name: 'document-edit-symbolic'}));
-        const buttons = new Gtk.FlowBox({selection_mode: Gtk.SelectionMode.NONE, column_spacing: 6, row_spacing: 6,
-            margin_top: 8, margin_bottom: 8, margin_start: 12, margin_end: 12, sensitive: !busy});
-        const move = actionButton({gicon: this._icons.projects, label: _('Move to status'),
-            onClick: () => this._actions.status(item, target)});
-        move.sensitive = Boolean(board.fieldId) && board.options.length > 0;
-        buttons.append(move);
-        if (board.url) {
-            buttons.append(actionButton({iconName: 'web-browser-symbolic', label: _('Open board'),
-                onClick: () => this._actions.open(board.url)}));
-        }
-        row.add_row(new Gtk.ListBoxRow({child: buttons, activatable: false, selectable: false}));
-        return row;
+    _draftRow(board, draft, _statusName, busyKeys) {
+        return draftRow({board, draft, busyKeys, icons: this._icons, actions: this._actions});
     }
 }

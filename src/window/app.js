@@ -46,6 +46,7 @@ export function fillWindow(window, {settings, dir, version}) {
         pr: icon('git-pull-request-symbolic'),
         label: icon('label-symbolic'),
         projects: icon('checklist-symbolic'),
+        code: icon('code-symbolic'),
     };
     const overlay = new Adw.ToastOverlay();
     const toast = title => overlay.add_toast(new Adw.Toast({title}));
@@ -76,7 +77,7 @@ export function fillWindow(window, {settings, dir, version}) {
         showCounts();
         refresh.sensitive = !state.refreshing;
     }});
-    const actions = new WindowActions({window, clients, data, toast});
+    const actions = new WindowActions({window, clients, data, toast, icons});
     const repos = () => settings.get_strv('repositories');
     const onClearSearch = () => {
         search.text = '';

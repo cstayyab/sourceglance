@@ -10,11 +10,13 @@ import {
     clampWidgetPosition,
     defaultWidgetPosition,
     normalizeWidgets,
+    draftAssigneesRequest,
     draftTarget,
     groupDraftsByStatus,
     gtypeName,
     itemKey,
     normalizeButtons,
+    labelTextColor,
     parseViewerBoards,
     searchPageUrl,
     PROJECT_ITEMS_QUERY,
@@ -137,7 +139,7 @@ test('parseSearchResponse maps items and skips pull requests', () => {
     assert.deepEqual(result.items, [{
         kind: 'issue', reason: 'assigned', number: 1, title: 'One',
         url: 'https://github.com/a/b/issues/1', repo: 'a/b', nodeId: 'I_1', state: 'open',
-        labels: [{name: 'bug', color: 'd73a4a'}], assignees: ['omer-gh'],
+        labels: [{name: 'bug', color: 'd73a4a'}], assignees: ['omer-gh'], comments: 0,
         updatedAt: '2026-11-01T00:00:00Z',
     }]);
     assert.deepEqual(parseSearchResponse(null), {total: 0, items: []});
@@ -292,7 +294,8 @@ test('parseViewerBoards keeps open boards and their non-archived drafts only', (
     const board = (id, extra = {}) => ({
         id, title: `Board ${id}`, url: `https://github.com/users/me/projects/${id.length}`, closed: false, field,
         items: {totalCount: 3, nodes: [
-            {id: 'PVTI_d1', type: 'DRAFT_ISSUE', isArchived: false, content: {title: 'Draft one'},
+            {id: 'PVTI_d1', type: 'DRAFT_ISSUE', isArchived: false, content: {id: 'DI_1', title: 'Draft one',
+                assignees: {nodes: [{id: 'U_1', login: 'me'}, {id: 'U_x', login: '-bad-'}]}},
                 fieldValueByName: {optionId: 'o2', name: 'Done'}},
             {id: 'PVTI_d2', type: 'DRAFT_ISSUE', isArchived: true, content: {title: 'Archived'}},
             {id: 'PVTI_i1', type: 'ISSUE', isArchived: false, content: {}},
@@ -302,6 +305,7 @@ test('parseViewerBoards keeps open boards and their non-archived drafts only', (
     });
     const boards = parseViewerBoards({
         data: {viewer: {
+            id: 'U_1', login: 'me',
             projectsV2: {nodes: [board('PVT_a'), board('PVT_closed', {closed: true}), null]},
             organizations: {nodes: [{projectsV2: {nodes: [board('PVT_a'), board('PVT_b', {url: 'https://evil.example/x'})]}}, null]},
         }},
@@ -309,9 +313,11 @@ test('parseViewerBoards keeps open boards and their non-archived drafts only', (
     });
     assert.deepEqual(boards.map(b => b.projectId), ['PVT_a', 'PVT_b']);
     assert.deepEqual(boards[0].drafts, [
-        {itemId: 'PVTI_d1', title: 'Draft one', optionId: 'o2', status: 'Done'},
-        {itemId: 'PVTI_d3', title: 'No status', optionId: null, status: null},
+        {itemId: 'PVTI_d1', draftId: 'DI_1', title: 'Draft one', assignees: [{id: 'U_1', login: 'me'}],
+            optionId: 'o2', status: 'Done'},
+        {itemId: 'PVTI_d3', draftId: null, title: 'No status', assignees: [], optionId: null, status: null},
     ]);
+    assert.deepEqual(boards[0].viewer, {id: 'U_1', login: 'me'});
     assert.equal(boards[0].truncated, false);
     assert.equal(boards[1].url, null);
     assert.deepEqual(parseViewerBoards(null), []);
@@ -333,6 +339,26 @@ test('draftTarget builds an action target that moveStatusRequest accepts', () =>
     assert.equal(item.kind, 'draft');
     assert.equal(itemKey(item), 'project#PVTI_d1');
     assert.equal(moveStatusRequest(target, 'o1').body.variables.item, 'PVTI_d1');
+});
+
+test('draftAssigneesRequest sets a draft\'s assignees by node ID', () => {
+    const board = {projectId: 'PVT_a', title: 'Roadmap', fieldId: 'F_1', options: [], viewer: {id: 'U_me', login: 'me'}};
+    const {item} = draftTarget(board, {itemId: 'PVTI_d1', draftId: 'DI_1', title: 'Draft',
+        assignees: [{id: 'U_amy', login: 'amy'}], optionId: null, status: null});
+    assert.deepEqual(item.assignees, ['amy']);
+    assert.deepEqual(item.people.map(user => user.login), ['me', 'amy']);
+    assert.deepEqual(draftAssigneesRequest(item, ['amy', 'me']).body.variables, {draft: 'DI_1', assignees: ['U_amy', 'U_me']});
+    assert.deepEqual(draftAssigneesRequest(item, []).body.variables.assignees, []);
+    assert.equal(draftAssigneesRequest(item, ['amy']), null);
+    assert.throws(() => draftAssigneesRequest({...item, draftId: null}, ['me']), TypeError);
+});
+
+test('labelTextColor picks dark text on light labels', () => {
+    assert.equal(labelTextColor('ffffff'), '#1f2328');
+    assert.equal(labelTextColor('d73a4a'), '#ffffff');
+    assert.equal(labelTextColor('a2eeef'), '#1f2328');
+    assert.equal(labelTextColor(null), null);
+    assert.equal(labelTextColor('fff'), null);
 });
 
 test('labelOptions counts each label once per item, sorted by name', () => {
