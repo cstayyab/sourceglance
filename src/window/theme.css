@@ -79,3 +79,8 @@
 .sourceglance-splash progressbar > trough > progress {
     background-color: #1f6feb;
 }
+
+.sourceglance-window .sourceglance-wallpaper-preview {
+    border-radius: 12px;
+    margin-bottom: 12px;
+}

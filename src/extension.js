@@ -11,6 +11,7 @@ import {GitLabClient} from './lib/gitlab.js';
 import {loadGitLab} from './lib/gitlabLoader.js';
 import {ToolbarButton} from './lib/indicator.js';
 import {UpdateNotice} from './lib/updateNotice.js';
+import {backgroundSettings, forgetStaleSavedWallpaper} from './lib/wallpaper.js';
 import {DesktopWidgets} from './lib/widgets.js';
 import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
 import {GITLAB_CLIENT_ID} from './lib/config.js';
@@ -20,7 +21,7 @@ import {lookupToken} from './lib/tokenStore.js';
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
 const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
-    'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update'];
+    'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update', 'saved-wallpaper'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
@@ -114,6 +115,12 @@ export default class SourceglanceExtension extends Extension {
         });
 
         this._syncLauncher();
+        // Reset (Settings → Desktop Widgets) is only offered until the wallpaper changes some
+        // other way, even while the window is closed.
+        this._background = backgroundSettings();
+        this._backgroundChangedId = this._background.connect('changed',
+            () => forgetStaleSavedWallpaper(this._background, this._settings));
+        forgetStaleSavedWallpaper(this._background, this._settings);
         const atLogin = sessionRunning === null;
         sessionRunning ??= this._settings.get_boolean('start-automatically');
         if (sessionRunning)
@@ -185,6 +192,11 @@ export default class SourceglanceExtension extends Extension {
         this._running = false;
         this._updateNotice?.destroy();
         this._updateNotice = null;
+        if (this._backgroundChangedId) {
+            this._background.disconnect(this._backgroundChangedId);
+            this._backgroundChangedId = 0;
+        }
+        this._background = null;
         this._cancellable?.cancel();
         this._cancellable = null;
 

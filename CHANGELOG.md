@@ -16,6 +16,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   requests, in the window and in the top-bar menus alike. Project boards in the window's
   Projects list collapse the same way. The heading keeps its count, Source Glance remembers
   what you collapsed, and a search shows matches in collapsed repositories too.
+- A **Wallpaper** section in Settings → Desktop Widgets recommends Adwaita, GNOME's default
+  wallpaper (from GNOME Backgrounds), to go with the cards, with a preview. **Apply** sets it
+  and keeps yours; **Reset** puts yours back. If you change the wallpaper any other way, Reset
+  isn't offered any more, only Apply.
 
 ### Changed
 
