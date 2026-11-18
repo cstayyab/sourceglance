@@ -202,7 +202,7 @@ export function launcherDesktopEntry({launcherPath, iconPath}) {
     return [
         '[Desktop Entry]',
         'Type=Application',
-        'Name=sourceglance',
+        'Name=Source Glance',
         'Comment=Your GitHub issues, pull requests and project boards in the top bar',
         `Exec=${exec}`,
         `Icon=${iconPath}`,
@@ -847,4 +847,64 @@ export function searchCount(id, state, terms) {
     default:
         return 0;
     }
+}
+
+/**
+ * The id a repository group (or project board, by its node id) is remembered by in the
+ * `collapsed-groups` setting, e.g. issues:github:owner/repo or projects:github:PVT_….
+ */
+export function groupCollapseId(list, platform, name) {
+    return `${list}:${platform}:${name}`;
+}
+
+/** `ids` with `id` added, or without it if it was there (collapsed ↔ expanded). */
+export function toggleId(ids, id) {
+    return ids.includes(id) ? ids.filter(other => other !== id) : [...ids, id];
+}
+
+/** Whether a group shows collapsed. A search expands every group, so its matches show. */
+export function isGroupCollapsed(collapsed, id, terms = []) {
+    return terms.length === 0 && collapsed.includes(id);
+}
+
+// The wallpaper Settings → Desktop Widgets recommends to go with the cards: GNOME's default,
+// Adwaita (gnome-backgrounds), with the values from its gnome-background-properties entry.
+export const RECOMMENDED_WALLPAPER = {
+    'picture-uri': 'file:///usr/share/backgrounds/gnome/adwaita-l.jxl',
+    'picture-uri-dark': 'file:///usr/share/backgrounds/gnome/adwaita-d.jxl',
+    'picture-options': 'zoom',
+    'primary-color': '#3071AE',
+    'secondary-color': '#000000',
+    'color-shading-type': 'solid',
+};
+// The org.gnome.desktop.background keys Apply sets, and keeps a copy of to put back.
+export const WALLPAPER_KEYS = Object.keys(RECOMMENDED_WALLPAPER);
+
+/** Whether `current` ({key: value} of WALLPAPER_KEYS) shows the recommended wallpaper. */
+export function isRecommendedWallpaper(current) {
+    return current?.['picture-uri'] === RECOMMENDED_WALLPAPER['picture-uri'] &&
+        current?.['picture-uri-dark'] === RECOMMENDED_WALLPAPER['picture-uri-dark'];
+}
+
+/** Whether `saved` holds a wallpaper to put back (Apply's copy of the one it replaced). */
+function hasSavedWallpaper(saved) {
+    return Boolean(saved?.['picture-uri'] || saved?.['picture-uri-dark']);
+}
+
+/**
+ * What the Wallpaper row offers: 'apply' when another wallpaper is set, 'reset' while the
+ * recommended one Apply set is still there, 'in-use' when it's set but not by Apply.
+ */
+export function wallpaperChoice(current, saved) {
+    if (!isRecommendedWallpaper(current))
+        return 'apply';
+    return hasSavedWallpaper(saved) ? 'reset' : 'in-use';
+}
+
+/**
+ * Whether Apply's copy of your wallpaper is still worth keeping: only while the recommended
+ * one is set. Once the wallpaper changes any other way, Reset is no longer offered.
+ */
+export function keepSavedWallpaper(current, saved) {
+    return hasSavedWallpaper(saved) && isRecommendedWallpaper(current);
 }

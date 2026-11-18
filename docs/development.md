@@ -17,8 +17,8 @@ npm install
 ```
 src/
 ├── extension.js      # Lifecycle and refresh loop: created in enable(), destroyed in disable()
-├── prefs.js          # Settings window (libadwaita): GitHub / token sign-in, filters
-├── launcher.js       # Run by the app icon (gjs): start sourceglance, open Settings
+├── prefs.js          # The window, when GNOME's Extensions app opens it (window/app.js)
+├── launcher.js       # Source Glance's own app (gjs): start it, open the window (window/app.js)
 ├── lib/
 │   ├── config.js     # Build-time config: GitHub App and OAuth App client IDs
 │   ├── indicator.js  # A top-bar button: icon, count and menu (pure view: render(state))
@@ -201,7 +201,8 @@ On **X11**, press <kbd>Alt</kbd>+<kbd>F2</kbd>, type `r`, and press Enter to rel
 
 - Extension logs: `journalctl -f -o cat /usr/bin/gnome-shell`
 - Preferences logs: `journalctl -f -o cat /usr/bin/gjs`
-- Open the settings window: `gnome-extensions prefs sourceglance@omer-gh.github.io`
+- Open the window: `gjs -m ~/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js --open`
+  (for a Setup install, `versions/<version>/launcher.js`)
 - Looking Glass inspector: <kbd>Alt</kbd>+<kbd>F2</kbd>, then `lg`
 
 ## Before opening a PR

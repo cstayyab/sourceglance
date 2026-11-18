@@ -3,7 +3,7 @@
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from './i18n.js';
 
 import {GitHubError, isCancelled} from '../lib/github.js';
 import {GITLAB_CLIENT_ID} from '../lib/config.js';
@@ -22,7 +22,7 @@ function forbiddenText(item) {
     if (item?.platform === 'gitlab')
         return _('Your GitLab account can’t change this in %s.').format(item.repo);
     if (item?.repo) {
-        return _('sourceglance can’t change %s: the sourceglance app isn’t installed there, or you don’t have permission. Make the change on GitHub, or ask the owner to install the app.')
+        return _('Source Glance can’t change %s: the Source Glance app isn’t installed there, or you don’t have permission. Make the change on GitHub, or ask the owner to install the app.')
             .format(item.repo);
     }
     return _('Your sign-in can’t change this.');

@@ -29,7 +29,7 @@ function forbiddenText(item) {
     if (item?.platform === 'gitlab')
         return _('Your GitLab account can’t change this in %s.').format(item.repo);
     if (item?.repo) {
-        return _('sourceglance can’t change %s: the sourceglance app isn’t installed there, or you don’t have permission. Make the change on GitHub, or ask the owner to install the app.')
+        return _('Source Glance can’t change %s: the Source Glance app isn’t installed there, or you don’t have permission. Make the change on GitHub, or ask the owner to install the app.')
             .format(item.repo);
     }
     return _('Your sign-in can’t change this.');
@@ -217,7 +217,7 @@ export class ActionController {
             return await fetch(token);
         } catch (e) {
             if (!isCancelled(e))
-                Main.notify(_('sourceglance'), actionErrorText(e, item));
+                Main.notify(_('Source Glance'), actionErrorText(e, item));
             return null;
         } finally {
             this._setBusy(item, false);
@@ -235,11 +235,11 @@ export class ActionController {
                 throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
             for (const request of requests)
                 await this._clientFor(item).send(token, request);
-            Main.notify(_('sourceglance'), _('%s: %s').format(doneText, itemText(item)));
+            Main.notify(_('Source Glance'), _('%s: %s').format(doneText, itemText(item)));
             this._onChanged(item, change);
         } catch (e) {
             if (!isCancelled(e)) {
-                Main.notify(_('sourceglance'), actionErrorText(e, item));
+                Main.notify(_('Source Glance'), actionErrorText(e, item));
                 // Part of a multi-request change may have landed; show what's there now.
                 this._onChanged(item, 'updated');
             }

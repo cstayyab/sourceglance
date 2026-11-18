@@ -7,6 +7,31 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- When you log in and a newer version is out, a notification says so with short release
+  notes. **Install** opens the window and starts the update, as **Update available** does.
+  Turn it off with **Check for updates** in Settings → System Start.
+- Repository headings in the lists collapse: click one to hide or show its issues or pull
+  requests, in the window and in the top-bar menus alike. Project boards in the window's
+  Projects list collapse the same way. The heading keeps its count, Source Glance remembers
+  what you collapsed, and a search shows matches in collapsed repositories too.
+- A **Wallpaper** section in Settings → Desktop Widgets recommends Adwaita, GNOME's default
+  wallpaper (from GNOME Backgrounds), to go with the cards, with a preview. **Apply** sets it
+  and keeps yours; **Reset** puts yours back. If you change the wallpaper any other way, Reset
+  isn't offered any more, only Apply.
+
+### Changed
+
+- The app is now called **Source Glance** everywhere you see its name: the top bar, the window,
+  the app grid, Setup and the home page.
+
+### Fixed
+
+- The window now shows as Source Glance in the dock and in Alt+Tab, with its own icon, instead
+  of as GNOME's Extensions app. It opens in Source Glance's own app; opening it again brings the
+  open window forward.
+
 ## [0.4.2] - 2026-11-17
 
 ### Fixed

@@ -4,7 +4,7 @@ import Secret from 'gi://Secret';
 
 export const GITHUB_ACCOUNT = 'github.com';
 export const GITLAB_ACCOUNT = 'gitlab.com';
-const LABELS = {[GITHUB_ACCOUNT]: 'sourceglance GitHub token', [GITLAB_ACCOUNT]: 'sourceglance GitLab sign-in'};
+const LABELS = {[GITHUB_ACCOUNT]: 'Source Glance GitHub token', [GITLAB_ACCOUNT]: 'Source Glance GitLab sign-in'};
 let schema = null;
 
 function getSchema() {
@@ -30,7 +30,7 @@ export function lookupSecret(account, cancellable = null) {
 export function storeSecret(account, secret, cancellable = null) {
     return new Promise((resolve, reject) => {
         Secret.password_store(getSchema(), {account}, Secret.COLLECTION_DEFAULT,
-            LABELS[account] ?? `sourceglance ${account}`, secret, cancellable, (_source, result) => {
+            LABELS[account] ?? `Source Glance ${account}`, secret, cancellable, (_source, result) => {
                 try {
                     resolve(Secret.password_store_finish(result));
                 } catch (e) {

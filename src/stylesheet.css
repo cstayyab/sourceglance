@@ -93,6 +93,7 @@
 .sourceglance-repo {
     font-weight: bold;
     padding-top: 6px;
+    spacing: 6px;
 }
 
 .sourceglance-issue {

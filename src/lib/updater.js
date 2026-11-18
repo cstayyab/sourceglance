@@ -96,9 +96,13 @@ export function installedVersion() {
 }
 
 /**
- * Opens the window again a moment after this one closes: by then its process has quit (it
- * stops 2 s after its last window), so the new window loads the newly installed version.
+ * Opens the window again a moment after this one closes: by then its app has quit, so the
+ * new window runs the newly installed version's launcher.js (versions/<version>/ for Setup).
  */
 export function reopenWindowSoon() {
-    Gio.Subprocess.new(['sh', '-c', 'sleep 3; exec gnome-extensions prefs "$0"', UUID], Gio.SubprocessFlags.NONE);
+    const dir = GLib.build_filenamev([GLib.get_user_data_dir(), 'gnome-shell', 'extensions', UUID]);
+    const versioned = GLib.build_filenamev([dir, 'versions', installedVersion() ?? '', 'launcher.js']);
+    const launcher = GLib.file_test(versioned, GLib.FileTest.EXISTS)
+        ? versioned : GLib.build_filenamev([dir, 'launcher.js']);
+    Gio.Subprocess.new(['sh', '-c', 'sleep 3; exec gjs -m "$0" --open', launcher], Gio.SubprocessFlags.NONE);
 }

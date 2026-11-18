@@ -32,6 +32,11 @@
       <summary>Collapsed sections</summary>
       <description>GitHub or GitLab sections collapsed in the lists, as list:platform (e.g. issues:gitlab).</description>
     </key>
+    <key name="collapsed-groups" type="as">
+      <default>[]</default>
+      <summary>Collapsed repositories</summary>
+      <description>Repositories and project boards collapsed in the lists, as list:platform:name (e.g. issues:github:owner/repo, or projects:github: and the board's node id).</description>
+    </key>
     <key name="widgets" type="as">
       <default>['summary']</default>
       <summary>Desktop widgets</summary>
@@ -71,7 +76,17 @@
     <key name="check-updates" type="b">
       <default>true</default>
       <summary>Check for updates</summary>
-      <description>When the sourceglance window opens, ask GitHub whether a newer release is out and show "Update available" in its title bar.</description>
+      <description>When you log in and when the sourceglance window opens, ask GitHub whether a newer release is out. At login a notification says so; in the window, "Update available" shows in its title bar.</description>
+    </key>
+    <key name="saved-wallpaper" type="a{ss}">
+      <default>{}</default>
+      <summary>Wallpaper to put back</summary>
+      <description>Internal. The org.gnome.desktop.background values the recommended wallpaper replaced, kept by Settings → Desktop Widgets → Apply so Reset can put them back. Cleared when the wallpaper changes any other way.</description>
+    </key>
+    <key name="install-update" type="b">
+      <default>false</default>
+      <summary>Install update request</summary>
+      <description>Internal. Set by the update notification's Install button so the window starts the update, as if "Update available" were clicked.</description>
     </key>
     <key name="open-page" type="s">
       <default>''</default>

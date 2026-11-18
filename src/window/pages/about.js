@@ -2,7 +2,7 @@
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from '../i18n.js';
 
 import {AUTHOR_GITHUB, AUTHOR_NAME, HOME_URL, REPO_URL} from '../../lib/config.js';
 
@@ -23,7 +23,7 @@ export function buildAboutPage({window, appIcon, version}) {
     const header = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, halign: Gtk.Align.CENTER,
         margin_top: 12, margin_bottom: 6});
     header.append(new Gtk.Image({gicon: appIcon, pixel_size: 96, margin_bottom: 6}));
-    header.append(new Gtk.Label({label: 'sourceglance', css_classes: ['title-1']}));
+    header.append(new Gtk.Label({label: 'Source Glance', css_classes: ['title-1']}));
     header.append(new Gtk.Label({label: _('Version %s').format(version), css_classes: ['dim-label']}));
     header.append(new Gtk.Label({
         label: _('Your GitHub and GitLab issues, pull requests and project boards, one glance away.'),
@@ -44,7 +44,7 @@ export function buildAboutPage({window, appIcon, version}) {
 
     const involved = new Adw.PreferencesGroup({
         title: _('Get involved'),
-        description: _('sourceglance is open source. Found a bug or have an idea? Report it, or fork the repository and send a pull request.'),
+        description: _('Source Glance is open source. Found a bug or have an idea? Report it, or fork the repository and send a pull request.'),
     });
     involved.add(linkRow(window, {
         title: _('Report an issue'),

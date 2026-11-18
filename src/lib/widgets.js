@@ -137,7 +137,7 @@ class Card {
         this._count.text = this.id === 'summary' ? '' : listBadge(this.id, state);
         if (!signedIn) {
             this._message(state.status === 'signed-out'
-                ? _('Sign in from the sourceglance menu.')
+                ? _('Sign in from the Source Glance menu.')
                 : _('Loading…'));
             return;
         }
@@ -272,7 +272,7 @@ export class DesktopWidgets {
                 this._cards.delete(id);
             }
         }
-        const titles = {summary: _('sourceglance'), issues: _('Issues'), prs: _('Pull requests'), projects: _('Projects')};
+        const titles = {summary: _('Source Glance'), issues: _('Issues'), prs: _('Pull requests'), projects: _('Projects')};
         const icons = {summary: this._icons.app, issues: this._icons.issues, prs: this._icons.prs, projects: this._icons.projects};
         for (const id of wanted) {
             if (this._cards.has(id))

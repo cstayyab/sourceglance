@@ -10,7 +10,7 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {gtypeName} from './model.js';
+import {gtypeName, toggleId} from './model.js';
 import {TabBar} from './tabs.js';
 import {VIEWS, addAppFooter, badgeText} from './views.js';
 
@@ -18,7 +18,7 @@ const NAMES = {
     issues: () => _('Issues'),
     projects: () => _('Projects'),
     prs: () => _('Pull requests'),
-    app: () => 'sourceglance',
+    app: () => 'Source Glance',
 };
 
 export const ToolbarButton = GObject.registerClass({GTypeName: gtypeName('ToolbarButton', import.meta.url)},
@@ -31,7 +31,7 @@ class ToolbarButton extends PanelMenu.Button {
      */
     _init({id, icons, tabs = null, onRefresh, onSettings, onAbout, onAction, getRepos, getAutostart, setAutostart, onQuit,
         getCollapsed, setCollapsed}) {
-        super._init(0.0, `sourceglance ${id}`);
+        super._init(0.0, `Source Glance ${id}`);
         this._id = id;
         this._icons = icons;
         this._tabs = tabs;
@@ -64,7 +64,7 @@ class ToolbarButton extends PanelMenu.Button {
         box.add_child(this._icon);
         if (id === 'app') {
             box.add_child(new St.Label({
-                text: 'sourceglance',
+                text: 'Source Glance',
                 style_class: 'sourceglance-app-label',
                 y_align: Clutter.ActorAlign.CENTER,
             }));
@@ -160,10 +160,10 @@ class ToolbarButton extends PanelMenu.Button {
             icons: this._icons,
             scheduleRebuild: () => this._scheduleRebuild(),
             repos: this._callbacks.getRepos(),
-            collapsed: this._getCollapsed(),
-            toggleCollapsed: id => {
-                const current = this._getCollapsed();
-                this._setCollapsed(current.includes(id) ? current.filter(other => other !== id) : [...current, id]);
+            collapsed: this._getCollapsed('collapsed-sections'),
+            collapsedGroups: this._getCollapsed('collapsed-groups'),
+            toggleCollapsed: (id, key = 'collapsed-sections') => {
+                this._setCollapsed(key, toggleId(this._getCollapsed(key), id));
                 this._scheduleRebuild();
             },
             ...this._callbacks,

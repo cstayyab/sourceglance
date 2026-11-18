@@ -100,11 +100,11 @@ export class Wizard {
 
         const content = vbox(0, [heading, new Gtk.Separator(), this.stack, new Gtk.Separator(), buttons]);
         const toolbar = new Adw.ToolbarView({content});
-        toolbar.add_top_bar(new Adw.HeaderBar({title_widget: new Adw.WindowTitle({title: 'sourceglance Setup'})}));
+        toolbar.add_top_bar(new Adw.HeaderBar({title_widget: new Adw.WindowTitle({title: 'Source Glance Setup'})}));
 
         this.window = new Adw.ApplicationWindow({
             application: this.app,
-            title: 'sourceglance Setup',
+            title: 'Source Glance Setup',
             default_width: 680,
             default_height: 560,
             content: toolbar,
@@ -151,15 +151,15 @@ export class Wizard {
     _buildPages() {
         this.pages = {
             welcome: {
-                title: 'Welcome to sourceglance Setup',
-                subtitle: `This wizard installs sourceglance ${this.version}.`,
+                title: 'Welcome to Source Glance Setup',
+                subtitle: `This wizard installs Source Glance ${this.version}.`,
             },
             license: {title: 'License Agreement', subtitle: 'Please read the following license carefully.'},
             risks: {title: 'Before You Install', subtitle: 'Please review what Setup will do.'},
-            options: {title: 'Setup Options', subtitle: 'Choose how sourceglance is installed.'},
-            check: {title: 'System Check', subtitle: 'Setup is checking that your computer can run sourceglance.'},
+            options: {title: 'Setup Options', subtitle: 'Choose how Source Glance is installed.'},
+            check: {title: 'System Check', subtitle: 'Setup is checking that your computer can run Source Glance.'},
             ready: {title: 'Ready to Install', subtitle: 'Click Install to begin.'},
-            progress: {title: 'Installing sourceglance', subtitle: 'Please wait while Setup works.'},
+            progress: {title: 'Installing Source Glance', subtitle: 'Please wait while Setup works.'},
             done: {title: 'Completed', subtitle: ''},
             maintenance: {title: 'Program Maintenance', subtitle: 'Choose what you want to do.'},
             'remove-options': {title: 'Remove Options', subtitle: 'Choose what else to remove.'},
@@ -176,17 +176,17 @@ export class Wizard {
         else
             icon.icon_name = 'system-software-install-symbolic';
         const welcomeText = this.mode === 'upgrade'
-            ? `Setup will upgrade sourceglance ${this.installed} to ${this.version}.`
-            : 'Setup will install sourceglance, which shows your GitHub issues and pull requests in the GNOME top bar.';
+            ? `Setup will upgrade Source Glance ${this.installed} to ${this.version}.`
+            : 'Setup will install Source Glance, which shows your GitHub issues and pull requests in the GNOME top bar.';
         this._page('welcome', vbox(18, [
             icon,
-            label(`<b>Welcome to the sourceglance ${esc(this.version)} Setup Wizard</b>`, {markup: true, css: ['title-4']}),
+            label(`<b>Welcome to the Source Glance ${esc(this.version)} Setup Wizard</b>`, {markup: true, css: ['title-4']}),
             label(welcomeText),
             label('Click Next to continue, or Cancel to exit Setup.', {css: ['dim-label']}),
         ]));
 
         // License
-        const banner = label('<b>sourceglance is provided AS IS, without warranty of any kind. You use it at your own risk.</b>',
+        const banner = label('<b>Source Glance is provided AS IS, without warranty of any kind. You use it at your own risk.</b>',
             {markup: true, css: ['warning']});
         const text = new Gtk.TextView({
             editable: false, cursor_visible: false, wrap_mode: Gtk.WrapMode.WORD,
@@ -210,10 +210,10 @@ export class Wizard {
         // Before you install
         this._page('risks', vbox(12, [
             bullets([
-                'sourceglance is pre-release software.',
+                'Source Glance is pre-release software.',
                 'GNOME Shell extensions run inside your desktop. A bug can freeze or crash your session, and you could lose unsaved work.',
-                'sourceglance is installed only for your user account. No administrator password is needed.',
-                `Setup copies files to ${tildify(extensionDir())} and turns sourceglance on for your next login. Nothing else on your computer is changed.`,
+                'Source Glance is installed only for your user account. No administrator password is needed.',
+                `Setup copies files to ${tildify(extensionDir())} and turns Source Glance on for your next login. Nothing else on your computer is changed.`,
                 'If you sign in to GitHub later, your token is stored in your GNOME keyring and sent only to GitHub.',
             ]),
         ]));
@@ -230,9 +230,9 @@ export class Wizard {
         installFor.add(allRow);
 
         const locationRow = new Adw.ActionRow({title: 'Location', subtitle: tildify(extensionDir()), subtitle_selectable: true});
-        this.enableRow = new Adw.SwitchRow({title: 'Turn on sourceglance after installation', active: true});
+        this.enableRow = new Adw.SwitchRow({title: 'Turn on Source Glance after installation', active: true});
         this.resetRow = new Adw.SwitchRow({
-            title: 'Reset sourceglance settings from a previous installation', active: false, visible: false,
+            title: 'Reset Source Glance settings from a previous installation', active: false, visible: false,
         });
         const settingsGroup = new Adw.PreferencesGroup({title: 'Installation'});
         for (const row of [locationRow, this.enableRow, this.resetRow])
@@ -251,7 +251,7 @@ export class Wizard {
         this.readyList = label('', {markup: true});
         this._page('ready', vbox(12, [this.readyIntro, this.readyList]));
         this.readyRemoveList = label('', {markup: true});
-        this._page('ready-remove', vbox(12, [label('Setup is ready to remove sourceglance. It will:'), this.readyRemoveList]));
+        this._page('ready-remove', vbox(12, [label('Setup is ready to remove Source Glance. It will:'), this.readyRemoveList]));
 
         // Progress
         this.progressStatus = label('Preparing…');
@@ -271,21 +271,21 @@ export class Wizard {
         this._page('progress', vbox(12, [this.progressStatus, this.progressBar, details]));
 
         // Completed
-        this.logoutCheck = new Gtk.CheckButton({label: '_Log out now to start sourceglance', use_underline: true});
-        this.doneText = label('Log out and back in to start it. Then click the sourceglance icon in the top bar and choose Settings to sign in to GitHub.');
+        this.logoutCheck = new Gtk.CheckButton({label: '_Log out now to start Source Glance', use_underline: true});
+        this.doneText = label('Log out and back in to start it. Then click the Source Glance icon in the top bar and choose Settings to sign in to GitHub.');
         this._page('done', vbox(18, [
-            label(`<b>sourceglance ${esc(this.version)} has been installed.</b>`, {markup: true, css: ['title-4']}),
+            label(`<b>Source Glance ${esc(this.version)} has been installed.</b>`, {markup: true, css: ['title-4']}),
             this.doneText,
             this.logoutCheck,
         ]));
 
         // Maintenance
         const maintenanceIntro = this.mode === 'downgrade'
-            ? `<b>A newer version of sourceglance (${esc(this.installed)}) is installed.</b> This setup contains ${esc(this.version)}. Downgrading may lose settings added in newer versions.`
-            : `sourceglance ${esc(this.installed ?? '')} is already installed.`;
+            ? `<b>A newer version of Source Glance (${esc(this.installed)}) is installed.</b> This setup contains ${esc(this.version)}. Downgrading may lose settings added in newer versions.`
+            : `Source Glance ${esc(this.installed ?? '')} is already installed.`;
         const first = this.mode === 'downgrade'
             ? {id: 'downgrade', label: `_Downgrade to ${this.version}`, detail: 'Replace the installed version with this one.'}
-            : {id: 'repair', label: '_Repair', detail: 'Reinstall sourceglance to fix missing or damaged files. Settings and your saved token are kept.'};
+            : {id: 'repair', label: '_Repair', detail: 'Reinstall Source Glance to fix missing or damaged files. Settings and your saved token are kept.'};
         const firstRadio = new Gtk.CheckButton({label: first.label, use_underline: true, active: this.choice === first.id});
         const removeRadio = new Gtk.CheckButton({
             label: 'Re_move', use_underline: true, group: firstRadio, active: this.choice === 'remove',
@@ -301,12 +301,12 @@ export class Wizard {
         this._page('maintenance', vbox(12, [
             label(maintenanceIntro, {markup: true, css: this.mode === 'downgrade' ? ['warning'] : []}),
             firstRadio, label(first.detail, {css: ['dim-label']}),
-            removeRadio, label('Uninstall sourceglance from your account.', {css: ['dim-label']}),
+            removeRadio, label('Uninstall Source Glance from your account.', {css: ['dim-label']}),
         ]));
 
         // Remove options
         this.deleteTokenCheck = new Gtk.CheckButton({label: 'Also delete my saved GitHub _token from the keyring', use_underline: true});
-        this.resetOnRemoveCheck = new Gtk.CheckButton({label: 'Also reset sourceglance _settings', use_underline: true});
+        this.resetOnRemoveCheck = new Gtk.CheckButton({label: 'Also reset Source Glance _settings', use_underline: true});
         this._page('remove-options', vbox(12, [
             label(`A backup copy of the extension is kept in ${tildify(backupsDir())}.`, {css: ['dim-label']}),
             this.deleteTokenCheck, this.resetOnRemoveCheck,
@@ -315,7 +315,7 @@ export class Wizard {
         // Removed
         this.logoutAfterRemove = new Gtk.CheckButton({label: '_Log out now to finish', use_underline: true});
         this._page('removed', vbox(18, [
-            label('<b>sourceglance has been removed.</b>', {markup: true, css: ['title-4']}),
+            label('<b>Source Glance has been removed.</b>', {markup: true, css: ['title-4']}),
             label('Log out and back in to finish. You can install it again at any time with this Setup.'),
             this.logoutAfterRemove,
         ]));
@@ -422,7 +422,7 @@ export class Wizard {
 
     _cancel() {
         const dialog = new Adw.AlertDialog({
-            heading: 'Exit sourceglance Setup?',
+            heading: 'Exit Source Glance Setup?',
             body: 'Nothing has been changed.',
         });
         dialog.add_response('stay', '_Continue Setup');
@@ -509,7 +509,7 @@ export class Wizard {
         if (this.deleteTokenCheck.active)
             lines.push('Delete your saved GitHub token from the keyring');
         if (this.resetOnRemoveCheck.active)
-            lines.push('Reset sourceglance settings');
+            lines.push('Reset Source Glance settings');
         const markup = lines.map(l => `•  ${esc(l)}`).join('\n');
         this.readyIntro.label = 'Setup is ready. It will:';
         this.readyList.label = markup;
@@ -520,7 +520,7 @@ export class Wizard {
         this.busy = true;
         this._update();
         const removing = operationFor(this.mode, this.choice) === 'remove';
-        this.titleLabel.label = removing ? 'Removing sourceglance' : 'Installing sourceglance';
+        this.titleLabel.label = removing ? 'Removing Source Glance' : 'Installing Source Glance';
         const progress = (fraction, status) => {
             this.progressBar.fraction = fraction;
             this.progressStatus.label = status;
@@ -537,7 +537,7 @@ export class Wizard {
                     log: this.log, progress,
                 });
                 if (restarted) {
-                    this.doneText.label = 'sourceglance is running the new version now, with your settings and sign-ins. There’s no need to log out.';
+                    this.doneText.label = 'Source Glance is running the new version now, with your settings and sign-ins. There’s no need to log out.';
                     this.logoutCheck.active = false;
                     this.logoutCheck.visible = false;
                 }
@@ -548,7 +548,7 @@ export class Wizard {
             this.busy = false;
             this.failedReason.label = e.message;
             this.failedRollback.label = e.rolledBack
-                ? 'Your previous version of sourceglance was restored.'
+                ? 'Your previous version of Source Glance was restored.'
                 : 'No changes were kept.';
             this._show(this.index, 'failed');
         }

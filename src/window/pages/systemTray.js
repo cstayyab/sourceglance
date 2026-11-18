@@ -3,7 +3,7 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from '../i18n.js';
 
 import {normalizeButtons} from '../../lib/model.js';
 
@@ -13,7 +13,7 @@ export function buildSystemTrayPage({settings}) {
 
     const group = new Adw.PreferencesGroup({
         title: _('Top bar'),
-        description: _('The sourceglance button, with status and Settings, is always shown.'),
+        description: _('The Source Glance button, with status and Settings, is always shown.'),
     });
     page.add(group);
 

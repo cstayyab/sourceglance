@@ -14,9 +14,11 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {
     draftTarget,
     filterByLabel,
+    groupCollapseId,
     groupDraftsByStatus,
     gtypeName,
     isDoneStatus,
+    isGroupCollapsed,
     isValidLogin,
     itemKey,
     itemRef,
@@ -174,7 +176,7 @@ function signedIn(state) {
 function listReady(ui) {
     const {state} = ui;
     if (state.status === 'signed-out') {
-        addInfo(ui, _('Not signed in. Open the sourceglance menu to sign in.'), 'sourceglance-message');
+        addInfo(ui, _('Not signed in. Open the Source Glance menu to sign in.'), 'sourceglance-message');
         return false;
     }
     if (state.status === 'loading') {
@@ -227,8 +229,11 @@ function addItem(ui, item) {
     }
 }
 
-/** A section heading with a label filter dropdown, then its items grouped by repository. */
-function addSection(ui, title, groups, key) {
+/**
+ * A section heading with a label filter dropdown, then its items grouped by repository. Each
+ * repository heading collapses its items; `list` and `platform` make its id in collapsed-groups.
+ */
+function addSection(ui, title, groups, key, list, platform) {
     const options = labelOptions(groups);
     let filter = ui.filters[key] ?? null;
     // The label disappeared after a refresh: show everything again.
@@ -268,9 +273,15 @@ function addSection(ui, title, groups, key) {
     }
 
     for (const group of filterByLabel(groups, filter)) {
-        addInfo(ui, group.repo, 'sourceglance-repo');
-        for (const item of group.issues)
-            addItem(ui, item);
+        // Same ids as the window's lists, so a repository collapses in both places.
+        const id = groupCollapseId(list, platform, group.repo);
+        const collapsed = isGroupCollapsed(ui.collapsedGroups, id);
+        ui.menu.addMenuItem(new SectionToggle(truncate(group.repo, 48), String(group.issues.length), collapsed,
+            () => ui.toggleCollapsed(id, 'collapsed-groups'), 'sourceglance-repo'));
+        if (!collapsed) {
+            for (const item of group.issues)
+                addItem(ui, item);
+        }
     }
 }
 
@@ -281,11 +292,12 @@ function addClosedFooter(ui, count, url, text, gicon) {
     row.add_style_class_name('sourceglance-footer');
 }
 
-// A header that collapses or expands its platform's section without closing the menu.
+// A header that collapses or expands its platform's section (or a repository's items)
+// without closing the menu.
 const SectionToggle = GObject.registerClass({GTypeName: gtypeName('SectionToggle', import.meta.url)},
 class SectionToggle extends PopupMenu.PopupBaseMenuItem {
-    _init(text, count, collapsed, onToggle) {
-        super._init({style_class: 'sourceglance-platform'});
+    _init(text, count, collapsed, onToggle, styleClass = 'sourceglance-platform') {
+        super._init({style_class: styleClass});
         this.add_child(new St.Icon({icon_name: collapsed ? 'pan-end-symbolic' : 'pan-down-symbolic',
             style_class: 'popup-menu-icon'}));
         this.add_child(new St.Label({text, x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
@@ -302,7 +314,7 @@ class SectionToggle extends PopupMenu.PopupBaseMenuItem {
 function renderPlatform(ui, cfg, src) {
     if (src.status === 'signed-out') {
         addInfo(ui, src.platform === 'gitlab'
-            ? _('Not signed in to GitLab.') : _('Not signed in. Open the sourceglance menu to sign in.'), 'sourceglance-message');
+            ? _('Not signed in to GitLab.') : _('Not signed in. Open the Source Glance menu to sign in.'), 'sourceglance-message');
         return;
     }
     if (!src.updatedAt) {
@@ -317,7 +329,7 @@ function renderPlatform(ui, cfg, src) {
     if (src.groups.length === 0)
         addInfo(ui, src.platform === 'gitlab' ? cfg.emptyGitLab : cfg.empty, 'sourceglance-message');
     else
-        addSection(ui, cfg.title, src.groups, src.platform === 'gitlab' ? `${cfg.key}:gitlab` : cfg.key);
+        addSection(ui, cfg.title, src.groups, src.platform === 'gitlab' ? `${cfg.key}:gitlab` : cfg.key, cfg.key, src.platform);
     addClosedFooter(ui, src.closedCount, src.closedUrl, src.platform === 'gitlab' ? cfg.closedTextGitLab : cfg.closedText,
         ui.icons[cfg.closedIcon]);
 }
@@ -405,7 +417,7 @@ export function renderProjects(ui) {
         return;
     const {boards, boardsError, busy} = ui.state;
     if (boardsError) {
-        addInfo(ui, _('sourceglance can’t read your project boards. Organization boards need the ' +
+        addInfo(ui, _('Source Glance can’t read your project boards. Organization boards need the ' +
             'app installed on the organization.'), 'sourceglance-message');
         return;
     }

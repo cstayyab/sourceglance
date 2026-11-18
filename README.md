@@ -11,7 +11,7 @@ Ubuntu top bar, in their own window, and right on your desktop.**
 **Home page and download: <https://omer-gh.github.io/sourceglance/>** ·
 Made by **Mohammad Omer** ([@omer-gh](https://github.com/omer-gh))
 
-sourceglance is a GNOME Shell extension for Ubuntu Desktop. It shows what's assigned to you
+Source Glance is a GNOME Shell extension for Ubuntu Desktop. It shows what's assigned to you
 on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 
 - **Top-bar buttons** for Issues, Pull requests and Projects, each with a live count.
@@ -19,7 +19,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **A main window** with every list, a search box, and all settings in one place.
 - **One-click updates**: a verified download, applied without logging out.
 
-![sourceglance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
+![Source Glance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
 
 > **Status: early releases.** v0.4.2 is the latest, published as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
@@ -28,7 +28,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 
 - **Desktop widgets**: Summary, Issues, Pull requests and Projects cards on your desktop.
   Drag them anywhere, set their opacity, click an item to open it.
-- **Top bar**: buttons for sourceglance, Issues, Pull requests and Projects as one tinted
+- **Top bar**: buttons for Source Glance, Issues, Pull requests and Projects as one tinted
   group or as tabs in one menu, each with its count (0 included).
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
@@ -43,14 +43,14 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   Accounts, System Start, About), a splash screen, and an app grid icon, all in the top
   bar's blue.
 - **Public repositories** you don't own show up without any setup; private ones appear once
-  their owner installs the sourceglance app.
+  their owner installs the Source Glance app.
 - **Limited access**: signs in through a GitHub App that can only see issues, pull requests
   and projects (no code). Tokens stay in the GNOME keyring.
 - **Start automatically** at login, or **Quit** and start it again from the app grid.
 - **One-file installer**: a setup wizard that installs, updates, repairs and removes
-  sourceglance.
+  Source Glance.
 - **Update available** in the window when a new version is out: one click downloads the new
-  Setup, checks its SHA-256 checksum, and updates sourceglance without logging out.
+  Setup, checks its SHA-256 checksum, and updates Source Glance without logging out.
 - **About** page with the version, the author, and links to report an issue or contribute.
 
 Planned: desktop notifications for new assignments.
@@ -68,13 +68,13 @@ your work and stay clickable.
 | **Pull requests** | Pull and merge requests assigned to you or awaiting your review |
 | **Projects** | Draft items on your project boards, with their status |
 
-- **Turn cards on or off** in sourceglance → **Settings → Desktop Widgets**. Summary is on
+- **Turn cards on or off** in Source Glance → **Settings → Desktop Widgets**. Summary is on
   by default.
-- **Move a card** by dragging its header; sourceglance remembers where you put it.
+- **Move a card** by dragging its header; Source Glance remembers where you put it.
   **Reset positions** puts them all back in a column on the right.
 - **Opacity** sets how see-through the cards are.
 - **Click an item** to open it in your browser. Each card shows when it was last updated
-  and refreshes with the rest of sourceglance.
+  and refreshes with the rest of Source Glance.
 
 ## Requirements
 
@@ -85,7 +85,7 @@ your work and stay clickable.
 
 ### Setup wizard (recommended)
 
-1. Download **sourceglance Setup** from the
+1. Download **Source Glance Setup** from the
    [home page](https://omer-gh.github.io/sourceglance/) or
    [Releases](https://github.com/omer-gh/sourceglance/releases): one `.AppImage` file
    (`x86_64` for most PCs, `aarch64` for ARM).
@@ -93,20 +93,21 @@ your work and stay clickable.
 3. Double-click it and follow the wizard, then log out and back in.
 
 No admin password, app store or apt/snap repository needed. The same Setup file installs,
-updates, repairs and removes sourceglance. The [install guide](docs/installing.md) also
+updates, repairs and removes Source Glance. The [install guide](docs/installing.md) also
 covers checking the download.
 
 ### Updating
 
-When a newer version is out, sourceglance's window shows **Update available** next to
-Refresh. Click it: sourceglance downloads the new Setup for your PC into a private temporary
+When a newer version is out, a notification says so when you log in, with short release
+notes; **Install** there opens the window and starts the update. The window also shows
+**Update available** next to Refresh. Click it: Source Glance downloads the new Setup for your PC into a private temporary
 folder, checks it against the release's `SHA256SUMS`, and opens it only if it matches. Setup
-updates sourceglance in place and starts the new version straight away, with no log-out;
+updates Source Glance in place and starts the new version straight away, with no log-out;
 then the window reopens on the new version. You can also just download and run the latest
 Setup yourself. Coming from v0.2.0 or earlier, log out once after this first update.
 
 Turn the check off in **Settings → System Start → Check for updates**. It only asks GitHub
-for the list of sourceglance releases; nothing about you is sent.
+for the list of Source Glance releases; nothing about you is sent.
 
 ### From source
 
@@ -142,13 +143,13 @@ Coming with the first stable release.
 
 ## Getting started
 
-Open sourceglance from the app grid (or the sourceglance button in the top bar →
+Open Source Glance from the app grid (or the Source Glance button in the top bar →
 **Settings**), then go to **Accounts**:
 
-1. In the **GitHub** section, click **Sign in**. sourceglance copies a short code and opens GitHub; paste it and
+1. In the **GitHub** section, click **Sign in**. Source Glance copies a short code and opens GitHub; paste it and
    approve. This gives access to issues, pull requests and project boards only: no code,
    settings or admin access.
-2. **Choose repositories** to pick which repositories sourceglance may see. Optionally list
+2. **Choose repositories** to pick which repositories Source Glance may see. Optionally list
    repositories to watch (`owner/name, owner/other`); leave it empty to see everything
    assigned to you.
 3. In the **GitLab** section (optional), click **Sign in** and approve on gitlab.com the same way. GitLab sign-ins
@@ -156,7 +157,7 @@ Open sourceglance from the app grid (or the sourceglance button in the top bar �
 
 **Repositories owned by someone else:**
 
-| Repository | Shows in sourceglance | Comment, close, labels, assignees, status |
+| Repository | Shows in Source Glance | Comment, close, labels, assignees, status |
 | --- | --- | --- |
 | Yours, with the app installed | Yes | Yes |
 | **Public**, owned by someone else | Yes, without any setup | Only once the owner installs the app; until then, make changes on GitHub |
@@ -172,9 +173,9 @@ Organization repositories need an organization owner to install it.
 
 ![The Issues menu with GitHub and GitLab sections](docs/images/menu.png)
 
-The top bar shows sourceglance's buttons as one tinted block, each list with its count:
+The top bar shows Source Glance's buttons as one tinted block, each list with its count:
 
-- **sourceglance**: who you're signed in as, Refresh, Settings and **About sourceglance**,
+- **Source Glance**: who you're signed in as, Refresh, Settings and **About Source Glance**,
   plus **Start automatically** and **Quit**. After Quit, start it again from the app grid icon.
 - **Issues**: open issues assigned to you
 - **Pull requests**: pull and merge requests assigned to you or awaiting your review
@@ -197,7 +198,7 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 
 ### Main window
 
-![The sourceglance window with the Issues list and the settings sidebar](docs/images/window.png)
+![The Source Glance window with the Issues list and the settings sidebar](docs/images/window.png)
 
 The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
 and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
@@ -227,13 +228,13 @@ Details: [docs/product/roadmap.md](docs/product/roadmap.md).
 
 ## Contributing
 
-sourceglance is open source, and your help makes it better.
+Source Glance is open source, and your help makes it better.
 
 - **Report an issue:** found a bug, have an idea or a question?
   [Open an issue](https://github.com/omer-gh/sourceglance/issues/new/choose). Include your
   Ubuntu and GNOME Shell versions, and what you expected to happen.
 - **Contribute code or docs** by forking the repository:
-  1. [Fork sourceglance](https://github.com/omer-gh/sourceglance/fork) to your account and
+  1. [Fork Source Glance](https://github.com/omer-gh/sourceglance/fork) to your account and
      clone your fork.
   2. Create a branch, make your change, and run `make lint` and `make test`.
   3. Push the branch to your fork and open a pull request against `main`.
@@ -255,4 +256,4 @@ Everyone taking part must follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 [MIT](LICENSE) © 2026 Mohammad Omer
 
-sourceglance is not affiliated with or endorsed by GitHub, Inc. or GitLab Inc.
+Source Glance is not affiliated with or endorsed by GitHub, Inc. or GitLab Inc.

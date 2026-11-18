@@ -493,7 +493,7 @@ test('launcherDesktopEntry runs launcher.js with gjs and quotes the path', () =>
         launcherPath: '/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js',
         iconPath: '/home/me/x/icons/sourceglance-app.svg',
     });
-    assert.ok(entry.startsWith('[Desktop Entry]\nType=Application\nName=sourceglance\n'));
+    assert.ok(entry.startsWith('[Desktop Entry]\nType=Application\nName=Source Glance\n'));
     assert.ok(entry.includes('\nExec=gjs -m "/home/me/.local/share/gnome-shell/extensions/sourceglance@omer-gh.github.io/launcher.js"\n'));
     assert.ok(entry.includes('\nIcon=/home/me/x/icons/sourceglance-app.svg\n'));
     // $, " and \ are escaped for the Exec quoting rules, then backslashes once more for the file.

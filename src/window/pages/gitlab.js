@@ -5,7 +5,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
-import {gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {gettext as _} from '../i18n.js';
 
 import {GITLAB_CLIENT_ID} from '../../lib/config.js';
 import {DeviceFlowError, GitHubError, isCancelled} from '../../lib/github.js';
@@ -53,7 +53,7 @@ export function buildGitlabGroups({window, settings, gitlabClient: client, toast
     const signInRow = new Adw.ActionRow({
         title: _('Sign in with GitLab'),
         subtitle: GITLAB_CLIENT_ID
-            ? _('Approve sourceglance on gitlab.com in your browser')
+            ? _('Approve Source Glance on gitlab.com in your browser')
             : _('Not available in this build: the GitLab application isn’t configured.'),
     });
     const signInButton = new Gtk.Button({label: _('Sign in'), valign: Gtk.Align.CENTER,
@@ -62,7 +62,7 @@ export function buildGitlabGroups({window, settings, gitlabClient: client, toast
     group.add(signInRow);
 
     const codeRow = new Adw.ActionRow({
-        subtitle: _('Code copied. Approve sourceglance on GitLab. Waiting…'),
+        subtitle: _('Code copied. Approve Source Glance on GitLab. Waiting…'),
         title_selectable: true,
         css_classes: ['property'],
         visible: false,

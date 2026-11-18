@@ -25,12 +25,12 @@ export async function runCli(opts) {
             printerr(`Could not extract: ${result.stderr.trim()}`);
             return EXIT.FAILED;
         }
-        print(`Extracted sourceglance ${version} to ${opts.extractDir}`);
+        print(`Extracted Source Glance ${version} to ${opts.extractDir}`);
         return EXIT.OK;
     }
 
     if (opts.action === 'check') {
-        print(`System check for sourceglance ${version}:`);
+        print(`System check for Source Glance ${version}:`);
         return allChecksPass(await systemCheck(meta)) ? EXIT.OK : EXIT.FAILED;
     }
 
@@ -44,7 +44,7 @@ export async function runCli(opts) {
                 return EXIT.FAILED;
             }
             if (installedVersion() === null) {
-                print('sourceglance is not installed. Nothing to do.');
+                print('Source Glance is not installed. Nothing to do.');
                 return EXIT.OK;
             }
             await remove({log});
@@ -54,8 +54,8 @@ export async function runCli(opts) {
 
         // install / repair (quiet, license accepted on the command line)
         print(licenseText());
-        print('License accepted with --accept-license: sourceglance is provided AS IS, without warranty of any kind.\n');
-        print(`System check for sourceglance ${version}:`);
+        print('License accepted with --accept-license: Source Glance is provided AS IS, without warranty of any kind.\n');
+        print(`System check for Source Glance ${version}:`);
         if (!allChecksPass(await systemCheck(meta))) {
             printerr('Setup stopped: fix the problems above and try again. Nothing was changed.');
             return EXIT.FAILED;
