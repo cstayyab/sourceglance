@@ -21,15 +21,22 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   them; rows start collapsed.
 - The **Comment** button shows how many comments an item has, on its corner.
 - **Project drafts can be assigned** (to you, or whoever is already on them).
-- **Tasks filters**: **Kind**, **Accounts**, **Labels** and **Assignee** are separate buttons,
-  each a check list with counts. What you pick shows as chips on the row below them.
+- **Filters**: on **All Tasks**, **Kind**, **Accounts**, **Labels** and **Assignee** are
+  separate buttons, each a check list with counts; what you pick shows as chips on the row
+  below them. Issues and Pull requests have the same bar with **Labels** and **Assignee**,
+  and Projects with **Assignee**.
 
 ### Changed
 
 - Rows in the window's lists no longer expand into a row of buttons: their actions are icons
   on the title line (hover one for its name), and Open uses the external-link arrow. Tasks
   rows have the same actions as the lists, rather than only opening in the browser.
-- Filter chips on the Tasks page are rounded rectangles, like the rest of the window.
+- Filter chips are rounded rectangles, like the rest of the window.
+- **Tasks** is now **All Tasks**, and Issues, Pull requests and Projects are back at the top
+  level of the sidebar, right after it.
+- In the window, the **Label** dropdown on Issues and Pull requests is replaced by the
+  filter bar. The top-bar menus keep their label filter.
+- The preview's comment box stays at the bottom of the panel while the comments scroll.
 
 ## [0.6.0] - 2026-11-18
 

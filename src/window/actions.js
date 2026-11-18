@@ -274,12 +274,20 @@ export class WindowActions {
                 this._panel.hide();
                 return;
             }
-            show(new Gtk.ScrolledWindow({child: this._previewContent(item, details, load),
-                hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true}));
+            // The comments scroll; the box to add one stays at the bottom.
+            const {content, composer} = this._previewContent(item, details, load);
+            const panel = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+            panel.append(new Gtk.ScrolledWindow({child: content, hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true}));
+            if (composer) {
+                panel.append(new Gtk.Separator());
+                panel.append(composer);
+            }
+            show(panel);
         };
         load();
     }
 
+    /** The preview's scrolling part ({content}) and, except for drafts, the box to add a comment ({composer}). */
     _previewContent(item, details, reload) {
         const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 14,
             margin_top: 14, margin_bottom: 14, margin_start: 14, margin_end: 14});
@@ -334,7 +342,7 @@ export class WindowActions {
         box.append(description);
 
         if (item.kind === 'draft')
-            return new Adw.Clamp({child: box, maximum_size: 720});
+            return {content: new Adw.Clamp({child: box, maximum_size: 720}), composer: null};
 
         // Comments, oldest first, then the box to add one.
         const count = details.comments.length + details.more;
@@ -361,8 +369,10 @@ export class WindowActions {
             box.append(more);
         }
         let post = null;
-        const composer = this._editor({minHeight: 80, onSubmit: () => post()});
-        box.append(new Gtk.Frame({child: composer.widget}));
+        const composer = this._editor({minHeight: 72, onSubmit: () => post()});
+        const footer = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8,
+            margin_top: 10, margin_bottom: 10, margin_start: 10, margin_end: 10});
+        footer.append(new Gtk.Frame({child: composer.widget}));
         const postButton = new Gtk.Button({label: _('Comment'), css_classes: ['suggested-action'], halign: Gtk.Align.END,
             sensitive: false, tooltip_text: _('Ctrl+Enter')});
         composer.buffer.connect('changed', () => {
@@ -379,8 +389,8 @@ export class WindowActions {
                 postButton.sensitive = true;
         };
         postButton.connect('clicked', post);
-        box.append(postButton);
-        return new Adw.Clamp({child: box, maximum_size: 720});
+        footer.append(postButton);
+        return {content: new Adw.Clamp({child: box, maximum_size: 720}), composer: footer};
     }
 
     close(item) {

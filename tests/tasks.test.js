@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
     allTasks,
+    asTask,
+    filterDraftsBy,
+    filterGroupsBy,
     filterTasks,
     listBadge,
     searchCount,
@@ -134,4 +137,20 @@ test('toggleTaskFilter adds a filter or takes it off', () => {
     const bug = {type: 'label', value: 'bug', title: 'bug'};
     assert.deepEqual(toggleTaskFilter([], bug), [bug]);
     assert.deepEqual(toggleTaskFilter([bug, kind('pr')], {type: 'label', value: 'bug'}), [kind('pr')]);
+});
+
+test('filterGroupsBy and filterDraftsBy apply the filter bar to the lists by kind', () => {
+    const groups = assigned.groups;
+    const label = value => ({type: 'label', value});
+    const person = value => ({type: 'assignee', value});
+    assert.equal(filterGroupsBy(groups, []), groups);
+    assert.deepEqual(filterGroupsBy(groups, [label('ui')]).map(g => g.issues.map(i => i.number)), [[1]]);
+    assert.deepEqual(filterGroupsBy(groups, [label('nope')]), []);
+    assert.deepEqual(filterGroupsBy(groups, [label('bug'), person('amy')]).map(g => g.issues.map(i => i.number)), [[1]]);
+    const board = assigned.boards[0];
+    assert.equal(filterDraftsBy(board, []), board);
+    assert.deepEqual(filterDraftsBy(board, [person('amy')]).drafts.map(d => d.itemId), ['D1']);
+    assert.deepEqual(filterDraftsBy(board, [person('me')]).drafts, []);
+    assert.deepEqual(asTask(board.drafts[0]).kind, 'draft');
+    assert.deepEqual(asTask(groups[0].issues[0]).kind, 'issue');
 });

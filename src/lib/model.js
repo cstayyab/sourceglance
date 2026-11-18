@@ -1129,6 +1129,38 @@ export function allTasks(sources) {
     return tasks.sort((a, b) => time(b) - time(a));
 }
 
+/** Whether a task passes `filters` (see filterTasks()): each type adds up, types narrow. */
+function taskPasses(task, filters) {
+    const wanted = type => (filters ?? []).filter(filter => filter.type === type).map(filter => filter.value);
+    const kinds = wanted('kind');
+    const accounts = wanted('account');
+    const labels = wanted('label');
+    const assignees = wanted('assignee');
+    return (kinds.length === 0 || kinds.includes(task.kind)) &&
+        (accounts.length === 0 || accounts.includes(task.account)) &&
+        (labels.length === 0 || taskLabels(task).some(name => labels.includes(name))) &&
+        (assignees.length === 0 || taskAssignees(task).some(login => assignees.includes(login)));
+}
+
+/** An issue or PR, or a draft, in the shape the filters take (as allTasks() makes them). */
+export function asTask(entry) {
+    return entry.itemId ? {kind: 'draft', draft: entry} : {kind: entry.kind, item: entry};
+}
+
+/** Repository groups with only the items passing `filters`, dropping groups left empty. */
+export function filterGroupsBy(groups, filters) {
+    if (!filters?.length)
+        return groups;
+    return groups
+        .map(group => ({...group, issues: group.issues.filter(item => taskPasses(asTask(item), filters))}))
+        .filter(group => group.issues.length > 0);
+}
+
+/** A board with only the drafts passing `filters`. */
+export function filterDraftsBy(board, filters) {
+    return filters?.length ? {...board, drafts: board.drafts.filter(draft => taskPasses(asTask(draft), filters))} : board;
+}
+
 /**
  * The tasks that pass `filters` and match `terms`. `filters` is a list of {type, value}:
  * type 'kind' (value 'issue', 'pr' or 'draft') or 'account' (a section key: the assignee,
@@ -1137,15 +1169,7 @@ export function allTasks(sources) {
  * (Pull requests + an account shows that account's pull requests). [] shows everything.
  */
 export function filterTasks(tasks, filters = [], terms = []) {
-    const wanted = type => (filters ?? []).filter(filter => filter.type === type).map(filter => filter.value);
-    const kinds = wanted('kind');
-    const accounts = wanted('account');
-    const labels = wanted('label');
-    const assignees = wanted('assignee');
-    return tasks.filter(task => (kinds.length === 0 || kinds.includes(task.kind)) &&
-        (accounts.length === 0 || accounts.includes(task.account)) &&
-        (labels.length === 0 || taskLabels(task).some(name => labels.includes(name))) &&
-        (assignees.length === 0 || taskAssignees(task).some(login => assignees.includes(login))) &&
+    return tasks.filter(task => taskPasses(task, filters) &&
         (task.item
             ? itemMatches(task.item, terms)
             : matchesAll([task.title ?? '', task.status ?? '', task.repo ?? ''].join('\n'), terms)));

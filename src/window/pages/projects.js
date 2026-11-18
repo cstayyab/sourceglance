@@ -1,5 +1,5 @@
 // Lists → Projects: your boards' draft items (cards that are neither issues nor PRs),
-// grouped by board and status, with Move to status and Open board. Boards are GitHub's; with
+// grouped by board and status, with their actions and an Assignee filter. Boards are GitHub's; with
 // several GitHub accounts, each account's boards follow its name.
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
@@ -7,6 +7,8 @@ import Gtk from 'gi://Gtk';
 import {gettext as _} from '../i18n.js';
 
 import {
+    asTask,
+    filterDraftsBy,
     groupCollapseId,
     groupDraftsByStatus,
     isGroupCollapsed,
@@ -14,6 +16,7 @@ import {
     toggleId,
 } from '../../lib/model.js';
 import {collapsibleGroup, draftRow, noMatchesGroup, statusText} from './common.js';
+import {FilterBar} from './filterBar.js';
 
 export class ProjectsPage {
     /** `onClearSearch` empties the window's search box. */
@@ -27,10 +30,15 @@ export class ProjectsPage {
         this._query = '';
         this._terms = [];
         this._statusPage = new Adw.StatusPage();
-        this._page = new Adw.PreferencesPage();
+        this._page = new Adw.PreferencesPage({vexpand: true});
+        // Drafts have no labels, so only Assignee.
+        this._bar = new FilterBar({types: ['assignee'], onChange: () => this._state && this.update(this._state)});
+        const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+        list.append(this._bar.widget);
+        list.append(this._page);
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');
-        this.widget.add_named(this._page, 'list');
+        this.widget.add_named(list, 'list');
     }
 
     _status(icon, title, description) {
@@ -88,8 +96,12 @@ export class ProjectsPage {
 
         this.widget.visible_child_name = 'list';
         this._clear();
+        const drafts = readable.flatMap(src => (src.boards ?? []).flatMap(board => board.drafts));
+        this._bar.update(drafts.map(asTask), readable);
         const matching = readable.map(src => ({src,
-            boards: searchBoards(src.boards ?? [], this._terms).filter(board => board.drafts.length > 0)}));
+            boards: searchBoards(src.boards ?? [], this._terms)
+                .map(board => filterDraftsBy(board, this._bar.filters))
+                .filter(board => board.drafts.length > 0)}));
         if (matching.every(({boards}) => boards.length === 0)) {
             this._add(noMatchesGroup(this._query, () => this._onClearSearch()));
             return;
@@ -108,7 +120,7 @@ export class ProjectsPage {
         for (const board of boards) {
             let open = null;
             if (board.url) {
-                open = new Gtk.Button({icon_name: 'web-browser-symbolic', tooltip_text: _('Open board'),
+                open = new Gtk.Button({icon_name: 'adw-external-link-symbolic', tooltip_text: _('Open board'),
                     css_classes: ['flat'], valign: Gtk.Align.CENTER});
                 open.connect('clicked', () => this._actions.open(board.url));
             }

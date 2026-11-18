@@ -40,15 +40,18 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   add up across all of them.
 - **Collapsible repositories**: click a repository heading to hide or show its items, in
   the window and the menus. Source Glance remembers what you collapsed.
-- **Tasks**: everything assigned to you in one list, newest first, with the same actions
+- **All Tasks**: everything assigned to you in one list, newest first, with the same actions
   as the lists. Filter it with **Kind**, **Accounts**, **Labels** and **Assignee**, each a
-  check list; what you pick shows as chips below them, each removed with ×. The lists by kind
-  sit under it in the sidebar.
+  check list; what you pick shows as chips below them, each removed with ×. Issues, Pull
+  requests and Projects follow it in the sidebar, with **Labels** and **Assignee** filters
+  (Projects: **Assignee**), since their kind and accounts are already the page and its
+  sections.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
 - **Search** from the window's title bar: one box filters Issues, Pull requests and Projects
   by title, repository, number, label, person or board status, with match counts. Clear it
   to see everything again.
-- **Filter by label**, and see how many closed or merged items are still assigned to you.
+- **Filter by label** in the menus, and see how many closed or merged items are still
+  assigned to you.
 - **Main window** with a sidebar for your lists and settings (Desktop Widgets, System Tray,
   Accounts, System Start, About), a splash screen, and an app grid icon, all in the top
   bar's blue. It's an app of its own, so the dock and Alt+Tab show it as Source Glance.
@@ -238,8 +241,8 @@ or whoever is already on them) and previewed; GitHub drafts have no labels or co
 
 ### Main window
 
-The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
-and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
+The window has **All Tasks**, then your **Issues**, **Pull requests** and **Projects**, in a
+sidebar with counts and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
 Tray**, **Accounts** (all your GitHub and GitLab accounts, including self-hosted ones) and **System Start** (start at login,
 app grid icon). **About** shows the version and the author, with links to report an issue or
 fork the repository and contribute.

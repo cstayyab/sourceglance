@@ -43,7 +43,8 @@ src/
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
 ├── window/           # The window: app.js builds it, actions.js (dialogs, preview, chips), i18n.js,
-│                     # pages/ (Tasks, lists, settings, accounts wizard; rows in pages/common.js)
+│                     # pages/ (All Tasks, lists, settings, accounts wizard; rows in common.js,
+│                     # the filter bar in filterBar.js)
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
 ├── stylesheet.css    # Styles for the panel menu
 ├── icons/            # Symbolic icons: sourceglance, checklist (projects), pull request
