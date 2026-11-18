@@ -1,15 +1,11 @@
-// Accounts, GitLab section: sign in to gitlab.com with the device flow, or sign out.
-import Adw from 'gi://Adw';
-import Gdk from 'gi://Gdk';
-import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import Gtk from 'gi://Gtk';
-
+// Accounts, GitLab: how to sign in to gitlab.com or a GitLab self-managed instance, for the
+// add-account dialog (addAccount.js).
 import {gettext as _} from '../i18n.js';
 
+import {GITLAB_COM, gitlabUrls} from '../../lib/accounts.js';
 import {GITLAB_CLIENT_ID} from '../../lib/config.js';
-import {DeviceFlowError, GitHubError, isCancelled} from '../../lib/github.js';
-import {GITLAB_ACCOUNT, clearSecret, storeSecret} from '../../lib/tokenStore.js';
+import {DeviceFlowError, GitHubError} from '../../lib/github.js';
+import {GitLabClient} from '../../lib/gitlab.js';
 
 function describeError(error) {
     if (error instanceof DeviceFlowError) {
@@ -26,8 +22,12 @@ function describeError(error) {
         switch (error.kind) {
         case 'auth':
             return _('GitLab rejected the sign-in.');
+        case 'forbidden':
+            return _('This token doesn’t have the required scope (api, or read_api to only read).');
         case 'network':
-            return _('Couldn’t reach GitLab. Check your connection.');
+            return _('Couldn’t connect. Check the address and your connection, and that this computer trusts the instance’s certificate.');
+        case 'insecure':
+            return _('This address uses plain http:// but isn’t on your local network. Use https://.');
         case 'rate-limit':
             return _('GitLab rate limit reached. Try again later.');
         default:
@@ -37,115 +37,53 @@ function describeError(error) {
     return _('Something went wrong: %s').format(error.message);
 }
 
-/** The GitLab section of the Accounts page. `ctx` is {window, settings, gitlabClient, toast}. */
-export function buildGitlabGroups({window, settings, gitlabClient: client, toast}) {
-    const group = new Adw.PreferencesGroup({
-        title: _('Account'),
-        description: _('Your GitLab issues and merge requests show in their own section of each list.'),
-    });
+/**
+ * Signing in to GitLab, for the add-account dialog. `base` is gitlab.com or a self-managed
+ * instance; `probe` is what the instance check found ({device}: whether it offers browser
+ * sign-in, GitLab 17.1 and later). The notes on reach come from GitLab's documentation on
+ * OAuth scopes and personal access tokens.
+ */
+export function gitlabProvider({version, base = GITLAB_COM, probe = null}) {
+    const dotCom = base === GITLAB_COM;
+    const urls = gitlabUrls(base);
+    const deviceOffered = dotCom || probe?.device;
+    const methods = [{
+        id: 'device', method: 'device',
+        clientId: dotCom ? GITLAB_CLIENT_ID : null,
+        needsClientId: !dotCom,
+        title: _('Sign in with the browser'),
+        note: dotCom
+            ? _('Every project you can view, with the api scope.')
+            : _('Every project you can view, with the api scope. You register an application on your instance: not confidential, scope api.'),
+        registerUrl: dotCom ? null : urls.newApp,
+        unavailable: dotCom && !GITLAB_CLIENT_ID ? _('Not available in this build: the GitLab application isn’t configured.')
+            : !deviceOffered ? _('This instance doesn’t offer browser sign-in for apps (GitLab 17.1 or later does).') : null,
+    }, {
+        id: 'pat', method: 'pat',
+        title: _('Personal access token'),
+        note: _('Every project you can view. Group and project access tokens reach only their own group or project, so they don’t suit Source Glance.'),
+        tokenUrl: urls.newToken,
+        tokenHint: _('Scope: api (or read_api to only read).'),
+    }];
 
-    const statusRow = new Adw.ActionRow({title: _('Status'), subtitle: _('Checking…')});
-    const signOutButton = new Gtk.Button({label: _('Sign out'), valign: Gtk.Align.CENTER,
-        css_classes: ['destructive-action'], visible: false});
-    statusRow.add_suffix(signOutButton);
-    group.add(statusRow);
-
-    const signInRow = new Adw.ActionRow({
-        title: _('Sign in with GitLab'),
-        subtitle: GITLAB_CLIENT_ID
-            ? _('Approve Source Glance on gitlab.com in your browser')
-            : _('Not available in this build: the GitLab application isn’t configured.'),
-    });
-    const signInButton = new Gtk.Button({label: _('Sign in'), valign: Gtk.Align.CENTER,
-        css_classes: ['suggested-action'], sensitive: Boolean(GITLAB_CLIENT_ID)});
-    signInRow.add_suffix(signInButton);
-    group.add(signInRow);
-
-    const codeRow = new Adw.ActionRow({
-        subtitle: _('Code copied. Approve Source Glance on GitLab. Waiting…'),
-        title_selectable: true,
-        css_classes: ['property'],
-        visible: false,
-    });
-    const openButton = new Gtk.Button({icon_name: 'adw-external-link-symbolic', tooltip_text: _('Open GitLab again'),
-        valign: Gtk.Align.CENTER, css_classes: ['flat']});
-    const cancelButton = new Gtk.Button({label: _('Cancel'), valign: Gtk.Align.CENTER});
-    codeRow.add_suffix(openButton);
-    codeRow.add_suffix(cancelButton);
-    group.add(codeRow);
-
-    const setLogin = login => {
-        statusRow.subtitle = login ? _('Signed in as @%s').format(login) : _('Not signed in');
-        signOutButton.visible = Boolean(login);
-        signInRow.visible = !login;
+    return {
+        platform: 'gitlab',
+        base,
+        methods,
+        describeError,
+        createClient: () => new GitLabClient(version, {base}),
+        /** Device flow: `onCode(code)` shows the code. Resolves to {login, secret}. */
+        async device(client, _method, clientId, onCode, cancellable) {
+            const code = await client.requestDeviceCode(clientId, cancellable);
+            onCode(code);
+            const auth = await client.waitForDeviceToken(clientId, code, cancellable);
+            const viewer = await client.getViewer(auth.access, cancellable);
+            return {login: viewer.username, secret: JSON.stringify(auth)};
+        },
+        /** A pasted personal access token: stored like a sign-in that never needs renewing. */
+        async token(client, text, cancellable) {
+            const viewer = await client.getViewer(text, cancellable);
+            return {login: viewer.username, secret: JSON.stringify({access: text, refresh: null, expiresAt: null})};
+        },
     };
-    // Tells the running extension (and this window's lists) to reload.
-    const notifyChanged = () => settings.set_int('token-changed', settings.get_int('token-changed') + 1);
-
-    let cancellable = null;
-    let verificationUri = null;
-    const openVerification = () => {
-        if (verificationUri)
-            new Gtk.UriLauncher({uri: verificationUri}).launch(window, null, null);
-    };
-    window.connect('close-request', () => {
-        cancellable?.cancel();
-        return false;
-    });
-
-    signInButton.connect('clicked', async () => {
-        const mine = new Gio.Cancellable();
-        cancellable = mine;
-        signInButton.sensitive = false;
-        try {
-            const code = await client.requestDeviceCode(GITLAB_CLIENT_ID, mine);
-            verificationUri = code.verificationUri;
-            codeRow.title = code.userCode;
-            codeRow.visible = true;
-            window.get_clipboard().set_content(Gdk.ContentProvider.new_for_bytes(
-                'text/plain;charset=utf-8', new GLib.Bytes(new TextEncoder().encode(code.userCode))));
-            openVerification();
-            const auth = await client.waitForDeviceToken(GITLAB_CLIENT_ID, code, mine);
-            const viewer = await client.getViewer(auth.access, mine);
-            await storeSecret(GITLAB_ACCOUNT, JSON.stringify(auth));
-            setLogin(viewer.username);
-            notifyChanged();
-            toast(_('Signed in to GitLab as @%s').format(viewer.username));
-        } catch (e) {
-            if (!isCancelled(e))
-                toast(describeError(e));
-        } finally {
-            if (cancellable === mine) {
-                cancellable = null;
-                verificationUri = null;
-                codeRow.visible = false;
-                signInButton.sensitive = Boolean(GITLAB_CLIENT_ID);
-            }
-        }
-    });
-    openButton.connect('clicked', openVerification);
-    cancelButton.connect('clicked', () => cancellable?.cancel());
-
-    signOutButton.connect('clicked', async () => {
-        try {
-            await clearSecret(GITLAB_ACCOUNT);
-            setLogin(null);
-            notifyChanged();
-            toast(_('Signed out of GitLab'));
-        } catch (e) {
-            toast(describeError(e));
-        }
-    });
-
-    (async () => {
-        try {
-            const token = await client.accessToken(GITLAB_CLIENT_ID);
-            setLogin(token ? (await client.getViewer(token)).username : null);
-        } catch (e) {
-            statusRow.subtitle = describeError(e);
-            signOutButton.visible = true;
-        }
-    })();
-
-    return [group];
 }

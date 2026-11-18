@@ -1,8 +1,11 @@
-// Minimal GitHub REST client on Soup 3 (ADR 0003).
+// Minimal GitHub REST client on Soup 3 (ADR 0003), for github.com or a GitHub Enterprise
+// Server instance (ADR 0007).
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Soup from 'gi://Soup?version=3.0';
 
+import {GITHUB_COM, githubUrls, isSafeAccountUrl, parseGhesMeta} from './accounts.js';
+import {InsecureHostError, Transport} from './transport.js';
 import {
     DEVICE_GRANT_TYPE,
     buildSearchPath,
@@ -10,6 +13,7 @@ import {
     classifyGraphqlErrors,
     classifyHttpError,
     formEncode,
+    isSafeGitHubUrl,
     isValidRepo,
     parseDeviceCodeResponse,
     parseLabels,
@@ -22,11 +26,6 @@ import {
 } from './model.js';
 import {DOWNLOAD_PREFIX, RELEASES_PATH} from './updates.js';
 
-Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
-
-const API_BASE = 'https://api.github.com';
-const DEVICE_CODE_URL = 'https://github.com/login/device/code';
-const DEVICE_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
 /** Device-flow sign-in ended without a token: kind is expired, denied or error. */
 export class DeviceFlowError extends Error {
@@ -79,14 +78,28 @@ export function isCancelled(error) {
     return error instanceof GLib.Error && error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
 }
 
+/** A transport failure as the GitHubError the callers expect. */
+export function transportError(error) {
+    if (isCancelled(error))
+        return error;
+    if (error instanceof InsecureHostError)
+        return new GitHubError({kind: 'insecure', status: 0, retryAt: null});
+    return new GitHubError(classifyHttpError(0));
+}
+
 export class GitHubClient {
-    constructor(version = 'dev') {
-        this._session = new Soup.Session({user_agent: `sourceglance/${version}`, timeout: 30});
+    /** `base` is the instance: https://github.com, or a GitHub Enterprise Server address. */
+    constructor(version = 'dev', base = GITHUB_COM) {
+        this.base = base;
+        this._urls = githubUrls(base);
+        this._transport = new Transport(version, base === GITHUB_COM ? null : base);
+        // Links in the data must be on the instance (threat model T7).
+        this._isSafe = base === GITHUB_COM ? isSafeGitHubUrl : url => isSafeAccountUrl(url, base);
     }
 
     destroy() {
-        this._session?.abort();
-        this._session = null;
+        this._transport?.destroy();
+        this._transport = null;
     }
 
     async _get(path, token, cancellable) {
@@ -95,7 +108,8 @@ export class GitHubClient {
 
     /** REST call with an optional JSON body. Resolves to the parsed JSON, or null for 204. */
     async _request(method, path, token, body, cancellable) {
-        const message = Soup.Message.new(method, `${API_BASE}${path}`);
+        const url = path === '/graphql' ? this._urls.graphql : `${this._urls.api}${path}`;
+        const message = Soup.Message.new(method, url);
         const headers = message.get_request_headers();
         headers.append('Accept', 'application/vnd.github+json');
         headers.append('X-GitHub-Api-Version', '2022-11-28');
@@ -108,7 +122,7 @@ export class GitHubClient {
         return this._send(message, cancellable);
     }
 
-    /** Form POST to github.com's OAuth endpoints, which answer JSON when asked to. */
+    /** Form POST to the instance's OAuth endpoints, which answer JSON when asked to. */
     async _postForm(url, fields, cancellable) {
         const message = Soup.Message.new('POST', url);
         message.get_request_headers().append('Accept', 'application/json');
@@ -120,11 +134,9 @@ export class GitHubClient {
     async _send(message, cancellable) {
         let bytes;
         try {
-            bytes = await this._session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, cancellable);
+            bytes = await this._transport.send(message, cancellable);
         } catch (e) {
-            if (isCancelled(e))
-                throw e;
-            throw new GitHubError(classifyHttpError(0));
+            throw transportError(e);
         }
 
         const status = message.get_status();
@@ -158,16 +170,30 @@ export class GitHubClient {
         const message = Soup.Message.new('GET', url);
         let bytes;
         try {
-            bytes = await this._session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, cancellable);
+            bytes = await this._transport.send(message, cancellable);
         } catch (e) {
-            if (isCancelled(e))
-                throw e;
-            throw new GitHubError(classifyHttpError(0));
+            throw transportError(e);
         }
         const status = message.get_status();
         if (status < 200 || status >= 300)
             throw new GitHubError(classifyHttpError(status, {}, Date.now()));
         return bytes;
+    }
+
+    /**
+     * For the self-hosted wizard: resolves to {version} if the instance is GitHub Enterprise
+     * Server (its /api/v3/meta needs no sign-in), else null.
+     */
+    async probeEnterprise(cancellable = null) {
+        try {
+            return parseGhesMeta(await this._get('/meta', null, cancellable));
+        } catch (e) {
+            // Another site answers with its own error page or status (404, 410…).
+            if (e instanceof GitHubError && e.kind !== 'network' && e.kind !== 'insecure' &&
+                e.kind !== 'rate-limit' && e.kind !== 'server')
+                return null;
+            throw e;
+        }
     }
 
     /** Resolves to the login of the token's owner. */
@@ -182,7 +208,7 @@ export class GitHubClient {
      */
     async search(token, repos = [], search = 'issue', cancellable = null) {
         const json = await this._get(buildSearchPath(repos, search), token, cancellable);
-        return parseSearchResponse(json, search);
+        return parseSearchResponse(json, search, this._isSafe);
     }
 
     /** Resolves to how many items a search finds, e.g. 'issue-closed' or 'pr-closed'. */
@@ -200,7 +226,7 @@ export class GitHubClient {
         const json = await this._request(request.method, request.path, token, request.body, cancellable);
         if (!json?.data && json?.errors?.length)
             throw new GitHubError({kind: classifyGraphqlErrors(json.errors), status: 200, retryAt: null});
-        return parseViewerBoards(json);
+        return parseViewerBoards(json, this._isSafe);
     }
 
     /**
@@ -247,8 +273,8 @@ export class GitHubClient {
     /** Starts device-flow sign-in. Resolves to {deviceCode, userCode, verificationUri, expiresIn, interval}. */
     async requestDeviceCode(clientId, scope = null, cancellable = null) {
         const fields = scope ? {client_id: clientId, scope} : {client_id: clientId};
-        const json = await this._postForm(DEVICE_CODE_URL, fields, cancellable);
-        const code = parseDeviceCodeResponse(json);
+        const json = await this._postForm(this._urls.deviceCode, fields, cancellable);
+        const code = parseDeviceCodeResponse(json, {isSafe: this._isSafe, fallback: this._urls.deviceVerification});
         if (!code)
             throw new DeviceFlowError('error', json?.error ?? 'bad device code response');
         return code;
@@ -262,7 +288,7 @@ export class GitHubClient {
         const deadline = Date.now() + expiresIn * 1000;
         while (Date.now() < deadline) {
             await sleep(interval, cancellable);
-            const json = await this._postForm(DEVICE_TOKEN_URL, {
+            const json = await this._postForm(this._urls.deviceToken, {
                 client_id: clientId,
                 device_code: deviceCode,
                 grant_type: DEVICE_GRANT_TYPE,

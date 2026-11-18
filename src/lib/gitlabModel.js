@@ -1,6 +1,8 @@
-// GitLab (gitlab.com) parsing and request building. Pure: no gi:// or resource:// imports,
-// unit-tested with Node like model.js (ADR 0004). Items come out in the same shape as GitHub's
-// (see parseSearchResponse in model.js) with platform: 'gitlab'; merge requests use kind 'pr'.
+// GitLab (gitlab.com or self-managed) parsing and request building. Pure: no gi:// or
+// resource:// imports, unit-tested with Node like model.js (ADR 0004). Items come out in the
+// same shape as GitHub's (see parseSearchResponse in model.js) with platform: 'gitlab'; merge
+// requests use kind 'pr'. `base` is the instance, https://gitlab.com unless self-managed.
+import {isSafeAccountUrl} from './accounts.js';
 
 export const GITLAB_HOST = 'https://gitlab.com';
 export const GITLAB_API = `${GITLAB_HOST}/api/v4`;
@@ -14,8 +16,10 @@ const GITLAB_URL_RE = /^https:\/\/gitlab\.com\/[A-Za-z0-9._~%/#?=&+!-]*$/;
 const USERNAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,254}$/;
 const PROJECT_PATH_RE = /^[A-Za-z0-9_.][A-Za-z0-9_.-]*(\/[A-Za-z0-9_.][A-Za-z0-9_.-]*)+$/;
 
-/** Only plain https://gitlab.com/ links may be opened (GitLab data is untrusted). */
-export function isSafeGitLabUrl(url) {
+/** Only plain links on the instance may be opened (GitLab data is untrusted). */
+export function isSafeGitLabUrl(url, base = GITLAB_HOST) {
+    if (base !== GITLAB_HOST)
+        return isSafeAccountUrl(url, base);
     return typeof url === 'string' && GITLAB_URL_RE.test(url);
 }
 
@@ -31,8 +35,8 @@ function capped(value, max) {
     return typeof value === 'string' ? [...value].slice(0, max).join('') : '';
 }
 
-/** Device-code response; the links must be gitlab.com's. Null if unusable. */
-export function parseGitLabDeviceCode(json) {
+/** Device-code response; the links must be the instance's. Null if unusable. */
+export function parseGitLabDeviceCode(json, base = GITLAB_HOST) {
     const {device_code: deviceCode, user_code: userCode} = json ?? {};
     if (typeof deviceCode !== 'string' || !deviceCode || typeof userCode !== 'string' ||
         !/^[A-Za-z0-9-]{4,16}$/.test(userCode))
@@ -41,8 +45,8 @@ export function parseGitLabDeviceCode(json) {
     return {
         deviceCode,
         userCode,
-        verificationUri: isSafeGitLabUrl(complete) ? complete
-            : isSafeGitLabUrl(json.verification_uri) ? json.verification_uri : GITLAB_DEVICE_URL,
+        verificationUri: isSafeGitLabUrl(complete, base) ? complete
+            : isSafeGitLabUrl(json.verification_uri, base) ? json.verification_uri : `${base}/oauth/device`,
         expiresIn: positiveInt(json.expires_in) ? json.expires_in : 300,
         interval: positiveInt(json.interval) ? json.interval : 5,
     };
@@ -109,7 +113,7 @@ function projectPath(item) {
 }
 
 /** Items from a GitLab issues or merge_requests list. */
-export function parseGitLabItems(json, search) {
+export function parseGitLabItems(json, search, base = GITLAB_HOST) {
     const mr = search !== 'issue';
     return (Array.isArray(json) ? json : [])
         .filter(item => positiveInt(item?.iid) && positiveInt(item.project_id) && projectPath(item))
@@ -119,7 +123,7 @@ export function parseGitLabItems(json, search) {
             reason: search === 'mr-review' ? 'review' : 'assigned',
             number: item.iid,
             title: capped(item.title, 300),
-            url: isSafeGitLabUrl(item.web_url) ? item.web_url : null,
+            url: isSafeGitLabUrl(item.web_url, base) ? item.web_url : null,
             repo: projectPath(item),
             projectId: item.project_id,
             nodeId: null,
@@ -199,12 +203,12 @@ export function gitlabAssigneesRequest(item, wanted, members) {
     return {method: 'PUT', path: itemPath(item), body: {assignee_ids: ids.length ? ids : [0]}};
 }
 
-/** gitlab.com pages for the list footers. */
-export function gitlabClosedPageUrl(kind, username) {
+/** The instance's pages for the list footers. */
+export function gitlabClosedPageUrl(kind, username, base = GITLAB_HOST) {
     if (!isValidGitLabUsername(username))
-        return `${GITLAB_HOST}/dashboard/${kind === 'pr' ? 'merge_requests' : 'issues'}`;
+        return `${base}/dashboard/${kind === 'pr' ? 'merge_requests' : 'issues'}`;
     const user = encodeURIComponent(username);
     return kind === 'pr'
-        ? `${GITLAB_HOST}/dashboard/merge_requests?assignee_username=${user}&state=merged`
-        : `${GITLAB_HOST}/dashboard/issues?assignee_username=${user}&state=closed`;
+        ? `${base}/dashboard/merge_requests?assignee_username=${user}&state=merged`
+        : `${base}/dashboard/issues?assignee_username=${user}&state=closed`;
 }

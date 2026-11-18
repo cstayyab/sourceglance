@@ -21,9 +21,11 @@ The PR template asks authors to confirm these; reviewers check them for any PR t
 auth, networking, storage or rendering:
 
 - [ ] No token or other secret in code, logs, error messages, test fixtures or screenshots
-- [ ] New network calls go only to `https://api.github.com` and are cancellable
-- [ ] Data from GitHub is treated as untrusted: rendered as plain text, URLs checked before
-      opening
+- [ ] New network calls go only to `api.github.com`, `gitlab.com` or the account's own instance
+      (through `lib/transport.js`), and are cancellable
+- [ ] Each request uses the token of the account the data came from
+- [ ] Data from GitHub and GitLab is treated as untrusted: rendered as plain text, URLs checked
+      against the account's instance before opening
 - [ ] Nothing secret stored in GSettings or files
 - [ ] No new runtime dependency (GNOME libraries only)
 - [ ] [Threat model](threat-model.md) updated if the change adds a data flow, storage,

@@ -1,5 +1,6 @@
-// Sign-in storage in the GNOME keyring (ADR 0002): one entry per account, under the same
-// schema. GitHub keeps a token; GitLab keeps JSON {access, refresh, expiresAt}. Never log them.
+// Sign-in storage in the GNOME keyring (ADR 0002, ADR 0007): one entry per account, under the
+// same schema, keyed by the account id. GitHub keeps a token; GitLab keeps JSON {access,
+// refresh, expiresAt} (a personal access token has no refresh). Never log them.
 import Secret from 'gi://Secret';
 
 export const GITHUB_ACCOUNT = 'github.com';
@@ -27,10 +28,11 @@ export function lookupSecret(account, cancellable = null) {
     });
 }
 
-export function storeSecret(account, secret, cancellable = null) {
+/** `label` names the entry in Passwords and Keys; the first two accounts have their own. */
+export function storeSecret(account, secret, cancellable = null, label = null) {
     return new Promise((resolve, reject) => {
         Secret.password_store(getSchema(), {account}, Secret.COLLECTION_DEFAULT,
-            LABELS[account] ?? `Source Glance ${account}`, secret, cancellable, (_source, result) => {
+            LABELS[account] ?? label ?? `Source Glance ${account}`, secret, cancellable, (_source, result) => {
                 try {
                     resolve(Secret.password_store_finish(result));
                 } catch (e) {

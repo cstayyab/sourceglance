@@ -1,27 +1,27 @@
-// The window's copy of the lists: loads them on open, on the refresh interval and after a
-// change, and tells the pages. Signed out or failing loads show as a status.
+// The window's copy of the lists: loads every account's lists on open, on the refresh interval
+// and after a change, and tells the pages. Signed out or failing loads show as a status. The
+// state has the extension's shape: one source per account (sourceFrom() in lib/accounts.js).
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
+import {loadAccount, loadAccounts, rememberLogin} from '../lib/accountStore.js';
+import {aggregateStatus, firstError, latestUpdate, sourceFrom} from '../lib/accounts.js';
 import {GitHubError, isCancelled} from '../lib/github.js';
-import {loadGitLab} from '../lib/gitlabLoader.js';
-import {loadLists} from '../lib/loader.js';
-import {groupIssues} from '../lib/model.js';
-import {lookupToken} from '../lib/tokenStore.js';
+import {allowLinkBases} from '../lib/requests.js';
 
 export class WindowData {
-    /** onChange(state) runs after every change; state is shaped like the extension's. */
-    constructor({client, gitlabClient, settings, onChange}) {
-        this._client = client;
-        this._gitlabClient = gitlabClient;
+    /** onChange(state) runs after every change. `clients` is an AccountClients. */
+    constructor({clients, settings, onChange}) {
+        this._clients = clients;
         this._settings = settings;
         this._onChange = onChange;
         this._cancellable = null;
         this._timeoutId = 0;
         this._afterChangeId = 0;
-        this.state = {status: 'loading', login: null, updatedAt: null, groups: [], prGroups: [],
-            issueTotal: 0, issueShown: 0, prTotal: 0, prShown: 0, closedCounts: {issues: null, prs: null},
-            boards: null, boardsError: null, error: null, busy: [], gitlab: {status: 'signed-out'}};
+        this.accounts = [];
+        // Each account's last load, by account id.
+        this._results = new Map();
+        this.state = {status: 'loading', sources: [], updatedAt: null, error: null, busy: [], refreshing: false};
     }
 
     start() {
@@ -39,8 +39,9 @@ export class WindowData {
         this._afterChangeId = 0;
     }
 
-    token() {
-        return lookupToken();
+    /** The account with this id, or null. */
+    account(id) {
+        return this.accounts.find(account => account.id === id) ?? null;
     }
 
     setBusy(key, busy) {
@@ -55,6 +56,11 @@ export class WindowData {
     _set(patch) {
         this.state = {...this.state, ...patch};
         this._onChange(this.state);
+    }
+
+    _publish() {
+        const sources = this.accounts.map(account => sourceFrom(account, this._results.get(account.id)));
+        this._set({sources, status: aggregateStatus(sources), updatedAt: latestUpdate(sources), error: firstError(sources)});
     }
 
     _schedule() {
@@ -80,22 +86,26 @@ export class WindowData {
         });
     }
 
-    /** Loads GitLab next to GitHub; its errors only mark the GitLab sections. */
-    async _loadGitLab(cancellable) {
+    /** Loads one account; its errors only mark its own section. */
+    async _loadAccount(account, options, cancellable) {
         try {
-            const gl = await loadGitLab(this._gitlabClient, cancellable);
-            this._set({gitlab: gl.status === 'signed-out' ? gl : {
-                ...gl,
-                groups: groupIssues(gl.issues),
-                prGroups: groupIssues(gl.prs),
-                issueShown: gl.issues.length,
-                prShown: gl.prs.length,
-            }});
+            const result = await loadAccount(this._clients, account, options, cancellable);
+            if (cancellable.is_cancelled())
+                return;
+            this._results.set(account.id, result.status === 'signed-out'
+                ? {status: 'signed-out'}
+                : {...result, updatedAt: new Date(), error: null});
+            if (result.login && result.login !== account.login)
+                rememberLogin(this._settings, account.id, result.login);
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;
-            this._set({gitlab: {...this.state.gitlab, status: 'error', error: {kind: e.kind ?? 'unknown'}}});
+            if (!(e instanceof GitHubError))
+                console.error('sourceglance window: load failed', e);
+            this._results.set(account.id, {...this._results.get(account.id), status: 'error',
+                error: {kind: e instanceof GitHubError ? e.kind : 'unknown', retryAt: e.retryAt ?? null}});
         }
+        this._publish();
     }
 
     /** Reloads everything. `nudge` also asks the top bar to refresh (after a change). */
@@ -114,45 +124,30 @@ export class WindowData {
             this._cancellable = null;
             return;
         }
-        const gitlabDone = this._loadGitLab(cancellable);
         try {
-            const token = await lookupToken(cancellable);
-            if (!token) {
-                this._set({status: 'signed-out', login: null, refreshing: false});
-                return;
+            this.accounts = await loadAccounts(this._settings, cancellable);
+            allowLinkBases(this.accounts.map(account => account.base));
+            this._clients.prune(this.accounts);
+            for (const id of [...this._results.keys()]) {
+                if (!this.account(id))
+                    this._results.delete(id);
             }
-            const lists = await loadLists(this._client, token, {
+            this._publish();
+            const options = {
                 repos: this._settings.get_strv('repositories'),
                 // The window always has a Projects page, whatever the top bar shows.
                 projects: true,
-            }, cancellable);
-            this._set({
-                status: 'ready',
-                login: lists.login,
-                updatedAt: new Date(),
-                error: null,
-                refreshing: false,
-                groups: groupIssues(lists.issues),
-                prGroups: groupIssues(lists.prs),
-                issueTotal: lists.issueTotal,
-                issueShown: lists.issues.length,
-                prTotal: lists.prTotal,
-                prShown: lists.prs.length,
-                closedCounts: lists.closedCounts,
-                boards: lists.boards,
-                boardsError: lists.boardsError,
-            });
+            };
+            await Promise.all(this.accounts.map(account => this._loadAccount(account, options, cancellable)));
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;
-            if (!(e instanceof GitHubError))
-                console.error('sourceglance window: load failed', e);
-            this._set({status: 'error', refreshing: false,
-                error: {kind: e instanceof GitHubError ? e.kind : 'unknown', retryAt: e.retryAt ?? null}});
+            console.error('sourceglance window: load failed', e);
+            this._set({status: 'error', error: {kind: 'unknown', retryAt: null}});
         } finally {
-            await gitlabDone;
             if (this._cancellable === cancellable) {
                 this._cancellable = null;
+                this._set({refreshing: false});
                 this._schedule();
             }
         }
