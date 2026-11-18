@@ -39,6 +39,10 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   add up across all of them.
 - **Collapsible repositories**: click a repository heading to hide or show its items, in
   the window and the menus. Source Glance remembers what you collapsed.
+- **Tasks**: everything assigned to you in one list, newest first. Filter it like a tag
+  search, by kind (issues, pull requests, project drafts) or assignee (one of your accounts),
+  each filter a chip you remove with ×. Click a task to open it in your browser. The lists by
+  kind sit under it in the sidebar.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
 - **Search** from the window's title bar: one box filters Issues, Pull requests and Projects
   by title, repository, number, label, person or board status, with match counts. Clear it

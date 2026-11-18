@@ -4,6 +4,8 @@ import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
+import {gettext as _} from './i18n.js';
+
 let themeLoaded = false;
 
 /**
@@ -37,8 +39,14 @@ function entryRow(entry) {
     const count = new Gtk.Label({css_classes: ['sourceglance-count-pill'], visible: false, valign: Gtk.Align.CENTER});
     box.append(count);
     const row = new Gtk.ListBoxRow({child: box});
-    if (entry.indent)
+    if (entry.indent || entry.parent)
         row.add_css_class('sourceglance-indent');
+    if (entry.expandable) {
+        // Shows or hides the entries under this one (entry.parent); clicking the row itself
+        // still opens its page.
+        row._expander = new Gtk.Button({css_classes: ['flat', 'sourceglance-expander'], valign: Gtk.Align.CENTER});
+        box.append(row._expander);
+    }
     row._entry = entry;
     row._count = count;
     return row;
@@ -51,7 +59,9 @@ function entryRow(entry) {
  * @param {object} params
  * @param {Gio.Icon} params.appIcon
  * @param {Adw.ToastOverlay} params.overlay the window's toast overlay (pages use it)
- * @param {Array} params.entries [{heading, sub}] or [{id, title, iconName|gicon, page, indent}]
+ * @param {Array} params.entries [{heading, sub}] or [{id, title, iconName|gicon, page, indent}]. An
+ *   entry with `expandable` (and `expanded`, `onExpandedChanged(expanded)`) shows or hides the
+ *   entries whose `parent` is its id.
  * @param {Gtk.Widget} [params.headerStart] shown at the start of the content header bar
  * @param {Gtk.Widget} [params.headerEnd] shown at the end of the content header bar
  * @param {Function} [params.onPageChanged] called with the selected entry's id
@@ -109,6 +119,29 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerStart 
         window.add(new Adw.PreferencesPage());
     window.set_content(overlay);
 
+    // Expandable entries: their children show only while they're expanded.
+    const setExpanded = (parentRow, expanded) => {
+        parentRow._expanded = expanded;
+        parentRow._expander.icon_name = expanded ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        parentRow._expander.tooltip_text = expanded ? _('Hide the lists under this one') : _('Show the lists under this one');
+        for (const row of rows.values()) {
+            if (row._entry.parent === parentRow._entry.id)
+                row.visible = expanded;
+        }
+        // A hidden page can't stay selected: its parent takes over.
+        if (!expanded && list.get_selected_row()?._entry?.parent === parentRow._entry.id)
+            list.select_row(parentRow);
+    };
+    for (const row of rows.values()) {
+        if (!row._expander)
+            continue;
+        setExpanded(row, Boolean(row._entry.expanded));
+        row._expander.connect('clicked', () => {
+            setExpanded(row, !row._expanded);
+            row._entry.onExpandedChanged?.(row._expanded);
+        });
+    }
+
     list.connect('row-selected', (_list, row) => {
         if (!row?._entry)
             return;
@@ -121,8 +154,15 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerStart 
 
     const select = id => {
         const row = rows.get(id);
-        if (row)
-            list.select_row(row);
+        if (!row)
+            return;
+        // Opening a list under a collapsed one (e.g. from the top bar) shows it first.
+        const parent = rows.get(row._entry.parent);
+        if (parent?._expander && !parent._expanded) {
+            setExpanded(parent, true);
+            parent._entry.onExpandedChanged?.(true);
+        }
+        list.select_row(row);
     };
     // SOURCEGLANCE_PAGE (development) opens on a given page, e.g. for screenshots.
     select(GLib.getenv('SOURCEGLANCE_PAGE') ?? entries.find(entry => entry.id)?.id);

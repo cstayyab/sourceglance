@@ -17,6 +17,7 @@ import {buildAboutPage} from './pages/about.js';
 import {buildAccountsPage} from './pages/accounts.js';
 import {ListPage} from './pages/list.js';
 import {ProjectsPage} from './pages/projects.js';
+import {TasksPage} from './pages/tasks.js';
 import {buildSystemStartPage} from './pages/systemStart.js';
 import {buildSystemTrayPage} from './pages/systemTray.js';
 import {buildWidgetsPage} from './pages/widgets.js';
@@ -52,7 +53,8 @@ export function fillWindow(window, {settings, dir, version}) {
 
     // One search box, on the right of the title bar, filters all three lists. While it has text, the
     // sidebar counts and the title's subtitle show matches; clearing it shows everything.
-    const LISTS = ['issues', 'prs', 'projects'];
+    // Tasks first: a search from a settings page shows it.
+    const LISTS = ['tasks', 'issues', 'prs', 'projects'];
     const search = new Gtk.SearchEntry({placeholder_text: _('Search lists'), width_chars: 20, valign: Gtk.Align.CENTER,
         tooltip_text: _('Search issues, pull requests and project items (Ctrl+F). Esc clears it.')});
     let currentPage = null;
@@ -82,7 +84,8 @@ export function fillWindow(window, {settings, dir, version}) {
     const issuesPage = new ListPage({key: 'issues', icons, actions, repos, settings, onClearSearch});
     const prsPage = new ListPage({key: 'prs', icons, actions, repos, settings, onClearSearch});
     const projectsPage = new ProjectsPage({icons, actions, settings, onClearSearch});
-    pages.push(issuesPage, prsPage, projectsPage);
+    const tasksPage = new TasksPage({icons, actions, onClearSearch});
+    pages.push(tasksPage, issuesPage, prsPage, projectsPage);
 
     search.connect('search-changed', () => {
         terms = searchTerms(search.text);
@@ -120,9 +123,13 @@ export function fillWindow(window, {settings, dir, version}) {
         },
         entries: [
             {heading: _('Lists')},
-            {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
-            {id: 'prs', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
-            {id: 'projects', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
+            // Everything in one list; the lists by kind sit under it, collapsed until opened.
+            {id: 'tasks', title: _('Tasks'), iconName: 'view-list-bullet-symbolic', page: tasksPage.widget,
+                expandable: true, expanded: settings.get_boolean('tasks-expanded'),
+                onExpandedChanged: expanded => settings.set_boolean('tasks-expanded', expanded)},
+            {id: 'issues', parent: 'tasks', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
+            {id: 'prs', parent: 'tasks', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
+            {id: 'projects', parent: 'tasks', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
             {heading: _('Settings')},
             {id: 'widgets', title: _('Desktop Widgets'), iconName: 'view-grid-symbolic',
                 page: buildWidgetsPage(ctx)},

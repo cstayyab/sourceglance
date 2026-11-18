@@ -83,6 +83,11 @@
       <summary>Check for updates</summary>
       <description>When you log in and when the sourceglance window opens, ask GitHub whether a newer release is out. At login a notification says so; in the window, "Update available" shows in its title bar.</description>
     </key>
+    <key name="tasks-expanded" type="b">
+      <default>false</default>
+      <summary>Show the lists under Tasks</summary>
+      <description>Whether the window's sidebar shows Issues, Pull requests and Projects under Tasks.</description>
+    </key>
     <key name="saved-wallpaper" type="a{ss}">
       <default>{}</default>
       <summary>Wallpaper to put back</summary>

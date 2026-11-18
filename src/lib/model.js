@@ -786,6 +786,8 @@ export function listBadge(id, state) {
         return sum('issueTotal', 'issueShown');
     case 'prs':
         return sum('prTotal', 'prShown');
+    case 'tasks':
+        return String(allTasks(loaded).length);
     case 'projects': {
         // Project boards are GitHub's; accounts that can't read them don't count.
         const boards = loaded.filter(source => source.platform === 'github' && !source.boardsError);
@@ -865,6 +867,8 @@ export function searchCount(id, state, terms) {
         return sources.reduce((sum, source) => sum + count(source.groups), 0);
     case 'prs':
         return sources.reduce((sum, source) => sum + count(source.prGroups), 0);
+    case 'tasks':
+        return filterTasks(allTasks(sources), [], terms).length;
     case 'projects':
         return sources.reduce((sum, source) =>
             sum + searchBoards(source.boards ?? [], terms).reduce((n, board) => n + board.drafts.length, 0), 0);
@@ -933,4 +937,90 @@ export function wallpaperChoice(current, saved) {
  */
 export function keepSavedWallpaper(current, saved) {
     return hasSavedWallpaper(saved) && isRecommendedWallpaper(current);
+}
+
+// Lists → Tasks: everything assigned to you in one list, from every account: issues, pull or
+// merge requests, and project board drafts. No sections; an icon tells the kinds apart, and
+// filters (kinds and accounts, added like tags) narrow it down.
+export const TASK_KINDS = ['issue', 'pr', 'draft'];
+
+/**
+ * Every task in `sources` (from sourceFrom), newest first; drafts, which have no date, last.
+ * Each is {kind, title, url, repo, ref, updatedAt, account, accountTitle, ...}: `account` is
+ * the account's section key; `item` for issues and PRs (for actions and search), `board` and
+ * `status` for drafts, whose url is their board's.
+ */
+export function allTasks(sources) {
+    const tasks = [];
+    const seen = new Set();
+    for (const source of sources ?? []) {
+        if (source.status === 'signed-out')
+            continue;
+        const account = {account: source.key, accountTitle: source.title};
+        for (const groups of [source.groups, source.prGroups]) {
+            for (const group of groups ?? []) {
+                for (const item of group.issues) {
+                    // The same item seen by two accounts is one task.
+                    const key = item.url ?? itemKey(item);
+                    if (seen.has(key))
+                        continue;
+                    seen.add(key);
+                    tasks.push({kind: item.kind, title: item.title, url: item.url ?? null, repo: item.repo,
+                        ref: itemRef(item), updatedAt: item.updatedAt ?? null, ...account, item});
+                }
+            }
+        }
+        for (const board of source.boards ?? []) {
+            for (const draft of board.drafts) {
+                tasks.push({kind: 'draft', title: draft.title, url: board.url ?? null, repo: board.title, ref: '',
+                    updatedAt: null, status: draft.status, ...account, board, draft});
+            }
+        }
+    }
+    const time = task => (task.updatedAt ? Date.parse(task.updatedAt) || 0 : -Infinity);
+    // Array.prototype.sort is stable, so drafts keep their board order.
+    return tasks.sort((a, b) => time(b) - time(a));
+}
+
+/**
+ * The tasks that pass `filters` and match `terms`. `filters` is a list of {type, value}:
+ * type 'kind' (value 'issue', 'pr' or 'draft') or 'account' (a section key: the assignee,
+ * since every task is assigned to the account it came from). Filters of one
+ * type add up (Issues + Pull requests shows both); filters of different types narrow
+ * (Pull requests + an account shows that account's pull requests). [] shows everything.
+ */
+export function filterTasks(tasks, filters = [], terms = []) {
+    const wanted = type => (filters ?? []).filter(filter => filter.type === type).map(filter => filter.value);
+    const kinds = wanted('kind');
+    const accounts = wanted('account');
+    return tasks.filter(task => (kinds.length === 0 || kinds.includes(task.kind)) &&
+        (accounts.length === 0 || accounts.includes(task.account)) &&
+        (task.item
+            ? itemMatches(task.item, terms)
+            : matchesAll([task.title ?? '', task.status ?? '', task.repo ?? ''].join('\n'), terms)));
+}
+
+/**
+ * The filters the + menu offers, each {type, value, count}, kinds first, then assignees: your
+ * accounts, each one being you on that platform (only with more than one). Counts are of `tasks`; options already in `active` are left out.
+ */
+export function taskFilterOptions(tasks, sources, active = []) {
+    const isActive = (type, value) => (active ?? []).some(filter => filter.type === type && filter.value === value);
+    const options = TASK_KINDS.map(kind => ({type: 'kind', value: kind, count: tasks.filter(task => task.kind === kind).length}));
+    const accounts = (sources ?? []).filter(source => source.status !== 'signed-out');
+    if (accounts.length > 1) {
+        for (const source of accounts) {
+            options.push({type: 'account', value: source.key, title: source.assignee ?? source.title,
+                count: tasks.filter(task => task.account === source.key).length});
+        }
+    }
+    return options.filter(option => !isActive(option.type, option.value));
+}
+
+/** How many tasks of each kind: {all, issue, pr, draft}. */
+export function taskCounts(tasks) {
+    const counts = {all: tasks.length, issue: 0, pr: 0, draft: 0};
+    for (const task of tasks)
+        counts[task.kind]++;
+    return counts;
 }
