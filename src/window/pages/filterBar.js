@@ -2,7 +2,6 @@
 // Assignee), each a check list with counts, then what's checked as chips on a row of their
 // own, each with × to remove it, and Clear filters. All Tasks shows all four; the lists by
 // kind show Labels and Assignee (their accounts and kinds are already sections and pages).
-import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
@@ -59,11 +58,13 @@ export class FilterBar {
         this._chipRow = new Gtk.Box({spacing: 6, visible: false});
         this._chipRow.append(this._chipBox);
         this._chipRow.append(clear);
+        // From the left, like the list under it.
         const bar = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, margin_top: 12, margin_bottom: 6,
             margin_start: 12, margin_end: 12, css_classes: ['sourceglance-filter-bar']});
+        buttons.halign = Gtk.Align.START;
         bar.append(buttons);
         bar.append(this._chipRow);
-        this.widget = new Adw.Clamp({child: bar, maximum_size: 800});
+        this.widget = bar;
     }
 
     /**

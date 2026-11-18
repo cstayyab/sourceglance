@@ -8,7 +8,7 @@ import Gtk from 'gi://Gtk';
 import {gettext as _} from '../i18n.js';
 
 import {TASK_FILTER_TYPES, allTasks, filterTasks, itemKey} from '../../lib/model.js';
-import {draftRow, issueRow, noMatchesGroup, statusText} from './common.js';
+import {ListBody, draftRow, issueRow, noMatchesGroup, statusText} from './common.js';
 import {FilterBar} from './filterBar.js';
 
 export class TasksPage {
@@ -23,14 +23,14 @@ export class TasksPage {
         this._groups = [];
 
         this._statusPage = new Adw.StatusPage();
-        this._page = new Adw.PreferencesPage({vexpand: true});
+        this._page = new ListBody();
 
         // The filter bar stays put above the list while it scrolls.
         this._bar = new FilterBar({types: TASK_FILTER_TYPES, onChange: () => this._state && this.update(this._state)});
 
         const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
         list.append(this._bar.widget);
-        list.append(this._page);
+        list.append(this._page.widget);
 
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');

@@ -24,7 +24,8 @@ auth, networking, storage or rendering:
 - [ ] New network calls go only to `api.github.com`, `gitlab.com` or the account's own instance
       (through `lib/transport.js`), and are cancellable
 - [ ] Each request uses the token of the account the data came from
-- [ ] Data from GitHub and GitLab is treated as untrusted: rendered as plain text, URLs checked
+- [ ] Data from GitHub and GitLab is treated as untrusted: rendered as plain text, or as Markdown
+      through `lib/markdown.js` (which escapes it and keeps only http(s) links), URLs checked
       against the account's instance before opening
 - [ ] Nothing secret stored in GSettings or files
 - [ ] No new runtime dependency (GNOME libraries only)

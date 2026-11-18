@@ -18,7 +18,7 @@ import {
     toggleId,
 } from '../../lib/model.js';
 import {closedPageUrl} from '../../lib/requests.js';
-import {collapsibleGroup, issueRow, noMatchesGroup, statusText} from './common.js';
+import {ListBody, collapsibleGroup, issueRow, noMatchesGroup, statusText} from './common.js';
 import {FilterBar} from './filterBar.js';
 
 // Built on use: gettext only works once the window has set up translations, not at import.
@@ -65,12 +65,12 @@ export class ListPage {
         this._terms = [];
 
         this._statusPage = new Adw.StatusPage();
-        this._page = new Adw.PreferencesPage({vexpand: true});
+        this._page = new ListBody();
         // Accounts and kinds are already this page's sections and the page itself.
         this._bar = new FilterBar({types: ['label', 'assignee'], onChange: () => this._state && this.update(this._state)});
         const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
         list.append(this._bar.widget);
-        list.append(this._page);
+        list.append(this._page.widget);
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');
         this.widget.add_named(list, 'list');
