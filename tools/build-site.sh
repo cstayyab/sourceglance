@@ -17,6 +17,7 @@ RELEASES="https://github.com/$REPO/releases"
 mkdir -p "$OUT/images"
 cp "$ROOT/site/style.css" "$OUT/"
 cp "$ROOT/src/icons/sourceglance-app.svg" "$OUT/icon.svg"
+cp "$ROOT/site/demo.js" "$OUT/"
 for name in sourceglance checklist issue git-pull-request label; do
     cp "$ROOT/src/icons/$name-symbolic.svg" "$OUT/images/"
 done
