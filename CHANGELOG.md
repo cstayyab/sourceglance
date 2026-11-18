@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-18
+
 ### Added
 
 - When you log in and a newer version is out, a notification says so with short release
@@ -169,7 +171,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/omer-gh/sourceglance/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/omer-gh/sourceglance/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/omer-gh/sourceglance/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/omer-gh/sourceglance/compare/v0.3.0...v0.4.0

@@ -30,9 +30,9 @@
         <div class="hero-copy">
           <p class="eyebrow">GNOME Shell extension · Ubuntu 24.04+</p>
           <h1>Your issues, pull requests and boards, one glance away.</h1>
-          <p class="lede">Source Glance puts what's assigned to you on GitHub and GitLab in the top
-            bar, on your desktop and in its own searchable window. Comment, close, relabel and move
-            cards without opening a browser.</p>
+          <p class="lede">Source Glance puts what's assigned to you on GitHub and GitLab, across all
+            your accounts and self-hosted instances, in the top bar, on your desktop and in its own
+            searchable window. Comment, close, relabel and move cards without opening a browser.</p>
           <div class="download">
             <a class="button primary" href="@SETUP_X64@">
               <span class="button-icon" aria-hidden="true"></span>
@@ -100,7 +100,8 @@
             <i class="feat ic-check"></i>
             <h3>Top-bar buttons</h3>
             <p>Issues, Pull requests and Projects as one tinted group or as tabs, each with its
-              live count. Filter by label; closed items are counted at the bottom.</p>
+              live count. Filter by label, collapse the repositories you don't need right now;
+              closed items are counted at the bottom.</p>
           </article>
           <article>
             <i class="feat ic-pr"></i>
@@ -110,27 +111,30 @@
           </article>
           <article>
             <i class="feat ic-sourceglance"></i>
-            <h3>GitHub and GitLab</h3>
-            <p>gitlab.com issues and merge requests get their own collapsible section in every
-              list, and the counts add up across both.</p>
+            <h3>Every account, self-hosted too</h3>
+            <p>Add several GitHub and GitLab accounts, each with its own collapsible section. A
+              guided setup connects GitHub Enterprise Server and GitLab self-managed, and counts
+              add up across them all.</p>
           </article>
           <article>
             <i class="feat ic-checklist"></i>
             <h3>Main window</h3>
-            <p>A full window with your lists and settings in a sidebar, opened from the app
-              grid with a splash screen, in the top bar's blue.</p>
+            <p>A full window with your lists and settings in a sidebar, in the top bar's blue.
+              It's an app of its own: Source Glance in the dock and in Alt+Tab.</p>
           </article>
           <article>
             <i class="feat ic-label"></i>
             <h3>Desktop widgets</h3>
             <p>Summary, Issues, Pull requests and Projects cards on your desktop. Drag them
-              anywhere and set their opacity.</p>
+              anywhere, set their opacity, and set the wallpaper they're made for in one click,
+              with Reset to put yours back.</p>
           </article>
           <article>
             <i class="feat ic-lock"></i>
             <h3>Private by design</h3>
-            <p>Signs in through a GitHub App limited to issues, pull requests and projects: no
-              code access. Tokens stay in the GNOME keyring.</p>
+            <p>On github.com, sign in through a GitHub App limited to issues, pull requests and
+              projects: no code access. Tokens stay in the GNOME keyring, and self-hosted
+              instances need HTTPS unless they're on your local network.</p>
           </article>
           <article>
             <i class="feat ic-search"></i>
@@ -142,8 +146,9 @@
           <article>
             <i class="feat ic-update"></i>
             <h3>One-click updates</h3>
-            <p>Update available downloads the new Setup, checks its SHA-256 checksum and updates
-              Source Glance, with no need to log out.</p>
+            <p>A notification at login says when a new version is out, with what's new. Install
+              downloads the new Setup, checks its SHA-256 checksum and updates Source Glance,
+              with no need to log out.</p>
           </article>
           <article>
             <i class="feat ic-code"></i>
@@ -198,8 +203,9 @@
           <p>One Setup file does it all: install, update, <b>repair</b> or <b>remove</b>. Run the
             latest Setup and it updates the Source Glance you have in place, keeping your settings
             and sign-ins. The new version starts right away, with no need to log out.</p>
-          <p class="small">Easier still: when a newer version is out, Source Glance shows
-            <b>Update available</b> in its window's title bar. Click it and Source Glance downloads
+          <p class="small">Easier still: when a newer version is out, a notification says so
+            when you log in, with short release notes; <b>Install</b> starts the update. The
+            window also shows <b>Update available</b> in its title bar. Click it and Source Glance downloads
             the new Setup, checks it against the release's SHA-256 checksums and opens it; when
             Setup finishes, the window reopens on the new version. Turn the check off in
             Settings → System Start. (Coming from v0.2.0 or earlier, log out once after updating.)</p>
