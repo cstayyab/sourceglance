@@ -28,12 +28,20 @@ src/
 │   ├── widgets.js    # Desktop widget cards (desktop layer, drag, positions)
 │   ├── actions.js    # Menu actions: dialog → requests → notification
 │   ├── dialogs.js    # Comment, close and picker dialogs (ModalDialog)
-│   ├── github.js     # GitHub REST/GraphQL client and device-flow sign-in (Soup 3)
-│   ├── gitlab.js     # gitlab.com client: device flow, token refresh, lists, writes
+│   ├── github.js     # GitHub REST/GraphQL client (github.com or Enterprise Server) and sign-in (Soup 3)
+│   ├── gitlab.js     # GitLab client (gitlab.com or self-managed): device flow, token refresh, lists, writes
+│   ├── accounts.js   # Pure account list logic: ids, migration, instance checks (unit-tested)
+│   ├── accountStore.js # Account list in GSettings, secrets in the keyring, per-account clients
+│   ├── transport.js  # Requests to one instance; http:// only to checked LAN addresses
+│   ├── updateNotice.js # The update notification at login
+│   ├── updates.js    # Pure update check and release-notes summary (unit-tested)
+│   ├── updater.js    # Downloads, verifies and runs the new Setup
+│   ├── wallpaper.js  # The recommended wallpaper: Apply, Reset, forget the saved copy
 │   ├── gitlabModel.js # Pure GitLab parsing and request builders (unit-tested)
 │   ├── requests.js   # Write requests for either platform
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
+├── window/           # The window: app.js builds it, i18n.js, pages/ (lists, settings, accounts wizard)
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
 ├── stylesheet.css    # Styles for the panel menu
 ├── icons/            # Symbolic icons: sourceglance, checklist (projects), pull request

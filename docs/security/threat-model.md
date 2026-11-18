@@ -2,7 +2,8 @@
 
 Reviewed for every minor release and whenever a PR touches authentication, networking,
 storage, or anything rendered from GitHub or GitLab data. Last reviewed: **2026-11-18
-(several accounts and self-hosted instances, [ADR 0007](../adr/0007-multiple-accounts-and-self-hosted-instances.md))**.
+(v0.5.0: several accounts and self-hosted instances, [ADR 0007](../adr/0007-multiple-accounts-and-self-hosted-instances.md);
+update notice at login; recommended wallpaper)**.
 
 ## What we protect
 
@@ -61,6 +62,8 @@ that account's token and nothing else.
 | T23 | A redirect carries the token to another host | Requests to self-hosted instances don't follow redirects | ✅ ADR 0007 |
 | T24 | A lookalike or hostile instance | Only receives the token for the account added there; its links can only open on its own address; its data is rendered as plain text like any other | ✅ ADR 0007 |
 | T25 | Tokens with more reach than needed, or left valid after sign-out | Each sign-in method states what it reaches; token pages pre-fill the scopes needed; signing out says a personal access token stays valid until revoked | ✅ ADR 0007 |
+| T26 | Release notes from GitHub shown in the update notification | Fetched anonymously from this repo's releases API only; cut to short plain-text first sentences (`releaseNotesSummary`) and shown without markup; Install runs the existing download-and-verify flow (T14), never a URL from the notes | ✅ v0.5 |
+| T27 | Source Glance changing the desktop wallpaper | Only on Apply or Reset in Settings; only the six `org.gnome.desktop.background` keys, set to fixed values (Adwaita from the system's gnome-backgrounds) or the user's own saved values; the saved copy is dropped as soon as the wallpaper changes any other way | ✅ v0.5 |
 
 ## Out of scope
 

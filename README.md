@@ -27,13 +27,18 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 ## Features
 
 - **Desktop widgets**: Summary, Issues, Pull requests and Projects cards on your desktop.
-  Drag them anywhere, set their opacity, click an item to open it.
+  Drag them anywhere, set their opacity, click an item to open it. Apply the wallpaper
+  they're made for (GNOME's Adwaita) in one click, and Reset to put yours back.
 - **Top bar**: buttons for Source Glance, Issues, Pull requests and Projects as one tinted
   group or as tabs in one menu, each with its count (0 included).
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
-- **GitHub and GitLab**: gitlab.com issues and merge requests get their own collapsible
-  section in every list, menu and widget; counts add up across both.
+- **Several accounts, self-hosted too**: add as many GitHub and GitLab accounts as you like,
+  each with its own collapsible section in every list, menu and widget. A wizard in
+  **Settings → Accounts** connects GitHub Enterprise Server and GitLab self-managed. Counts
+  add up across all of them.
+- **Collapsible repositories**: click a repository heading to hide or show its items, in
+  the window and the menus. Source Glance remembers what you collapsed.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
 - **Search** from the window's title bar: one box filters Issues, Pull requests and Projects
   by title, repository, number, label, person or board status, with match counts. Clear it
@@ -41,16 +46,18 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **Filter by label**, and see how many closed or merged items are still assigned to you.
 - **Main window** with a sidebar for your lists and settings (Desktop Widgets, System Tray,
   Accounts, System Start, About), a splash screen, and an app grid icon, all in the top
-  bar's blue.
+  bar's blue. It's an app of its own, so the dock and Alt+Tab show it as Source Glance.
 - **Public repositories** you don't own show up without any setup; private ones appear once
   their owner installs the Source Glance app.
-- **Limited access**: signs in through a GitHub App that can only see issues, pull requests
-  and projects (no code). Tokens stay in the GNOME keyring.
+- **Limited access**: on github.com, sign in through a GitHub App that can only see issues,
+  pull requests and projects (no code), or with a token you create. Tokens stay in the GNOME
+  keyring. Self-hosted instances need HTTPS unless they're on your local network.
 - **Start automatically** at login, or **Quit** and start it again from the app grid.
 - **One-file installer**: a setup wizard that installs, updates, repairs and removes
   Source Glance.
-- **Update available** in the window when a new version is out: one click downloads the new
-  Setup, checks its SHA-256 checksum, and updates Source Glance without logging out.
+- **Update notice** at login when a new version is out, with short release notes, and
+  **Update available** in the window: one click downloads the new Setup, checks its SHA-256
+  checksum, and updates Source Glance without logging out.
 - **About** page with the version, the author, and links to report an issue or contribute.
 
 Planned: desktop notifications for new assignments.
@@ -73,6 +80,9 @@ your work and stay clickable.
 - **Move a card** by dragging its header; Source Glance remembers where you put it.
   **Reset positions** puts them all back in a column on the right.
 - **Opacity** sets how see-through the cards are.
+- **Wallpaper**: the cards are made to sit on Adwaita, GNOME's default wallpaper. **Apply**
+  sets it and keeps yours; **Reset** puts yours back. Change the wallpaper any other way and
+  only **Apply** is offered again.
 - **Click an item** to open it in your browser. Each card shows when it was last updated
   and refreshes with the rest of Source Glance.
 
