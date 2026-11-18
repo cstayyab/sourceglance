@@ -26,13 +26,27 @@ jobs:
 
   setup-wizard:
     runs-on: ubuntu-24.04   # GNOME Shell 46: the oldest supported release
+    # Normally about a minute; a stuck mirror shouldn't hold a PR for half an hour.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install GNOME Shell, GJS and build tools
+        # The download is about 130 MB, under a minute from a healthy mirror. Some mirrors
+        # crawl (71 kB/s, 31 minutes, on 2026-11-18): give up after 4 minutes and try again,
+        # which keeps what's downloaded and usually reaches another mirror.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gjs gnome-shell gir1.2-secret-1 \
-            libglib2.0-bin squashfs-tools dconf-cli
+          for attempt in 1 2 3; do
+            if sudo timeout 240 apt-get install -y --no-install-recommends gjs gnome-shell \
+              gir1.2-secret-1 libglib2.0-bin squashfs-tools dconf-cli; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              exit 1
+            fi
+            echo "::warning::apt-get install was slow or failed (attempt $attempt); trying again"
+            sudo apt-get update
+          done
       - name: Command-line install, upgrade, repair and remove
         run: make setup-test
       - name: Build the AppImage and run it
