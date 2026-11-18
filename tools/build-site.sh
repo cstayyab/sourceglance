@@ -20,9 +20,6 @@ cp "$ROOT/src/icons/sourceglance-app.svg" "$OUT/icon.svg"
 for name in sourceglance checklist issue git-pull-request label; do
     cp "$ROOT/src/icons/$name-symbolic.svg" "$OUT/images/"
 done
-for name in setup-welcome setup-done widgets menu window; do
-    cp "$ROOT/docs/images/$name.png" "$OUT/images/"
-done
 
 release="$(gh api "repos/$REPO/releases?per_page=20" --jq '[.[] | select(.draft | not)][0] // {}')"
 asset() { # asset <name pattern> → download URL, or the Releases page

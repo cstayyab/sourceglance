@@ -101,8 +101,8 @@ The MSI-style installer lives in `tools/installer/` (design:
 
 Decision logic is in `tools/installer/lib/plan.js` (no GNOME imports, tested by
 `tests/setup-plan.test.js`). `tests/setup-screenshots.js` renders every page to PNG when
-run inside a headless GNOME Shell with isolated `HOME`/`XDG_*` directories; use it to
-refresh `docs/images/setup-*.png`. Keep the wizard to GTK 4.14 / libadwaita 1.5 APIs so it
+run inside a headless GNOME Shell with isolated `HOME`/`XDG_*` directories, for when the docs
+need screenshots of it. Keep the wizard to GTK 4.14 / libadwaita 1.5 APIs so it
 runs on GNOME 46.
 
 ## GitHub apps for sign-in
