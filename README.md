@@ -19,7 +19,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **A main window** with every list, a search box, and all settings in one place.
 - **One-click updates**: a verified download, applied without logging out.
 
-> **Status: early releases.** v0.5.0 is the latest, published as a pre-release. Try it, and
+> **Status: early releases.** v0.6.0 is the latest, published as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
 ## Features
