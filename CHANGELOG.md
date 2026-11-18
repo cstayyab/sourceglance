@@ -11,8 +11,9 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Tasks**: one list at the top of the window with everything assigned to you, from every
   account: issues, pull or merge requests and project drafts, newest first. Icons tell them
-  apart, and chips at the top (All, Issues, Pull requests, Projects) filter by kind, with
-  counts. Click a task to open it in your browser. Issues, Pull requests and Projects now sit
+  apart. Filter it like a tag search: **+ Filter** adds a kind (Issues, Pull requests,
+  Projects) or an assignee (one of your accounts), each filter shows as a chip with **×**, and
+  **Clear filters** removes them all. Click a task to open it in your browser. Issues, Pull requests and Projects now sit
   under Tasks in the sidebar, collapsed until you open them.
 
 ## [0.5.0] - 2026-11-18

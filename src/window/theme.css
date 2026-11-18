@@ -87,12 +87,14 @@
 
 .sourceglance-window .sourceglance-chip {
     border-radius: 999px;
-    padding: 4px 14px;
+    padding: 2px 2px 2px 8px;
+    background-color: alpha(currentColor, 0.1);
 }
 
-.sourceglance-window .sourceglance-chip:checked {
-    background-color: var(--accent-bg-color, @accent_bg_color);
-    color: var(--accent-fg-color, @accent_fg_color);
+.sourceglance-window .sourceglance-chip-remove {
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
 }
 
 .sourceglance-window .sourceglance-expander {

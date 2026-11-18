@@ -1,13 +1,15 @@
 // Lists → Tasks: everything assigned to you in one list, from every account: issues, pull or
-// merge requests and project drafts, newest first. No sections: an icon tells the kinds apart,
-// and chips at the top filter by kind. Clicking a task opens it in the browser (a draft, which
-// has no page of its own, opens its board). Text from GitHub and GitLab is shown as plain text.
+// merge requests and project drafts, newest first. No sections: an icon tells the kinds apart.
+// Filters work like tags: + adds one (a kind, or an assignee: one of your accounts), each
+// shows as a chip with × to remove it, and Clear filters removes them all. Clicking a task
+// opens it in the browser (a draft, which has no page of its own, opens its board). Text from
+// GitHub and GitLab is shown as plain text.
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _} from '../i18n.js';
 
-import {allTasks, filterTasks, isDoneStatus, taskCounts} from '../../lib/model.js';
+import {allTasks, filterTasks, isDoneStatus, taskFilterOptions} from '../../lib/model.js';
 import {noMatchesGroup, statusText} from './common.js';
 
 export class TasksPage {
@@ -17,41 +19,35 @@ export class TasksPage {
         this._actions = actions;
         this._onClearSearch = onClearSearch;
         this._state = null;
-        // The chosen chip: a kind from TASK_KINDS, or null for all.
-        this._kind = null;
+        // Active filters, in the order added: [{type: 'kind'|'account', value, title}].
+        this._filters = [];
         this._query = '';
         this._terms = [];
         this._groups = [];
 
         this._statusPage = new Adw.StatusPage();
-        this._page = new Adw.PreferencesPage();
+        this._page = new Adw.PreferencesPage({vexpand: true});
 
-        // The chips stay put above the list while it scrolls.
-        this._chips = new Map();
-        const chipBox = new Gtk.Box({spacing: 6, margin_top: 12, margin_bottom: 6, margin_start: 12, margin_end: 12,
-            css_classes: ['sourceglance-chips']});
-        let first = null;
-        for (const [kind, label] of [[null, _('All')], ['issue', _('Issues')], ['pr', _('Pull requests')], ['draft', _('Projects')]]) {
-            const chip = new Gtk.ToggleButton({active: kind === null, css_classes: ['sourceglance-chip']});
-            if (first)
-                chip.group = first;
-            else
-                first = chip;
-            chip._label = label;
-            chip.connect('toggled', () => {
-                if (!chip.active)
-                    return;
-                this._kind = kind;
-                if (this._state)
-                    this.update(this._state);
-            });
-            this._chips.set(kind, chip);
-            chipBox.append(chip);
-        }
+        // The filter bar stays put above the list while it scrolls.
+        this._chipBox = new Gtk.Box({spacing: 6});
+        this._addMenu = new Gtk.MenuButton({
+            child: new Adw.ButtonContent({icon_name: 'list-add-symbolic', label: _('Filter')}),
+            tooltip_text: _('Add a filter'),
+            css_classes: ['flat'],
+            popover: new Gtk.Popover(),
+        });
+        this._clear = new Gtk.Button({label: _('Clear filters'), css_classes: ['flat'], visible: false});
+        this._clear.connect('clicked', () => this._setFilters([]));
+        const bar = new Gtk.Box({spacing: 6, margin_top: 12, margin_bottom: 6, margin_start: 12, margin_end: 12,
+            css_classes: ['sourceglance-filter-bar']});
+        bar.append(this._chipBox);
+        bar.append(this._addMenu);
+        bar.append(new Gtk.Box({hexpand: true}));
+        bar.append(this._clear);
+
         const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
-        list.append(new Adw.Clamp({child: chipBox, maximum_size: 800}));
+        list.append(new Adw.Clamp({child: bar, maximum_size: 800}));
         list.append(this._page);
-        this._page.vexpand = true;
 
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');
@@ -80,24 +76,86 @@ export class TasksPage {
         this._groups = [];
 
         const tasks = allTasks(state.sources);
-        // While searching, the chips count matches.
-        const counts = taskCounts(filterTasks(tasks, null, this._terms));
-        for (const [kind, chip] of this._chips)
-            chip.label = `${chip._label}  ${counts[kind ?? 'all']}`;
+        // An account that's gone takes its filter with it.
+        const keys = (state.sources ?? []).map(source => source.key);
+        this._filters = this._filters.filter(filter => filter.type !== 'account' || keys.includes(filter.value));
+        this._renderFilterBar(tasks, state.sources);
 
-        const shown = filterTasks(tasks, this._kind, this._terms);
+        const shown = filterTasks(tasks, this._filters, this._terms);
         const group = new Adw.PreferencesGroup();
         if (shown.length === 0 && this._terms.length) {
             this._add(noMatchesGroup(this._query, () => this._onClearSearch()));
             return;
         }
         if (shown.length === 0) {
-            group.add(new Adw.ActionRow({title: tasks.length ? _('Nothing of this kind') : _('Nothing assigned to you'),
+            group.add(new Adw.ActionRow({title: tasks.length ? _('Nothing matches these filters') : _('Nothing assigned to you'),
                 use_markup: false, css_classes: ['dim-label']}));
         }
         for (const task of shown)
             group.add(this._taskRow(task));
         this._add(group);
+    }
+
+    _setFilters(filters) {
+        this._filters = filters;
+        if (this._state)
+            this.update(this._state);
+    }
+
+    _kindTitle(kind) {
+        return {issue: _('Issues'), pr: _('Pull requests'), draft: _('Projects')}[kind];
+    }
+
+    /** The active filters as chips with ×, the + menu with the rest (and their counts), and Clear. */
+    _renderFilterBar(tasks, sources) {
+        for (let child = this._chipBox.get_first_child(); child;) {
+            const next = child.get_next_sibling();
+            this._chipBox.remove(child);
+            child = next;
+        }
+        for (const filter of this._filters) {
+            const title = filter.type === 'kind' ? this._kindTitle(filter.value) : filter.title;
+            const chip = new Gtk.Box({spacing: 2, css_classes: ['sourceglance-chip'], valign: Gtk.Align.CENTER});
+            chip.append(new Gtk.Image({icon_name: filter.type === 'kind' ? 'view-list-bullet-symbolic' : 'avatar-default-symbolic',
+                pixel_size: 12, margin_start: 4}));
+            chip.append(new Gtk.Label({label: title, ellipsize: 3 /* END */, max_width_chars: 24, margin_start: 2}));
+            const remove = new Gtk.Button({icon_name: 'window-close-symbolic', tooltip_text: _('Remove this filter'),
+                css_classes: ['flat', 'circular', 'sourceglance-chip-remove'], valign: Gtk.Align.CENTER});
+            remove.update_property([Gtk.AccessibleProperty.LABEL], [_('Remove the filter %s').format(title)]);
+            remove.connect('clicked', () => this._setFilters(this._filters.filter(other => other !== filter)));
+            chip.append(remove);
+            this._chipBox.append(chip);
+        }
+        this._clear.visible = this._filters.length > 0;
+
+        // The + menu: what can still be added, with how many tasks each has.
+        const options = taskFilterOptions(tasks, sources, this._filters);
+        this._addMenu.sensitive = options.length > 0;
+        const menu = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE, css_classes: ['navigation-sidebar']});
+        let lastType = null;
+        for (const option of options) {
+            if (option.type !== lastType) {
+                lastType = option.type;
+                const heading = new Gtk.ListBoxRow({activatable: false, selectable: false,
+                    child: new Gtk.Label({label: option.type === 'kind' ? _('Kind') : _('Assignee'), xalign: 0,
+                        css_classes: ['dim-label', 'caption-heading'], margin_top: 6, margin_start: 6})});
+                menu.append(heading);
+            }
+            const title = option.type === 'kind' ? this._kindTitle(option.value) : option.title;
+            const box = new Gtk.Box({spacing: 12});
+            box.append(new Gtk.Label({label: title, xalign: 0, hexpand: true, ellipsize: 3 /* END */, max_width_chars: 32}));
+            box.append(new Gtk.Label({label: String(option.count), css_classes: ['dim-label', 'numeric']}));
+            const row = new Gtk.ListBoxRow({child: box});
+            row._option = {type: option.type, value: option.value, title};
+            menu.append(row);
+        }
+        menu.connect('row-activated', (_menu, row) => {
+            if (!row._option)
+                return;
+            this._addMenu.popover.popdown();
+            this._setFilters([...this._filters, row._option]);
+        });
+        this._addMenu.popover.child = menu;
     }
 
     _add(group) {

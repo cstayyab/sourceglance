@@ -7,6 +7,7 @@ import {
     accountForItem,
     accountId,
     accountTitle,
+    assigneeTitle,
     aggregateStatus,
     allLanAddresses,
     githubUrls,
@@ -112,6 +113,9 @@ test('section keys keep the old collapse ids; titles name the instance and login
     assert.equal(sectionKey({id: 'github:github.com:alice'}), 'github:github.com:alice');
     assert.equal(accountTitle({platform: 'github', base: GITHUB_COM, login: 'alice'}), 'GitHub · @alice');
     assert.equal(accountTitle({platform: 'gitlab', base: GITLAB_COM, login: null}), 'GitLab');
+    assert.equal(assigneeTitle({platform: 'github', base: GITHUB_COM, login: 'alice'}), '@alice · GitHub');
+    assert.equal(assigneeTitle({platform: 'gitlab', base: 'https://git.example.com', login: 'bob'}), '@bob · git.example.com');
+    assert.equal(assigneeTitle({platform: 'gitlab', base: GITLAB_COM, login: null}), 'GitLab');
     assert.equal(accountTitle({platform: 'gitlab', base: SELF, login: 'bob'}), 'GitLab · git.example.com/gitlab · @bob');
     assert.equal(accountTitle({platform: 'gitlab', base: 'http://192.168.1.5', login: 'bob'}), 'GitLab · http://192.168.1.5 · @bob');
 });

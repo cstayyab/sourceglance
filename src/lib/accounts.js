@@ -293,6 +293,15 @@ export function sectionKey(account) {
 }
 
 /** "GitHub · @alice", or "GitLab · git.example.com · @bob" for a self-hosted instance. */
+/**
+ * The account as the assignee in the Tasks filters: "@alice · GitHub", or the instance's host
+ * for a self-hosted one ("@bob · git.example.com"); the platform name until the login is known.
+ */
+export function assigneeTitle(account) {
+    const where = isDefaultBase(account.platform, account.base) ? platformName(account.platform) : hostLabel(account.base);
+    return account.login ? `@${account.login} · ${where}` : where;
+}
+
 export function accountTitle(account) {
     const parts = [platformName(account.platform)];
     if (!isDefaultBase(account.platform, account.base))
@@ -379,6 +388,7 @@ export function sourceFrom(account, result = {}, hidden = () => false) {
         account: withLoginAccount,
         key: sectionKey(account),
         title: accountTitle(withLoginAccount),
+        assignee: assigneeTitle(withLoginAccount),
         platform: account.platform,
         login,
         status: result.status ?? 'loading',
