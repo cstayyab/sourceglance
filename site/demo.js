@@ -217,7 +217,9 @@ const SCENES = {
             off($('pick'), 'on');
             off($('apply'), 'hover');
             off($('toast'));
-            $('status').textContent = 'Team board: In progress';
+            $('status').textContent = 'In progress';
+            $('icon').className = 'ic ic-draft k-draft';
+            $('moved').style.order = '';
         },
         async play(s, mine) {
             const {$} = s;
@@ -237,9 +239,11 @@ const SCENES = {
             off($('move'), 'on');
             on($('toast'));
             s.hideCursor();
-            // The list reloads with the new status.
+            // The list reloads: the card is done, and sits with the board's other done cards.
             await s.wait(900, mine);
-            $('status').textContent = 'Team board: Done';
+            $('status').textContent = 'Done';
+            $('icon').className = 'ic ic-done k-done';
+            $('moved').style.order = '1';
             await s.wait(3000, mine);
             off($('toast'));
             await s.wait(400, mine);

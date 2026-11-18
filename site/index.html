@@ -203,29 +203,30 @@
         <div class="scene" id="scene-board" role="tabpanel" aria-labelledby="tab-board" hidden>
           <div class="scene-copy">
             <h3>Keep the board honest, in one click</h3>
-            <p>Issues and pull requests on your GitHub project boards show their status, and so do
-              the boards' draft cards. Move them on from the list or the top-bar menu, and the
-              board on GitHub is up to date for everyone.</p>
+            <p>Projects lists the draft cards on your GitHub project boards, board by board, with
+              their status. Move one on and the board on GitHub is up to date for everyone. Issues
+              and pull requests on a board get the same button in their own lists.</p>
           </div>
-          <figure class="demo win-wrap" data-scene="board" aria-label="Animation: an issue's board button opens the Move dialog, Done is chosen, and the issue's status changes to Done">
+          <figure class="demo win-wrap" data-scene="board" aria-label="Animation: in the Projects list, a draft card's Move to status button opens the Move dialog, Done is chosen, and the card's status changes to Done">
             <div class="win">
               <div class="win-main wide">
-                <div class="win-head"><b>Issues</b><small>example/web-app</small></div>
+                <div class="win-head"><b>Projects</b></div>
+                <div class="group-h"><i class="arrow down"></i><b>Team board</b><em>3</em><i class="ic ic-external"></i></div>
                 <div class="rows">
-                  <div class="row"><i class="arrow"></i><i class="ic ic-issue k-issue"></i><p><b>#42 Fix the login redirect</b><small data-el="status">Team board: In progress</small></p>
-                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-chat"></i><span class="chat" data-el="move"><i class="ic ic-checklist"></i></span><i class="ic ic-more"></i></span></div>
-                  <div class="row"><i class="arrow"></i><i class="ic ic-issue k-issue"></i><p><b>#37 Dark mode for settings</b><small>Team board: Todo</small></p>
-                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-chat"></i><i class="ic ic-checklist"></i><i class="ic ic-more"></i></span></div>
-                  <div class="row"><i class="arrow"></i><i class="ic ic-issue k-issue"></i><p><b>#51 Remember the last tab</b><small>Team board: Done</small></p>
-                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-chat"></i><i class="ic ic-checklist"></i><i class="ic ic-more"></i></span></div>
+                  <div class="row"><i class="ic ic-draft k-draft"></i><p><b>Write the release notes</b><small>Todo</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-checklist"></i><i class="ic ic-more"></i></span></div>
+                  <div class="row" data-el="moved"><i class="ic ic-draft k-draft" data-el="icon"></i><p><b>Plan the Q3 roadmap</b><small data-el="status">In progress</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><span class="chat" data-el="move"><i class="ic ic-checklist"></i></span><i class="ic ic-more"></i></span></div>
+                  <div class="row"><i class="ic ic-done k-done"></i><p><b>Book the design review</b><small>Done</small></p>
+                    <span class="acts"><i class="ic ic-eye"></i><i class="ic ic-checklist"></i><i class="ic ic-more"></i></span></div>
                 </div>
               </div>
             </div>
-            <div class="status-pop" data-el="pop"><b>Move on Team board</b><small>#42 Fix the login redirect</small>
+            <div class="status-pop" data-el="pop"><b>Move on Team board</b><small>Plan the Q3 roadmap</small>
               <span><i class="radio"></i>Todo</span><span><i class="radio" data-el="was"></i>In progress</span><span><i class="radio" data-el="pick"></i>Done</span>
               <span class="dialog-buttons"><span>Cancel</span><span class="blue" data-el="apply">Apply</span></span>
             </div>
-            <div class="toast" data-el="toast">Moved to Done: #42 Fix the login redirect</div>
+            <div class="toast" data-el="toast">Moved to Done: Plan the Q3 roadmap</div>
             <i class="cursor" data-el="cursor" aria-hidden="true"></i>
           </figure>
         </div>
