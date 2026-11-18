@@ -786,6 +786,8 @@ export function listBadge(id, state) {
         return sum('issueTotal', 'issueShown');
     case 'prs':
         return sum('prTotal', 'prShown');
+    case 'tasks':
+        return String(allTasks(loaded).length);
     case 'projects': {
         // Project boards are GitHub's; accounts that can't read them don't count.
         const boards = loaded.filter(source => source.platform === 'github' && !source.boardsError);
@@ -865,6 +867,8 @@ export function searchCount(id, state, terms) {
         return sources.reduce((sum, source) => sum + count(source.groups), 0);
     case 'prs':
         return sources.reduce((sum, source) => sum + count(source.prGroups), 0);
+    case 'tasks':
+        return filterTasks(allTasks(sources), null, terms).length;
     case 'projects':
         return sources.reduce((sum, source) =>
             sum + searchBoards(source.boards ?? [], terms).reduce((n, board) => n + board.drafts.length, 0), 0);
@@ -933,4 +937,60 @@ export function wallpaperChoice(current, saved) {
  */
 export function keepSavedWallpaper(current, saved) {
     return hasSavedWallpaper(saved) && isRecommendedWallpaper(current);
+}
+
+// Lists → Tasks: everything assigned to you in one list, from every account: issues, pull or
+// merge requests, and project board drafts. No sections; an icon tells the kinds apart, and
+// chips filter by kind.
+export const TASK_KINDS = ['issue', 'pr', 'draft'];
+
+/**
+ * Every task in `sources` (from sourceFrom), newest first; drafts, which have no date, last.
+ * Each is {kind, title, url, repo, ref, updatedAt, ...}: `item` for issues and PRs (for
+ * actions and search), `board` and `status` for drafts, whose url is their board's.
+ */
+export function allTasks(sources) {
+    const tasks = [];
+    const seen = new Set();
+    for (const source of sources ?? []) {
+        if (source.status === 'signed-out')
+            continue;
+        for (const groups of [source.groups, source.prGroups]) {
+            for (const group of groups ?? []) {
+                for (const item of group.issues) {
+                    // The same item seen by two accounts is one task.
+                    const key = item.url ?? itemKey(item);
+                    if (seen.has(key))
+                        continue;
+                    seen.add(key);
+                    tasks.push({kind: item.kind, title: item.title, url: item.url ?? null, repo: item.repo,
+                        ref: itemRef(item), updatedAt: item.updatedAt ?? null, item});
+                }
+            }
+        }
+        for (const board of source.boards ?? []) {
+            for (const draft of board.drafts) {
+                tasks.push({kind: 'draft', title: draft.title, url: board.url ?? null, repo: board.title, ref: '',
+                    updatedAt: null, status: draft.status, board, draft});
+            }
+        }
+    }
+    const time = task => (task.updatedAt ? Date.parse(task.updatedAt) || 0 : -Infinity);
+    // Array.prototype.sort is stable, so drafts keep their board order.
+    return tasks.sort((a, b) => time(b) - time(a));
+}
+
+/** The tasks of one kind ('issue', 'pr' or 'draft'; null for all) that match `terms`. */
+export function filterTasks(tasks, kind, terms = []) {
+    return tasks.filter(task => (!kind || task.kind === kind) && (task.item
+        ? itemMatches(task.item, terms)
+        : matchesAll([task.title ?? '', task.status ?? '', task.repo ?? ''].join('\n'), terms)));
+}
+
+/** How many tasks of each kind: {all, issue, pr, draft}. */
+export function taskCounts(tasks) {
+    const counts = {all: tasks.length, issue: 0, pr: 0, draft: 0};
+    for (const task of tasks)
+        counts[task.kind]++;
+    return counts;
 }

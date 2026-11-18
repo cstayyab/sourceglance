@@ -20,7 +20,7 @@ import {itemKey, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} fr
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
 const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
-    'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update', 'saved-wallpaper'];
+    'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update', 'saved-wallpaper', 'tasks-expanded'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
 // Kept at module level because GNOME disables and re-enables extensions around the lock
