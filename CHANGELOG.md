@@ -7,14 +7,21 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-18
+
 ### Added
 
 - **Tasks**: one list at the top of the window with everything assigned to you, from every
   account: issues, pull or merge requests and project drafts, newest first. Icons tell them
   apart. Filter it like a tag search: **+ Filter** adds a kind (Issues, Pull requests,
   Projects) or an assignee (one of your accounts), each filter shows as a chip with **×**, and
-  **Clear filters** removes them all. Click a task to open it in your browser. Issues, Pull requests and Projects now sit
-  under Tasks in the sidebar, collapsed until you open them.
+  **Clear filters** removes them all. Click a task to open it in your browser. Issues, Pull
+  requests and Projects now sit under Tasks in the sidebar, collapsed until you open them.
+
+### Removed
+
+- The outdated screenshots on the home page, in the README and in the install guide. New ones
+  will follow once the window settles.
 
 ## [0.5.0] - 2026-11-18
 
@@ -180,7 +187,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/omer-gh/sourceglance/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/omer-gh/sourceglance/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/omer-gh/sourceglance/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/omer-gh/sourceglance/compare/v0.4.0...v0.4.1
