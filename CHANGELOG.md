@@ -7,6 +7,34 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Comment from the list**: an item's Comment button opens a comment box right under it,
+  instead of a dialog. It closes on Cancel and once the comment is posted.
+- A **⋮ menu** at the end of each item: Labels…, Assignees…, Copy reference and Copy link
+  (drafts: Copy title and Copy board link).
+- The window's sidebar can show **icons only**: ☰ at its top right switches between that (with
+  each list's count on its icon) and icons with names and counts. The choice is remembered.
+- A **Quit** button at the foot of the sidebar.
+- **Open All Tasks** at the top of the Source Glance top-bar menu.
+
+### Changed
+
+- The preview **renders Markdown** in descriptions and comments (headings, emphasis, code,
+  lists, task lists, quotes, tables and web links) instead of showing it raw.
+- Clicking an item's title opens its preview.
+- Items' icons are coloured by kind: issues green, pull requests blue, drafts amber, done purple.
+- The arrow that shows labels and assignees leads the item and points right (closed) or down
+  (open). The action buttons are smaller and closer together, leaving more room for the title.
+- Lists and their filters start from the left and use the window's width.
+- The preview panel opens at half the window, grows with it, and its comment box is shorter.
+- **Quit**, in the top bar or the window, now stops everything: the top-bar buttons, the
+  desktop widgets and the window.
+- **Settings** in the top-bar menu (and **Sign in…**) opens the window on Accounts, the first
+  settings page.
+- The sidebar groups Desktop Widgets and System Tray under **Glance Tools**; **Settings** now
+  heads Accounts, System Start and About.
+
 ## [0.8.0] - 2026-11-18
 
 ### Changed

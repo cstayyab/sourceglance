@@ -120,10 +120,17 @@ export function fillWindow(window, {settings, dir, version}) {
     headerEnd.append(update.widget);
     headerEnd.append(refresh);
 
+    // Whether the sidebar shows icons only. Kept in settings when this version's schema has it.
+    const hasNarrowKey = settings.settings_schema.has_key('sidebar-narrow');
     main = buildMainWindow(window, {
         appIcon: icon('sourceglance-app'),
         overlay,
         headerEnd,
+        narrow: hasNarrowKey && settings.get_boolean('sidebar-narrow'),
+        onNarrowChanged: narrow => hasNarrowKey && settings.set_boolean('sidebar-narrow', narrow),
+        // Quits everything: the top bar and widgets stop (extension.js follows quit-request) and
+        // the window closes (below), which also quits Source Glance's own app.
+        onQuit: () => settings.set_int('quit-request', settings.get_int('quit-request') + 1),
         onPageChanged: id => {
             currentPage = id;
             showCounts();
@@ -135,11 +142,12 @@ export function fillWindow(window, {settings, dir, version}) {
             {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
             {id: 'prs', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
             {id: 'projects', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
-            {heading: _('Settings')},
+            {heading: _('Glance Tools')},
             {id: 'widgets', title: _('Desktop Widgets'), iconName: 'view-grid-symbolic',
                 page: buildWidgetsPage(ctx)},
             {id: 'tray', title: _('System Tray'), iconName: 'preferences-desktop-display-symbolic',
                 page: buildSystemTrayPage(ctx)},
+            {heading: _('Settings')},
             {id: 'accounts', title: _('Accounts'), iconName: 'avatar-default-symbolic',
                 page: buildAccountsPage(ctx)},
             {id: 'start', title: _('System Start'), iconName: 'system-run-symbolic',
@@ -167,7 +175,7 @@ export function fillWindow(window, {settings, dir, version}) {
     escape.connect('key-pressed', (_controller, keyval) => {
         if (keyval !== Gdk.KEY_Escape || search.text === '')
             return false;
-        // In a dialog (comment, close, pickers), Esc closes the dialog as usual.
+        // In a dialog (close, pickers), Esc closes the dialog as usual.
         if (window.get_focus()?.get_ancestor(Adw.Dialog.$gtype))
             return false;
         onClearSearch();
@@ -197,10 +205,14 @@ export function fillWindow(window, {settings, dir, version}) {
     };
     const installUpdateId = settings.connect('changed::install-update', installUpdate);
 
+    // Quit in the top bar closes the window too.
+    const quitRequestId = settings.connect('changed::quit-request', () => window.close());
+
     // Adding or removing an account under Settings → Accounts reloads the lists.
     const tokenChangedId = settings.connect('changed::token-changed', () => data.refresh());
     window.connect('close-request', () => {
         settings.disconnect(tokenChangedId);
+        settings.disconnect(quitRequestId);
         settings.disconnect(openPageId);
         settings.disconnect(installUpdateId);
         update.destroy();

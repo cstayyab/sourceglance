@@ -1,5 +1,5 @@
 // What each top-bar list shows. Each view fills a PopupMenu from the state (see indicator.js).
-// `ui` is {menu, state, filters, icons, scheduleRebuild, onAction, onRefresh, onSettings, onAbout, repos}.
+// `ui` is {menu, state, filters, icons, scheduleRebuild, onAction, onRefresh, onOpenTasks, onSettings, onAbout, repos}.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -111,6 +111,7 @@ const THEMED = {
     assignees: 'system-users-symbolic',
     draft: 'document-edit-symbolic',
     refresh: 'view-refresh-symbolic',
+    tasks: 'view-list-bullet-symbolic',
     settings: 'emblem-system-symbolic',
     profile: 'avatar-default-symbolic',
     signIn: 'dialog-password-symbolic',
@@ -496,6 +497,7 @@ export function renderApp(ui) {
     ui.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
     if (signedIn(state)) {
+        addAction(ui, _('Open All Tasks'), () => ui.onOpenTasks(), icon('tasks'));
         const profiles = state.sources.map(src => ({src, url: profileUrl(src.account)})).filter(({url}) => url);
         for (const {src, url} of profiles) {
             addAction(ui, profiles.length === 1 && src.platform === 'github' ? _('Your GitHub profile')

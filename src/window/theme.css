@@ -44,6 +44,27 @@
     margin: 8px 6px 2px 18px;
 }
 
+/* Icons only: the count over the icon's top-right corner, the icon moved down-left for it. */
+.sourceglance-window .sourceglance-sidebar-icon > image {
+    margin: 7px 9px 0 0;
+}
+
+.sourceglance-window .sourceglance-sidebar-badge {
+    background-color: #1f6feb;
+    color: #ffffff;
+    border-radius: 999px;
+    min-width: 10px;
+    min-height: 14px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.sourceglance-window .sourceglance-sidebar-quit {
+    padding: 6px 10px;
+    font-weight: normal;
+}
+
 .sourceglance-window .sourceglance-indent {
     margin-left: 18px;
 }
@@ -142,13 +163,51 @@
 
 /* Icon-only actions on an item's title line: flat, a size up from the chips. */
 .sourceglance-window .sourceglance-icon-action {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0 6px;
+    min-width: 30px;
+    min-height: 32px;
+    padding: 0 3px;
 }
 
 .sourceglance-window .sourceglance-icon-action image {
-    -gtk-icon-size: 20px;
+    -gtk-icon-size: 18px;
+}
+
+/* An item's title opens its preview. */
+.sourceglance-window .sourceglance-item-title:hover {
+    text-decoration-line: underline;
+}
+
+/* The (⋮) menu's entries. */
+.sourceglance-window .sourceglance-menu-item {
+    padding: 6px 10px;
+    font-weight: normal;
+}
+
+/* Each kind of item in its own colour: issues green, pull requests blue, drafts amber, done
+   purple. */
+.sourceglance-window .sourceglance-kind-issue { color: #1a7f37; }
+.sourceglance-window .sourceglance-kind-pr { color: #0969da; }
+.sourceglance-window .sourceglance-kind-draft { color: #9a6700; }
+.sourceglance-window .sourceglance-kind-done { color: #8250df; }
+
+@media (prefers-color-scheme: dark) {
+    .sourceglance-window .sourceglance-kind-issue { color: #3fb950; }
+    .sourceglance-window .sourceglance-kind-pr { color: #58a6ff; }
+    .sourceglance-window .sourceglance-kind-draft { color: #d29922; }
+    .sourceglance-window .sourceglance-kind-done { color: #a371f7; }
+}
+
+/* Rendered Markdown in the preview. */
+.sourceglance-window .sourceglance-md-code {
+    background-color: alpha(currentColor, 0.06);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.sourceglance-window .sourceglance-md-quote {
+    border-left: 3px solid alpha(currentColor, 0.25);
+    padding-left: 10px;
+    opacity: 0.8;
 }
 
 /* A count on an icon button's corner, in the button's own colour. */

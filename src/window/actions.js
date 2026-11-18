@@ -4,12 +4,13 @@
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
+import Pango from 'gi://Pango';
 
 import {gettext as _, ngettext} from './i18n.js';
 
 import {accountForItem, hostLabel, isDefaultBase} from '../lib/accounts.js';
 import {GitHubError, isCancelled} from '../lib/github.js';
-import {applyFormat} from '../lib/markdown.js';
+import {applyFormat, inlineMarkup, markdownBlocks} from '../lib/markdown.js';
 import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest, relativeTime} from '../lib/model.js';
 import {
     assigneeRequests,
@@ -28,6 +29,82 @@ import {addChip, chip, chipLine, labelClass} from './pages/common.js';
 function plainText(text, dim = false) {
     return new Gtk.Label({label: text, use_markup: false, wrap: true, wrap_mode: 2 /* WORD_CHAR */, xalign: 0,
         selectable: true, css_classes: dim ? ['dim-label'] : []});
+}
+
+/**
+ * Markdown from GitHub or GitLab, rendered: headings, paragraphs, lists, quotes, code and tables.
+ * The markup comes from markdown.js, which escapes the source; anything Pango still rejects shows
+ * as plain text. Links open through `open(url)`, which checks them.
+ */
+function markdownView(text, open) {
+    return blocksView(markdownBlocks(text), open);
+}
+
+function blocksView(blocks, open) {
+    const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8});
+    const label = (source, classes = [], inline = true) => {
+        const markup = inline ? inlineMarkup(source) : source;
+        let valid = true;
+        try {
+            Pango.parse_markup(markup, -1, '\0');
+        } catch {
+            valid = false;
+        }
+        const widget = new Gtk.Label({label: valid ? markup : source, use_markup: valid, wrap: true,
+            wrap_mode: 2 /* WORD_CHAR */, xalign: 0, selectable: true, hexpand: true, css_classes: classes});
+        widget.connect('activate-link', (_label, uri) => {
+            open(uri);
+            return true;
+        });
+        return widget;
+    };
+    for (const block of blocks) {
+        switch (block.type) {
+        case 'heading':
+            box.append(label(block.text, [block.level <= 2 ? 'title-4' : 'heading']));
+            break;
+        case 'paragraph':
+            box.append(label(block.text));
+            break;
+        case 'code': {
+            const code = new Gtk.Label({label: block.text, use_markup: false, xalign: 0, selectable: true,
+                wrap: true, wrap_mode: 2 /* WORD_CHAR */, css_classes: ['monospace']});
+            const frame = new Gtk.Box({css_classes: ['sourceglance-md-code']});
+            frame.append(code);
+            box.append(frame);
+            break;
+        }
+        case 'rule':
+            box.append(new Gtk.Separator({margin_top: 4, margin_bottom: 4}));
+            break;
+        case 'quote': {
+            const quote = blocksView(block.blocks, open);
+            quote.add_css_class('sourceglance-md-quote');
+            box.append(quote);
+            break;
+        }
+        case 'list': {
+            const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 2});
+            for (const item of block.items) {
+                const line = new Gtk.Box({spacing: 6, margin_start: item.depth * 18});
+                line.append(new Gtk.Label({label: item.marker, valign: Gtk.Align.START, css_classes: ['dim-label']}));
+                line.append(label(item.text));
+                list.append(line);
+            }
+            box.append(list);
+            break;
+        }
+        case 'table': {
+            const grid = new Gtk.Grid({column_spacing: 16, row_spacing: 4, css_classes: ['sourceglance-md-table']});
+            block.rows.forEach((cells, row) => cells.forEach((cell, column) =>
+                grid.attach(label(cell, row === 0 ? ['heading'] : []), column, row, 1, 1)));
+            box.append(new Gtk.ScrolledWindow({child: grid, vscrollbar_policy: Gtk.PolicyType.NEVER,
+                propagate_natural_height: true}));
+            break;
+        }
+        }
+    }
+    return box;
 }
 
 /** Read-only reactions: an emoji and its count each. */
@@ -110,6 +187,9 @@ export class WindowActions {
         this._icons = icons;
         // Items whose labels and assignees are showing (collapsed by default), by itemKey().
         this._expanded = new Set();
+        // Items with their comment box open, and what's typed in each box, by itemKey().
+        this._commenting = new Set();
+        this._drafts = new Map();
         this._clients = clients;
         this._data = data;
         this._toast = toast;
@@ -132,6 +212,11 @@ export class WindowActions {
         return item.platform === 'gitlab' ? _('Open on GitLab') : _('Open on GitHub');
     }
 
+    /** Shows `text` as a toast. */
+    notify(text) {
+        this._toast(text);
+    }
+
     open(url) {
         if (isSafeLink(url))
             new Gtk.UriLauncher({uri: url}).launch(this._window, null, null);
@@ -139,9 +224,10 @@ export class WindowActions {
 
     /**
      * A small Markdown editor: a formatting toolbar over the text, with Ctrl+B, Ctrl+I and
-     * Ctrl+Enter (runs `onSubmit`). Returns {widget, buffer, view}.
+     * Ctrl+Enter (runs `onSubmit`). `grow` false keeps it to its text's height, up to
+     * `maxHeight`, instead of filling the space. Returns {widget, buffer, view}.
      */
-    _editor({text = '', minHeight = 180, onSubmit}) {
+    _editor({text = '', minHeight = 180, maxHeight = -1, grow = true, onSubmit}) {
         const view = new Gtk.TextView({wrap_mode: Gtk.WrapMode.WORD_CHAR, monospace: true, top_margin: 10,
             bottom_margin: 10, left_margin: 12, right_margin: 12, accepts_tab: false});
         const buffer = view.buffer;
@@ -206,52 +292,72 @@ export class WindowActions {
         const widget = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
         widget.append(toolbar);
         widget.append(new Gtk.Separator());
-        widget.append(new Gtk.ScrolledWindow({child: view, vexpand: true, min_content_height: minHeight,
-            hscrollbar_policy: Gtk.PolicyType.NEVER}));
+        widget.append(new Gtk.ScrolledWindow({child: view, vexpand: grow, min_content_height: minHeight,
+            max_content_height: maxHeight, propagate_natural_height: !grow, hscrollbar_policy: Gtk.PolicyType.NEVER}));
         return {widget, buffer, view};
     }
 
-    /** The comment editor in a dialog, Post in the header. */
-    comment(item) {
-        let send = null;
-        const editor = this._editor({onSubmit: () => send()});
-        const post = new Gtk.Button({label: _('Post'), css_classes: ['suggested-action'], sensitive: false});
-        const cancel = new Gtk.Button({label: _('Cancel')});
-        const header = new Adw.HeaderBar({show_start_title_buttons: false, show_end_title_buttons: false,
-            title_widget: new Adw.WindowTitle({title: _('Comment'), subtitle: itemText(item)})});
-        header.pack_start(cancel);
-        header.pack_end(post);
+    isCommenting(item) {
+        return this._commenting.has(itemKey(item));
+    }
 
-        const content = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
-        content.append(editor.widget);
-        content.append(new Gtk.Separator());
-        content.append(new Gtk.Label({label: _('Markdown · Ctrl+Enter posts'), xalign: 0, margin_start: 12,
-            margin_top: 6, margin_bottom: 6, css_classes: ['dim-label', 'caption']}));
-        const toolbarView = new Adw.ToolbarView({content});
-        toolbarView.add_top_bar(header);
-        const dialog = new Adw.Dialog({child: toolbarView, content_width: 520, content_height: 360,
-            title: _('Comment'), focus_widget: editor.view});
+    setCommenting(item, open) {
+        if (open) {
+            this._commenting.add(itemKey(item));
+        } else {
+            this._commenting.delete(itemKey(item));
+            this._drafts.delete(itemKey(item));
+        }
+    }
+
+    /**
+     * The comment box docked under an item in a list: the editor, Cancel and Comment. Both
+     * close it (`onClose`); what's typed is kept while it's open, should the row be rebuilt.
+     * Returns {widget, focus()}.
+     */
+    commentBox(item, onClose) {
+        const key = itemKey(item);
+        let send = null;
+        const editor = this._editor({text: this._drafts.get(key) ?? '', minHeight: 56, maxHeight: 200, grow: false,
+            onSubmit: () => send()});
+        const widget = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, margin_top: 4});
+        widget.append(new Gtk.Frame({child: editor.widget}));
+        const footer = new Gtk.Box({spacing: 8});
+        footer.append(new Gtk.Label({label: _('Markdown · Ctrl+Enter posts'), xalign: 0, hexpand: true,
+            css_classes: ['dim-label', 'caption']}));
+        const cancel = new Gtk.Button({label: _('Cancel')});
+        const post = new Gtk.Button({label: _('Comment'), css_classes: ['suggested-action'], sensitive: false});
+        footer.append(cancel);
+        footer.append(post);
+        widget.append(footer);
 
         const canPost = () => commentRequests(item, editor.buffer.text).length > 0;
+        post.sensitive = canPost();
         editor.buffer.connect('changed', () => {
             post.sensitive = canPost();
+            if (this.isCommenting(item))
+                this._drafts.set(key, editor.buffer.text);
         });
         send = () => {
             if (!canPost())
                 return;
             const text = editor.buffer.text;
-            dialog.close();
+            this.setCommenting(item, false);
+            onClose();
             this._send(item, commentRequests(item, text), _('Comment posted'));
         };
         post.connect('clicked', send);
-        cancel.connect('clicked', () => dialog.close());
-        dialog.present(this._window);
+        cancel.connect('clicked', () => {
+            this.setCommenting(item, false);
+            onClose();
+        });
+        return {widget, focus: () => editor.view.grab_focus()};
     }
 
     /**
      * The preview, in the window's right panel: the description (editable), the comments and
      * reactions (read only), and a box to add a comment. Drafts show only their description.
-     * Text stays plain.
+     * Descriptions and comments are rendered Markdown (markdownView()).
      */
     preview(item) {
         const draft = item.kind === 'draft';
@@ -302,7 +408,7 @@ export class WindowActions {
         box.append(heading);
         const description = new Gtk.Stack({vhomogeneous: false, transition_type: Gtk.StackTransitionType.CROSSFADE});
         const shown = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8});
-        shown.append(plainText(details.body || _('No description'), !details.body));
+        shown.append(details.body ? markdownView(details.body, url => this.open(url)) : plainText(_('No description'), true));
         if (details.reactions.length)
             shown.append(reactionLine(details.reactions));
         description.add_named(shown, 'shown');
@@ -342,7 +448,7 @@ export class WindowActions {
         box.append(description);
 
         if (item.kind === 'draft')
-            return {content: new Adw.Clamp({child: box, maximum_size: 720}), composer: null};
+            return {content: new Adw.Clamp({child: box, maximum_size: 1100}), composer: null};
 
         // Comments, oldest first, then the box to add one.
         const count = details.comments.length + details.more;
@@ -356,7 +462,7 @@ export class WindowActions {
             const when = comment.createdAt ? formatAgo(new Date(comment.createdAt)) : '';
             inner.append(new Gtk.Label({label: [comment.author ?? _('Someone'), when].filter(Boolean).join(' · '),
                 xalign: 0, css_classes: ['dim-label', 'caption']}));
-            inner.append(plainText(comment.body));
+            inner.append(markdownView(comment.body ?? '', url => this.open(url)));
             if (comment.reactions.length)
                 inner.append(reactionLine(comment.reactions));
             card.append(inner);
@@ -369,9 +475,9 @@ export class WindowActions {
             box.append(more);
         }
         let post = null;
-        const composer = this._editor({minHeight: 72, onSubmit: () => post()});
-        const footer = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8,
-            margin_top: 10, margin_bottom: 10, margin_start: 10, margin_end: 10});
+        const composer = this._editor({minHeight: 48, maxHeight: 160, grow: false, onSubmit: () => post()});
+        const footer = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6,
+            margin_top: 8, margin_bottom: 8, margin_start: 10, margin_end: 10});
         footer.append(new Gtk.Frame({child: composer.widget}));
         const postButton = new Gtk.Button({label: _('Comment'), css_classes: ['suggested-action'], halign: Gtk.Align.END,
             sensitive: false, tooltip_text: _('Ctrl+Enter')});
@@ -390,7 +496,7 @@ export class WindowActions {
         };
         postButton.connect('clicked', post);
         footer.append(postButton);
-        return {content: new Adw.Clamp({child: box, maximum_size: 720}), composer: footer};
+        return {content: new Adw.Clamp({child: box, maximum_size: 1100}), composer: footer};
     }
 
     close(item) {

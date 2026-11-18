@@ -73,6 +73,11 @@
       <summary>Start request counter</summary>
       <description>Internal. Bumped by Settings' "Start now" to show sourceglance again after Quit.</description>
     </key>
+    <key name="quit-request" type="i">
+      <default>0</default>
+      <summary>Quit request counter</summary>
+      <description>Internal. Bumped by Quit, in the top bar or the window, so the top bar, the desktop widgets and the window all stop.</description>
+    </key>
     <key name="refresh-request" type="i">
       <default>0</default>
       <summary>Refresh request counter</summary>
@@ -107,6 +112,11 @@
       <default>0</default>
       <summary>Token change counter</summary>
       <description>Internal. Bumped by Settings when an account is added or removed, so the extension refreshes right away.</description>
+    </key>
+    <key name="sidebar-narrow" type="b">
+      <default>false</default>
+      <summary>Sidebar shows icons only</summary>
+      <description>Whether the window's sidebar shows only icons (with counts on them) instead of icons, names and counts. Switched with the sidebar's menu button.</description>
     </key>
   </schema>
 </schemalist>

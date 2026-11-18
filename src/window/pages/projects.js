@@ -15,7 +15,7 @@ import {
     searchBoards,
     toggleId,
 } from '../../lib/model.js';
-import {collapsibleGroup, draftRow, noMatchesGroup, statusText} from './common.js';
+import {ListBody, collapsibleGroup, draftRow, noMatchesGroup, statusText} from './common.js';
 import {FilterBar} from './filterBar.js';
 
 export class ProjectsPage {
@@ -30,12 +30,12 @@ export class ProjectsPage {
         this._query = '';
         this._terms = [];
         this._statusPage = new Adw.StatusPage();
-        this._page = new Adw.PreferencesPage({vexpand: true});
+        this._page = new ListBody();
         // Drafts have no labels, so only Assignee.
         this._bar = new FilterBar({types: ['assignee'], onChange: () => this._state && this.update(this._state)});
         const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
         list.append(this._bar.widget);
-        list.append(this._page);
+        list.append(this._page.widget);
         this.widget = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
         this.widget.add_named(this._statusPage, 'status');
         this.widget.add_named(list, 'list');

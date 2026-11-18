@@ -30,14 +30,14 @@ class ToolbarButton extends PanelMenu.Button {
      * @param {object} params.icons Gio.Icon per id
      * @param {string[]|null} params.tabs for the app button in the tabs layout: the lists to show as tabs
      */
-    _init({id, icons, tabs = null, onRefresh, onSettings, onAbout, onAction, getRepos, getAutostart, setAutostart, onQuit,
+    _init({id, icons, tabs = null, onRefresh, onOpenTasks, onSettings, onAbout, onAction, getRepos, getAutostart, setAutostart, onQuit,
         getCollapsed, setCollapsed}) {
         super._init(0.0, `Source Glance ${id}`);
         this._id = id;
         this._icons = icons;
         this._tabs = tabs;
         this._tab = tabs?.[0] ?? 'app';
-        this._callbacks = {onRefresh, onSettings, onAbout, onAction, getRepos, getAutostart, setAutostart, onQuit};
+        this._callbacks = {onRefresh, onOpenTasks, onSettings, onAbout, onAction, getRepos, getAutostart, setAutostart, onQuit};
         this._getCollapsed = getCollapsed;
         this._setCollapsed = setCollapsed;
         this._state = null;

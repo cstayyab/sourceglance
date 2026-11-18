@@ -19,7 +19,7 @@ import {itemKey, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} fr
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
-const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'app-launcher', 'widget-positions', 'widget-opacity',
+const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'quit-request', 'app-launcher', 'widget-positions', 'widget-opacity',
     'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update', 'saved-wallpaper', 'tasks-expanded'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
@@ -89,6 +89,9 @@ export default class SourceglanceExtension extends Extension {
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'start-request')
                 this._start();
+            // Quit in the window.
+            if (key === 'quit-request' && this._running)
+                this._quit();
             if (key === 'app-launcher')
                 this._syncLauncher();
             if (!this._running || UI_ONLY_KEYS.includes(key))
@@ -153,10 +156,14 @@ export default class SourceglanceExtension extends Extension {
         this._refresh();
     }
 
-    /** Quit: hides the buttons and stops all network activity until started again. */
+    /**
+     * Quit: hides the buttons and widgets and stops all network activity until started again.
+     * Closes the window too (it follows quit-request).
+     */
     _quit() {
         this._running = false;
         sessionRunning = false;
+        this._settings.set_int('quit-request', this._settings.get_int('quit-request') + 1);
         this._cancellable?.cancel();
         this._cancellable = null;
         if (this._timeoutId) {
@@ -250,7 +257,9 @@ export default class SourceglanceExtension extends Extension {
         const tabs = this._settings.get_string('layout') === 'tabs';
         const callbacks = {
             onRefresh: () => this._refresh(),
-            onSettings: () => this._openWindow(),
+            onOpenTasks: () => this._openWindow('tasks'),
+            // Settings opens on the first settings page; signing in is there too.
+            onSettings: () => this._openWindow('accounts'),
             onAbout: () => this._openWindow('about'),
             onAction: (item, action, arg) => this._actions.run(item, action, arg),
             getRepos: () => this._settings?.get_strv('repositories') ?? [],

@@ -35,3 +35,39 @@ test('list and quote formats prefix whole lines and toggle off', () => {
     assert.deepEqual(applyFormat('', 0, 0, 'bullet'), {text: '- ', start: 0, end: 2});
     assert.throws(() => applyFormat('x', 0, 1, 'underline'), TypeError);
 });
+
+import {escapeMarkup, inlineMarkup, markdownBlocks} from '../src/lib/markdown.js';
+
+test('inline Markdown becomes Pango markup, with the source escaped', () => {
+    assert.equal(inlineMarkup('**bold** _it_ ~~gone~~ `a<b>`'), '<b>bold</b> <i>it</i> <s>gone</s> <tt>a&lt;b&gt;</tt>');
+    assert.equal(inlineMarkup('a < b & "c"'), 'a &lt; b &amp; &quot;c&quot;');
+    assert.equal(inlineMarkup('snake_case_name'), 'snake_case_name');
+    assert.equal(inlineMarkup('see [docs](https://x.io/a?b=1&c=2)'), 'see <a href="https://x.io/a?b=1&amp;c=2">docs</a>');
+    assert.equal(inlineMarkup('go https://x.io/a.'), 'go <a href="https://x.io/a">https://x.io/a</a>.');
+});
+
+test('only web links become links; HTML is dropped', () => {
+    // Not a web link: only its text stays.
+    assert.equal(inlineMarkup('[x](javascript:alert(1))'), 'x)');
+    assert.equal(inlineMarkup('[x](/relative)'), 'x');
+    assert.equal(inlineMarkup('<img src="a"> hi<br>there <b onclick="x">b</b>'), ' hi\nthere b');
+    assert.equal(inlineMarkup('[a https://x.io](https://y.io)'), '<a href="https://y.io">a https://x.io</a>');
+    assert.equal(escapeMarkup('<a href=\'x\'>'), '&lt;a href=&#39;x&#39;&gt;');
+});
+
+test('Markdown splits into blocks', () => {
+    const blocks = markdownBlocks([
+        '# Title', 'line one', 'line two', '', '- [ ] todo', '  - [x] done', '1. first', '',
+        '> quoted', '```js', '<b>code</b>', '```', '---', '| a | b |', '|---|---|', '| 1 | 2 |', '<!-- hidden -->',
+    ].join('\n'));
+    assert.deepEqual(blocks, [
+        {type: 'heading', level: 1, text: 'Title'},
+        {type: 'paragraph', text: 'line one\nline two'},
+        {type: 'list', items: [{text: 'todo', depth: 0, marker: '☐'}, {text: 'done', depth: 1, marker: '☑'},
+            {text: 'first', depth: 0, marker: '1.'}]},
+        {type: 'quote', blocks: [{type: 'paragraph', text: 'quoted'}]},
+        {type: 'code', text: '<b>code</b>'},
+        {type: 'rule'},
+        {type: 'table', rows: [['a', 'b'], ['1', '2']]},
+    ]);
+});
