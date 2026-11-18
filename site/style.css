@@ -197,7 +197,7 @@ h3 { font-size: 1.1rem; }
 .scene[hidden] { display: none; }
 .scene-copy p { color: var(--muted); }
 
-.win-wrap, .desk { padding: 0; }
+.win-wrap { padding: 0; }
 .win { display: flex; height: 340px; overflow: hidden; border-radius: 14px; background: #242424; box-shadow: 0 20px 50px rgb(0 0 0 / 35%); }
 .win-side { display: flex; flex-direction: column; gap: 2px; width: 170px; flex: none; padding: 12px 8px; background: #1d2633; }
 .side-h { font-size: .75rem; font-weight: 700; opacity: .6; padding: 4px 8px; }
@@ -277,17 +277,16 @@ h3 { font-size: 1.1rem; }
 .status-pop > span:not(.dialog-buttons) { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 6px; }
 .status-pop span.hover { background: #3584e4; }
 
-.desk { height: 340px; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgb(0 0 0 / 35%);
+/* The widgets stack down the desktop's right edge. */
+.desk { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; padding: 18px;
+  height: 440px; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgb(0 0 0 / 35%);
   background: radial-gradient(120% 90% at 20% 10%, #2b5aa8 0%, #142c57 45%, #0a1530 100%); }
-.widget { position: absolute; display: grid; gap: 6px; padding: 14px 16px; border-radius: 14px; background: rgb(20 24 32 / 72%);
+.widget { display: grid; width: 250px; gap: 6px; padding: 14px 16px; border-radius: 14px; background: rgb(20 24 32 / 72%);
   backdrop-filter: blur(6px); box-shadow: 0 10px 30px rgb(0 0 0 / 35%); transition: opacity .5s, translate .5s; font-size: .9rem; }
 .widget:not(.show) { opacity: 0; translate: 0 14px; }
 .widget em { font-style: normal; font-weight: 800; margin-left: auto; padding-left: 16px; color: #58a6ff; }
 .widget small { margin-left: auto; padding-left: 12px; opacity: .6; }
 .widget span { display: flex; align-items: center; gap: 8px; }
-.w-sum { left: 6%; top: 10%; }
-.w-list { right: 6%; top: 8%; min-width: 230px; }
-.w-issues { right: auto; left: 34%; top: auto; bottom: 10%; }
 .newpr { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .4s, opacity .4s; }
 .newpr.show { max-height: 24px; opacity: 1; }
 
@@ -364,8 +363,7 @@ pre code { background: none; padding: 0; }
   .win-side { display: none; }
   .win, .desk { height: 360px; }
   .win-panel.show { width: 70%; }
-  .w-list { min-width: 0; right: 4%; }
-  .w-sum { left: 4%; top: 46%; }
+  .widget { width: 220px; }
   .w-issues { display: none; }
   .toast { font-size: .8rem; }
 }
