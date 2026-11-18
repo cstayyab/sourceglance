@@ -146,14 +146,25 @@ Coming with the first stable release.
 Open Source Glance from the app grid (or the Source Glance button in the top bar →
 **Settings**), then go to **Accounts**:
 
-1. In the **GitHub** section, click **Sign in**. Source Glance copies a short code and opens GitHub; paste it and
-   approve. This gives access to issues, pull requests and project boards only: no code,
-   settings or admin access.
+1. Under **Add an account**, click **GitHub** and choose **Sign in with GitHub**. Source Glance
+   copies a short code and opens GitHub; paste it and approve. This gives access to issues,
+   pull requests and project boards only: no code, settings or admin access.
 2. **Choose repositories** to pick which repositories Source Glance may see. Optionally list
    repositories to watch (`owner/name, owner/other`); leave it empty to see everything
    assigned to you.
-3. In the **GitLab** section (optional), click **Sign in** and approve on gitlab.com the same way. GitLab sign-ins
-   renew themselves in the background.
+3. Optionally, click **GitLab** and approve on gitlab.com the same way. GitLab sign-ins renew
+   themselves in the background.
+
+You can add several accounts of each, for example a personal and a work account. Each one
+gets its own section in the lists, and changes run as the account the item came from. Every
+platform also takes a **personal access token**; each sign-in option says which repositories
+it reaches.
+
+**Self-hosted:** **Connect a self-hosted instance** adds GitLab self-managed or GitHub
+Enterprise Server. Enter its address; Source Glance checks that it really is that platform,
+then you sign in in the browser (with an app you register on the instance) or with a
+personal access token. Use `https://`; plain `http://` only works for an instance on your
+local network, checked each time Source Glance connects.
 
 **Repositories owned by someone else:**
 
@@ -202,7 +213,7 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 
 The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
 and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
-Tray**, **Accounts** (GitHub and GitLab on one page) and **System Start** (start at login,
+Tray**, **Accounts** (all your GitHub and GitLab accounts, including self-hosted ones) and **System Start** (start at login,
 app grid icon). **About** shows the version and the author, with links to report an issue or
 fork the repository and contribute.
 

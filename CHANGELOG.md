@@ -20,6 +20,19 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   wallpaper (from GNOME Backgrounds), to go with the cards, with a preview. **Apply** sets it
   and keeps yours; **Reset** puts yours back. If you change the wallpaper any other way, Reset
   isn't offered any more, only Apply.
+- **Several accounts.** Add more than one GitHub or GitLab account under Settings → Accounts,
+  for example a personal and a work account. Each account gets its own collapsible section in
+  the lists and the top-bar menus, and comments, closing, labels and assignees run as the
+  account the item came from. Your existing GitHub and GitLab sign-ins carry over without
+  signing in again.
+- **Self-hosted instances.** **Connect a self-hosted instance** adds GitLab self-managed or
+  GitHub Enterprise Server. Source Glance checks the address really is that platform, then
+  signs in in the browser (with an app you register on the instance; GitLab 17.1 or later)
+  or with a personal access token. It uses `https://`, or plain `http://` only for an
+  instance on your local network, checked every time it connects.
+- **Personal access tokens** for every platform, next to signing in in the browser. Each
+  sign-in option says which repositories it reaches: only yours and your organizations', or
+  everything you can view.
 
 ### Changed
 

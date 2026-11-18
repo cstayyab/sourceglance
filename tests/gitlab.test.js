@@ -127,11 +127,16 @@ test('requests.js picks the right platform', async () => {
     assert.equal(m.itemRef(gh), '#7');
 });
 
-test('listBadge adds GitLab counts', async () => {
+test('listBadge adds up every account', async () => {
     const {listBadge} = await import('../src/lib/model.js');
-    const base = {status: 'ready', updatedAt: new Date(), issueTotal: 2, issueShown: 2, prTotal: 0, prShown: 0, boards: [], boardsError: null};
-    assert.equal(listBadge('issues', {...base, gitlab: {status: 'ready', issueTotal: 3, issueShown: 3, prTotal: 1, prShown: 1}}), '5');
-    assert.equal(listBadge('prs', {...base, gitlab: {status: 'signed-out'}}), '0');
-    assert.equal(listBadge('issues', {...base, status: 'signed-out', gitlab: {status: 'ready', issueTotal: 3, issueShown: 3}}), '3');
-    assert.equal(listBadge('projects', {...base, status: 'signed-out', gitlab: {status: 'ready'}}), '');
+    const github = {platform: 'github', status: 'ready', updatedAt: new Date(), issueTotal: 2, issueShown: 2, prTotal: 0,
+        prShown: 0, boards: [], boardsError: null};
+    const gitlab = {platform: 'gitlab', status: 'ready', updatedAt: new Date(), issueTotal: 3, issueShown: 3, prTotal: 1,
+        prShown: 1, boards: null, boardsError: null};
+    assert.equal(listBadge('issues', {sources: [github, gitlab]}), '5');
+    assert.equal(listBadge('prs', {sources: [github, {platform: 'gitlab', status: 'signed-out'}]}), '0');
+    assert.equal(listBadge('issues', {sources: [{...github, status: 'signed-out'}, gitlab]}), '3');
+    assert.equal(listBadge('projects', {sources: [{...github, status: 'signed-out'}, gitlab]}), '');
+    // A second GitHub account still loading its boards.
+    assert.equal(listBadge('projects', {sources: [github, {...github, boards: null}]}), '…');
 });

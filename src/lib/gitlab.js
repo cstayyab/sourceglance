@@ -1,12 +1,14 @@
-// Minimal gitlab.com client on Soup 3, like github.js: device-flow sign-in with token
-// refresh, the assigned/review lists, closed counts and the write requests.
+// Minimal GitLab client on Soup 3, like github.js, for gitlab.com or a self-managed instance
+// (ADR 0007): device-flow sign-in with token refresh, the assigned/review lists, closed counts
+// and the write requests.
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Soup from 'gi://Soup?version=3.0';
 
-import {DeviceFlowError, GitHubError as ApiError, isCancelled} from './github.js';
+import {gitlabUrls, parseGitLabDiscovery} from './accounts.js';
+import {GITLAB_CLIENT_ID} from './config.js';
+import {DeviceFlowError, GitHubError as ApiError, isCancelled, transportError} from './github.js';
 import {
-    GITLAB_API,
     GITLAB_HOST,
     GITLAB_SCOPE,
     closedCountPaths,
@@ -21,8 +23,7 @@ import {
 } from './gitlabModel.js';
 import {DEVICE_GRANT_TYPE, classifyDeviceTokenResponse, classifyHttpError, formEncode} from './model.js';
 import {GITLAB_ACCOUNT, lookupSecret, storeSecret} from './tokenStore.js';
-
-Gio._promisify(Soup.Session.prototype, 'send_and_read_async');
+import {Transport} from './transport.js';
 
 function cancelledError() {
     return new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED, 'Operation was cancelled');
@@ -51,24 +52,30 @@ function sleep(seconds, cancellable) {
 }
 
 export class GitLabClient {
-    constructor(version = 'dev') {
-        this._session = new Soup.Session({user_agent: `sourceglance/${version}`, timeout: 30});
+    /**
+     * `base` is the instance; `accountId` the keyring entry holding the sign-in; `clientId` the
+     * OAuth application that signed in (null: Source Glance's own, on gitlab.com), for renewing.
+     */
+    constructor(version = 'dev', {base = GITLAB_HOST, accountId = GITLAB_ACCOUNT, clientId = null} = {}) {
+        this.base = base;
+        this._urls = gitlabUrls(base);
+        this._accountId = accountId;
+        this._clientId = clientId ?? GITLAB_CLIENT_ID;
+        this._transport = new Transport(version, base === GITLAB_HOST ? null : base);
     }
 
     destroy() {
-        this._session?.abort();
-        this._session = null;
+        this._transport?.destroy();
+        this._transport = null;
     }
 
     /** Resolves to {json, headers}; GitLab errors become ApiError like GitHub's. */
     async _send(message, cancellable, {allowError = false} = {}) {
         let bytes;
         try {
-            bytes = await this._session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, cancellable);
+            bytes = await this._transport.send(message, cancellable);
         } catch (e) {
-            if (isCancelled(e))
-                throw e;
-            throw new ApiError(classifyHttpError(0));
+            throw transportError(e);
         }
         const status = message.get_status();
         const headers = {};
@@ -88,7 +95,7 @@ export class GitLabClient {
     }
 
     async _api(method, path, token, body, cancellable) {
-        const message = Soup.Message.new(method, `${GITLAB_API}${path}`);
+        const message = Soup.Message.new(method, `${this._urls.api}${path}`);
         message.get_request_headers().append('Authorization', `Bearer ${token}`);
         if (body !== null && body !== undefined) {
             message.set_request_body_from_bytes('application/json',
@@ -98,7 +105,7 @@ export class GitLabClient {
     }
 
     async _oauth(path, fields, cancellable) {
-        const message = Soup.Message.new('POST', `${GITLAB_HOST}${path}`);
+        const message = Soup.Message.new('POST', `${this.base}${path}`);
         message.get_request_headers().append('Accept', 'application/json');
         message.set_request_body_from_bytes('application/x-www-form-urlencoded',
             new GLib.Bytes(new TextEncoder().encode(formEncode(fields))));
@@ -110,7 +117,7 @@ export class GitLabClient {
 
     async requestDeviceCode(clientId, cancellable = null) {
         const json = await this._oauth('/oauth/authorize_device', {client_id: clientId, scope: GITLAB_SCOPE}, cancellable);
-        const code = parseGitLabDeviceCode(json);
+        const code = parseGitLabDeviceCode(json, this.base);
         if (!code)
             throw new DeviceFlowError('error', json?.error ?? 'bad device code response');
         return code;
@@ -149,26 +156,37 @@ export class GitLabClient {
     /**
      * The stored access token, renewed first when it's about to expire. Null when signed
      * out. If renewing fails, another process may have renewed already: use its token.
+     * Personal access tokens are stored without a refresh token and never renewed.
      */
-    async accessToken(clientId, cancellable = null) {
-        const auth = parseStoredAuth(await lookupSecret(GITLAB_ACCOUNT, cancellable));
+    async accessToken(cancellable = null) {
+        const auth = parseStoredAuth(await lookupSecret(this._accountId, cancellable));
         if (!auth)
             return null;
         if (!tokenNeedsRefresh(auth))
             return auth.access;
         try {
-            const fresh = await this.refresh(clientId, auth.refresh, cancellable);
-            await storeSecret(GITLAB_ACCOUNT, JSON.stringify(fresh), cancellable);
+            const fresh = await this.refresh(this._clientId, auth.refresh, cancellable);
+            await storeSecret(this._accountId, JSON.stringify(fresh), cancellable);
             return fresh.access;
         } catch (e) {
             if (isCancelled(e))
                 throw e;
-            const again = parseStoredAuth(await lookupSecret(GITLAB_ACCOUNT, cancellable));
+            const again = parseStoredAuth(await lookupSecret(this._accountId, cancellable));
             return again && again.access !== auth.access ? again.access : auth.access;
         }
     }
 
     // Reading
+
+    /**
+     * For the self-hosted wizard: resolves to {device} (whether browser sign-in is offered)
+     * if the instance is GitLab, else null. Its discovery document needs no sign-in.
+     */
+    async probe(cancellable = null) {
+        const message = Soup.Message.new('GET', this._urls.discovery);
+        const {json, status} = await this._send(message, cancellable, {allowError: true});
+        return status >= 200 && status < 300 ? parseGitLabDiscovery(json, this.base) : null;
+    }
 
     /** Resolves to {id, username} of the signed-in user. */
     async getViewer(token, cancellable = null) {
@@ -179,7 +197,7 @@ export class GitLabClient {
     /** One list ('issue', 'mr-assigned', 'mr-review'): {total, items}. */
     async list(token, search, username = null, cancellable = null) {
         const {json, headers} = await this._api('GET', listPath(search, username), token, null, cancellable);
-        const items = parseGitLabItems(json, search);
+        const items = parseGitLabItems(json, search, this.base);
         const total = Number.parseInt(headers['x-total'], 10);
         return {total: Number.isNaN(total) ? items.length : total, items};
     }

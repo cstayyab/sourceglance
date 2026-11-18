@@ -2,10 +2,15 @@
 <schemalist>
   <!-- Non-secret settings only. Tokens belong in the GNOME keyring, never here. -->
   <schema id="org.gnome.shell.extensions.sourceglance" path="/org/gnome/shell/extensions/sourceglance/">
+    <key name="accounts" type="as">
+      <default>[]</default>
+      <summary>Accounts</summary>
+      <description>The GitHub and GitLab accounts to show, one JSON object per account: id, platform, base (the instance's address), login, method (device or pat) and clientId. No tokens: each account's sign-in is in the GNOME keyring under its id.</description>
+    </key>
     <key name="repositories" type="as">
       <default>[]</default>
       <summary>Repositories to watch</summary>
-      <description>List of repositories in owner/name form.</description>
+      <description>List of repositories in owner/name form. Applies to github.com accounts.</description>
     </key>
     <key name="refresh-interval" type="i">
       <range min="1" max="120"/>
@@ -30,7 +35,7 @@
     <key name="collapsed-sections" type="as">
       <default>[]</default>
       <summary>Collapsed sections</summary>
-      <description>GitHub or GitLab sections collapsed in the lists, as list:platform (e.g. issues:gitlab).</description>
+      <description>Account sections collapsed in the lists, as list:section (e.g. issues:gitlab). The first GitHub and GitLab sign-ins use github and gitlab; other accounts use their id.</description>
     </key>
     <key name="collapsed-groups" type="as">
       <default>[]</default>
@@ -96,7 +101,7 @@
     <key name="token-changed" type="i">
       <default>0</default>
       <summary>Token change counter</summary>
-      <description>Internal. Bumped by Settings when the token is saved or removed, so the extension refreshes right away.</description>
+      <description>Internal. Bumped by Settings when an account is added or removed, so the extension refreshes right away.</description>
     </key>
   </schema>
 </schemalist>

@@ -5,8 +5,8 @@ import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
+import {AccountClients} from '../lib/accountStore.js';
 import {GitHubClient} from '../lib/github.js';
-import {GitLabClient} from '../lib/gitlab.js';
 import {listBadge, searchCount, searchTerms} from '../lib/model.js';
 import {WindowActions} from './actions.js';
 import {WindowData} from './data.js';
@@ -29,8 +29,10 @@ import {buildWidgetsPage} from './pages/widgets.js';
  * @param {string} params.version e.g. "0.4.2"
  */
 export function fillWindow(window, {settings, dir, version}) {
+    // For the update check: sourceglance's releases are on github.com.
     const client = new GitHubClient(version);
-    const gitlabClient = new GitLabClient(version);
+    // One client per account, for the lists, the actions and Settings → Accounts.
+    const clients = new AccountClients(version);
     window.set_default_size(960, 680);
     loadTheme(window, dir);
 
@@ -46,7 +48,7 @@ export function fillWindow(window, {settings, dir, version}) {
     };
     const overlay = new Adw.ToastOverlay();
     const toast = title => overlay.add_toast(new Adw.Toast({title}));
-    const ctx = {window, settings, client, gitlabClient, toast, dir: dir};
+    const ctx = {window, settings, client, clients, version, toast, dir: dir};
 
     // One search box, on the right of the title bar, filters all three lists. While it has text, the
     // sidebar counts and the title's subtitle show matches; clearing it shows everything.
@@ -66,13 +68,13 @@ export function fillWindow(window, {settings, dir, version}) {
     };
 
     const pages = [];
-    const data = new WindowData({client, gitlabClient, settings, onChange: state => {
+    const data = new WindowData({clients, settings, onChange: state => {
         for (const page of pages)
             page.update(state);
         showCounts();
         refresh.sensitive = !state.refreshing;
     }});
-    const actions = new WindowActions({window, client, gitlabClient, data, toast});
+    const actions = new WindowActions({window, clients, data, toast});
     const repos = () => settings.get_strv('repositories');
     const onClearSearch = () => {
         search.text = '';
@@ -183,7 +185,7 @@ export function fillWindow(window, {settings, dir, version}) {
     };
     const installUpdateId = settings.connect('changed::install-update', installUpdate);
 
-    // Signing in or out on the GitHub page reloads the lists.
+    // Adding or removing an account under Settings → Accounts reloads the lists.
     const tokenChangedId = settings.connect('changed::token-changed', () => data.refresh());
     window.connect('close-request', () => {
         settings.disconnect(tokenChangedId);
@@ -192,7 +194,7 @@ export function fillWindow(window, {settings, dir, version}) {
         update.destroy();
         data.stop();
         client.destroy();
-        gitlabClient.destroy();
+        clients.destroy();
         return false;
     });
     for (const page of pages)

@@ -1,12 +1,13 @@
 // Actions on issues, PRs and project items in the window: Adw dialogs, then the same requests
-// the top-bar menus send (model.js builders). Results show as toasts.
+// the top-bar menus send (model.js builders), as the account the item came from. Results
+// show as toasts.
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _} from './i18n.js';
 
+import {accountForItem, hostLabel, isDefaultBase} from '../lib/accounts.js';
 import {GitHubError, isCancelled} from '../lib/github.js';
-import {GITLAB_CLIENT_ID} from '../lib/config.js';
 import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest} from '../lib/model.js';
 import {assigneeRequests, closeReasons, closeRequests, commentRequests, isSafeLink, labelRequests, reopenRequests} from '../lib/requests.js';
 
@@ -34,6 +35,10 @@ function errorText(error, item = null) {
     switch (error.kind) {
     case 'auth':
         return _('Your sign-in was rejected. Sign in again under Settings → Accounts.');
+    case 'signed-out':
+        return _('The account this came from is no longer signed in.');
+    case 'insecure':
+        return _('This instance uses plain http:// and isn’t on your local network now, so Source Glance won’t send your sign-in to it.');
     case 'forbidden':
         return forbiddenText(item);
     case 'not-found':
@@ -52,21 +57,29 @@ function errorText(error, item = null) {
 }
 
 export class WindowActions {
-    /** `data` is the WindowData; `window` parents the dialogs. */
-    constructor({window, client, gitlabClient, data, toast}) {
+    /** `data` is the WindowData; `clients` an AccountClients; `window` parents the dialogs. */
+    constructor({window, clients, data, toast}) {
         this._window = window;
-        this._client = client;
-        this._gitlabClient = gitlabClient;
+        this._clients = clients;
         this._data = data;
         this._toast = toast;
     }
 
-    _clientFor(item) {
-        return item.platform === 'gitlab' ? this._gitlabClient : this._client;
+    /** The item's account, its client and token; throws a sign-in error when it's gone. */
+    async _session(item) {
+        const account = this._data.account(accountForItem(item));
+        const token = account ? await this._clients.tokenFor(account) : null;
+        if (!token)
+            throw new GitHubError({kind: account ? 'auth' : 'signed-out', status: 401, retryAt: null});
+        return {client: this._clients.clientFor(account), token};
     }
 
-    _tokenFor(item) {
-        return item.platform === 'gitlab' ? this._gitlabClient.accessToken(GITLAB_CLIENT_ID) : this._data.token();
+    /** "Open on GitHub", or the instance's address for a self-hosted one. */
+    openLabel(item) {
+        const account = this._data.account(accountForItem(item));
+        if (account && !isDefaultBase(account.platform, account.base))
+            return _('Open on %s').format(hostLabel(account.base));
+        return item.platform === 'gitlab' ? _('Open on GitLab') : _('Open on GitHub');
     }
 
     open(url) {
@@ -122,13 +135,14 @@ export class WindowActions {
     async assignees(item) {
         // GitLab assigns by user id, so keep its members ({id, username}) for the request.
         const gitlab = item.platform === 'gitlab';
-        const members = await this._fetch(item, token => gitlab
-            ? this._gitlabClient.listMembers(token, item.projectId)
-            : this._client.listAssignable(token, item.repo).then(names => names.map(username => ({username}))));
+        const members = await this._fetch(item, ({client, token}) => gitlab
+            ? client.listMembers(token, item.projectId)
+            : client.listAssignable(token, item.repo).then(names => names.map(username => ({username}))));
         if (!members)
             return;
         const logins = members.map(member => member.username);
-        const me = gitlab ? this._data.state.gitlab?.login : this._data.state.login;
+        const me = this._data.account(accountForItem(item))?.login ??
+            this._data.state.sources.find(src => src.account.id === accountForItem(item))?.login ?? null;
         this._pick({
             heading: _('Assignees'),
             item,
@@ -140,9 +154,9 @@ export class WindowActions {
     }
 
     async labels(item) {
-        const labels = await this._fetch(item, token => item.platform === 'gitlab'
-            ? this._gitlabClient.listLabels(token, item.projectId)
-            : this._client.listLabels(token, item.repo));
+        const labels = await this._fetch(item, ({client, token}) => item.platform === 'gitlab'
+            ? client.listLabels(token, item.projectId)
+            : client.listLabels(token, item.repo));
         if (!labels)
             return;
         this._pick({
@@ -209,10 +223,7 @@ export class WindowActions {
     async _fetch(item, fetch) {
         this._data.setBusy(itemKey(item), true);
         try {
-            const token = await this._tokenFor(item);
-            if (!token)
-                throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
-            return await fetch(token);
+            return await fetch(await this._session(item));
         } catch (e) {
             if (!isCancelled(e))
                 this._toast(errorText(e, item));
@@ -228,11 +239,9 @@ export class WindowActions {
             return;
         this._data.setBusy(itemKey(item), true);
         try {
-            const token = await this._tokenFor(item);
-            if (!token)
-                throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
+            const {client, token} = await this._session(item);
             for (const request of requests)
-                await this._clientFor(item).send(token, request);
+                await client.send(token, request);
             this._toast(`${doneText}: ${itemText(item)}`);
         } catch (e) {
             if (!isCancelled(e))

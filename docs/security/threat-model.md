@@ -1,15 +1,16 @@
 # Threat model
 
 Reviewed for every minor release and whenever a PR touches authentication, networking,
-storage, or anything rendered from GitHub data. Last reviewed: **2026-11-16 (v0.1.0)**.
+storage, or anything rendered from GitHub or GitLab data. Last reviewed: **2026-11-18
+(several accounts and self-hosted instances, [ADR 0007](../adr/0007-multiple-accounts-and-self-hosted-instances.md))**.
 
 ## What we protect
 
 | Asset | Why it matters |
 | ------- | ---------------- |
-| **GitHub token** | Grants access to the user's repositories; leaking it is the worst outcome. |
+| **Tokens** (GitHub, GitLab, one per account, on github.com, gitlab.com or self-hosted instances) | Grant access to the user's repositories; leaking one is the worst outcome. Personal access tokens stay valid until the user revokes them. |
 | **The user's desktop session** | The extension runs inside GNOME Shell with the user's full privileges. A crash freezes the desktop; malicious code could do anything the user can. |
-| **Private repository data** | Issue titles and repo names from private repos must not leave the machine except to GitHub. |
+| **Private repository data** | Issue titles and repo names from private repos must not leave the machine except to the instance they came from. |
 
 ## Trust boundaries
 
@@ -18,13 +19,18 @@ storage, or anything rendered from GitHub data. Last reviewed: **2026-11-16 (v0.
                      │                       ▲
                      ▼                       │
  GNOME Shell process (extension) ────────────┘
-          │  HTTPS (Soup 3, system CA store)
+          │  HTTPS (Soup 3, system CA store); each account's client talks only to its instance
           ▼
-   api.github.com  ──▶  issue data rendered in the panel menu
+   api.github.com, gitlab.com, and instances the user added
+   (https://, or http:// only to LAN addresses checked per connection)
+          │
+          ▼
+   issue data rendered in the panel menu and the window
 ```
 
-GitHub API responses are **untrusted input**: issue titles and URLs are written by other
-people.
+API responses are **untrusted input**: issue titles and URLs are written by other people. A
+self-hosted instance is trusted only as much as the user trusts its operator: it receives
+that account's token and nothing else.
 
 ## Threats and mitigations
 
@@ -32,11 +38,11 @@ people.
 | --- | -------- | ------------ | -------- |
 | T1 | Token read from disk or backups | Stored only in the GNOME keyring ([ADR 0002](../adr/0002-token-in-gnome-keyring.md)); never in GSettings/dconf or files | ✅ v0.1 |
 | T2 | Token leaked in logs, errors, issues or screenshots | Errors carry only kind + HTTP status; token never logged; Settings clears the field after saving; issue templates remind users to scrub logs | ✅ v0.1 |
-| T3 | Token sent to the wrong host / intercepted | Requests go only to the hard-coded `https://api.github.com`; Soup verifies TLS with the system CA store | ✅ v0.1 |
+| T3 | Token sent to the wrong host / intercepted | Requests go only to `api.github.com`, `gitlab.com` and instances the user added; each account's token goes only to its own instance; Soup verifies TLS with the system CA store | ✅ v0.1, extended by ADR 0007 |
 | T4 | Over-privileged token | Docs and Settings recommend a fine-grained, read-only token (Issues + Metadata) | ✅ v0.1 |
 | T5 | Search-query injection via the repository filter | Repo names validated against `owner/name` before building `repo:` qualifiers | ✅ v0.1 |
 | T6 | Markup injection from issue titles | Titles rendered as plain text (`St.Label` without markup) | ✅ v0.1 |
-| T7 | Malicious link opened from an issue | Only `https://github.com/` URLs are opened | ✅ v0.1 |
+| T7 | Malicious link opened from an issue | Only links on `https://github.com/`, `https://gitlab.com/` or a signed-in account's own instance are opened (`isSafeLink`, `isSafeAccountUrl`) | ✅ v0.1, extended by ADR 0007 |
 | T8 | Desktop freeze from blocking I/O or leaks | All I/O async and cancellable; everything released in `disable()`; smoke test enables/disables 10× | ✅ v0.1 |
 | T9 | Rate-limit abuse / hammering GitHub | Minimum 1-minute interval, debounced settings changes, honours rate-limit reset | ✅ v0.1 |
 | T10 | Supply-chain compromise | No runtime dependencies beyond GNOME libraries; dev-only npm deps; Dependabot, dependency review and CodeQL in CI; GitHub Actions pinned to commit SHAs | ✅ v0.1 |
@@ -49,14 +55,21 @@ people.
 | T17 | Setup changes more than it says | Ready page lists every change; touches only the extension directory and enabled-extensions; Remove extras are opt-in; failed installs roll back | 📋 planned (installer) |
 | T18 | Users learn to allow and run unverified programs | README shows verify-then-run and to allow only files from this repo's Releases; `--appimage-extract` / `--extract` let users inspect contents | 📋 planned (installer) |
 | T19 | Compromised AppImage build tools | `appimagetool` and the AppImage runtime pinned to exact versions and verified by SHA-256 in the release workflow | 📋 planned (installer) |
+| T20 | Token sent to a host the user didn't mean | Self-hosted addresses come only from the user, are normalized (`parseInstanceUrl`: no credentials, query or path tricks) and must answer as the chosen platform before sign-in; data never adds hosts | ✅ ADR 0007 |
+| T21 | Token crosses the network in clear text | HTTPS required, except for instances on the local network: an IP address must be loopback, private or link-local (`isLanAddress`); the wizard warns that the token crosses the LAN unencrypted | ✅ ADR 0007 |
+| T22 | DNS rebinding: an http:// name later resolving to a public address | Before every request, the name is resolved and **all** addresses must be LAN addresses; the connection is pinned to the checked address (Soup `remote-connectable`), so a changed answer can't redirect it | ✅ ADR 0007 |
+| T23 | A redirect carries the token to another host | Requests to self-hosted instances don't follow redirects | ✅ ADR 0007 |
+| T24 | A lookalike or hostile instance | Only receives the token for the account added there; its links can only open on its own address; its data is rendered as plain text like any other | ✅ ADR 0007 |
+| T25 | Tokens with more reach than needed, or left valid after sign-out | Each sign-in method states what it reaches; token pages pre-fill the scopes needed; signing out says a personal access token stays valid until revoked | ✅ ADR 0007 |
 
 ## Out of scope
 
 - A compromised user account or desktop session (an attacker with the user's privileges can
   already read the keyring).
-- Compromise of GitHub itself.
+- Compromise of GitHub or GitLab itself, or of a self-hosted instance the user added (it
+  holds that account's data anyway).
 
 ## When to update this document
 
 Update the table in the same PR when you add a network call, a new place data is stored, a
-new kind of GitHub data shown to the user, or a new dependency.
+new kind of data shown to the user, a new platform, or a new dependency.

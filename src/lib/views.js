@@ -19,17 +19,15 @@ import {
     gtypeName,
     isDoneStatus,
     isGroupCollapsed,
-    isValidLogin,
     itemKey,
     itemRef,
     labelOptions,
-    listBadge,
     relativeTime,
-    searchPageUrl,
+    sourceBadge,
     truncate,
 } from './model.js';
-import {gitlabClosedPageUrl} from './gitlabModel.js';
-import {isSafeLink} from './requests.js';
+import {hostLabel, isDefaultBase} from './accounts.js';
+import {closedPageUrl, isSafeLink, profileUrl} from './requests.js';
 
 function formatRelative(date) {
     const {unit, value} = relativeTime(date);
@@ -50,7 +48,9 @@ function formatClock(ms) {
 }
 
 function errorText(error, intervalMinutes) {
-    switch (error.kind) {
+    switch (error?.kind) {
+    case 'insecure':
+        return _('This instance uses plain http:// and isn’t on your local network now. Source Glance won’t send your sign-in to it.');
     case 'auth':
         return _('Your sign-in was rejected. Sign in again in Settings.');
     case 'forbidden':
@@ -83,7 +83,7 @@ class FilterItem extends PopupMenu.PopupMenuItem {
 
 export function openUri(uri) {
     if (!isSafeLink(uri)) {
-        console.warn('sourceglance: refusing to open a link that isn\u2019t github.com or gitlab.com');
+        console.warn('sourceglance: refusing to open a link that isn\u2019t on a signed-in account\u2019s instance');
         return;
     }
     try {
@@ -190,6 +190,14 @@ function listReady(ui) {
 
 export {listBadge as badgeText} from './model.js';
 
+/** "Open on GitHub", or the instance's address for a self-hosted one. */
+function openText(item, ui) {
+    const account = ui.state.sources.find(source => source.account.id === item.accountId)?.account;
+    if (account && !isDefaultBase(account.platform, account.base))
+        return _('Open on %s').format(hostLabel(account.base));
+    return item.platform === 'gitlab' ? _('Open on GitLab') : _('Open on GitHub');
+}
+
 function itemLabel(item) {
     const label = `${itemRef(item)}  ${truncate(item.title)}`;
     return item.kind === 'pr' && item.reason === 'review'
@@ -211,7 +219,7 @@ function addItem(ui, item) {
         return entry;
     };
     const gitlab = item.platform === 'gitlab';
-    add(gitlab ? _('Open on GitLab') : _('Open on GitHub'), icon('open'), () => openUri(item.url)).setSensitive(Boolean(item.url));
+    add(openText(item, ui), icon('open'), () => openUri(item.url)).setSensitive(Boolean(item.url));
     if (item.state === 'closed') {
         add(_('Reopen'), icon('reopen'), () => ui.onAction(item, 'reopen'));
         return;
@@ -231,9 +239,10 @@ function addItem(ui, item) {
 
 /**
  * A section heading with a label filter dropdown, then its items grouped by repository. Each
- * repository heading collapses its items; `list` and `platform` make its id in collapsed-groups.
+ * repository heading collapses its items; `list` and `section` (the account's section key)
+ * make its id in collapsed-groups.
  */
-function addSection(ui, title, groups, key, list, platform) {
+function addSection(ui, title, groups, key, list, section) {
     const options = labelOptions(groups);
     let filter = ui.filters[key] ?? null;
     // The label disappeared after a refresh: show everything again.
@@ -274,7 +283,7 @@ function addSection(ui, title, groups, key, list, platform) {
 
     for (const group of filterByLabel(groups, filter)) {
         // Same ids as the window's lists, so a repository collapses in both places.
-        const id = groupCollapseId(list, platform, group.repo);
+        const id = groupCollapseId(list, section, group.repo);
         const collapsed = isGroupCollapsed(ui.collapsedGroups, id);
         ui.menu.addMenuItem(new SectionToggle(truncate(group.repo, 48), String(group.issues.length), collapsed,
             () => ui.toggleCollapsed(id, 'collapsed-groups'), 'sourceglance-repo'));
@@ -292,7 +301,7 @@ function addClosedFooter(ui, count, url, text, gicon) {
     row.add_style_class_name('sourceglance-footer');
 }
 
-// A header that collapses or expands its platform's section (or a repository's items)
+// A header that collapses or expands an account's section (or a repository's items)
 // without closing the menu.
 const SectionToggle = GObject.registerClass({GTypeName: gtypeName('SectionToggle', import.meta.url)},
 class SectionToggle extends PopupMenu.PopupBaseMenuItem {
@@ -310,64 +319,50 @@ class SectionToggle extends PopupMenu.PopupBaseMenuItem {
     }
 });
 
-/** One platform's part of a list: status, the label-filtered items, and the closed footer. */
-function renderPlatform(ui, cfg, src) {
+/** One account's part of a list: status, the label-filtered items, and the closed footer. */
+function renderSource(ui, cfg, src) {
+    const gitlab = src.platform === 'gitlab';
     if (src.status === 'signed-out') {
-        addInfo(ui, src.platform === 'gitlab'
-            ? _('Not signed in to GitLab.') : _('Not signed in. Open the Source Glance menu to sign in.'), 'sourceglance-message');
+        addInfo(ui, _('Not signed in. Sign in again under Settings → Accounts.'), 'sourceglance-message');
         return;
     }
     if (!src.updatedAt) {
-        addInfo(ui, src.status === 'error' ? _('Couldn’t load. Retrying soon.') : _('Loading…'), 'sourceglance-message');
+        addInfo(ui, src.status === 'error' ? errorText(src.error, ui.state.intervalMinutes) : _('Loading…'),
+            'sourceglance-message');
         return;
     }
-    if (src.status === 'error') {
-        addInfo(ui, src.platform === 'gitlab'
-            ? _('Couldn’t reach GitLab. Showing the last list.')
-            : errorText(src.error, ui.state.intervalMinutes), 'sourceglance-message');
-    }
-    if (src.groups.length === 0)
-        addInfo(ui, src.platform === 'gitlab' ? cfg.emptyGitLab : cfg.empty, 'sourceglance-message');
+    if (src.status === 'error')
+        addInfo(ui, errorText(src.error, ui.state.intervalMinutes), 'sourceglance-message');
+    const groups = cfg.key === 'issues' ? src.groups : src.prGroups;
+    if (groups.length === 0)
+        addInfo(ui, gitlab ? cfg.emptyGitLab : cfg.empty, 'sourceglance-message');
     else
-        addSection(ui, cfg.title, src.groups, src.platform === 'gitlab' ? `${cfg.key}:gitlab` : cfg.key, cfg.key, src.platform);
-    addClosedFooter(ui, src.closedCount, src.closedUrl, src.platform === 'gitlab' ? cfg.closedTextGitLab : cfg.closedText,
-        ui.icons[cfg.closedIcon]);
+        addSection(ui, cfg.title, groups, `${cfg.key}:${src.key}`, cfg.key, src.key);
+    addClosedFooter(ui, src.closedCounts[cfg.key], closedPageUrl(src.account, cfg.kind, ui.repos),
+        gitlab ? cfg.closedTextGitLab : cfg.closedText, ui.icons[cfg.closedIcon]);
 }
 
 function renderItemList(ui, cfg) {
     const {state} = ui;
-    const github = {
-        platform: 'github', status: state.status, updatedAt: state.updatedAt, error: state.error,
-        groups: cfg.key === 'issues' ? state.groups : state.prGroups,
-        closedCount: state.closedCounts[cfg.key],
-        closedUrl: searchPageUrl(cfg.closedSearch, ui.repos),
-    };
-    const gl = state.gitlab;
-    if (!gl || gl.status === 'signed-out') {
-        // GitHub only: no platform headers, as before GitLab existed.
-        renderPlatform(ui, cfg, github);
+    const sources = state.sources;
+    if (sources.length === 0) {
+        addInfo(ui, _('Not signed in. Open the Source Glance menu to sign in.'), 'sourceglance-message');
+    } else if (sources.length === 1) {
+        // One account: no section headers, as before there were several.
+        renderSource(ui, cfg, sources[0]);
     } else {
-        const gitlab = {
-            platform: 'gitlab', status: gl.status, updatedAt: gl.updatedAt, error: gl.error,
-            groups: (cfg.key === 'issues' ? gl.groups : gl.prGroups) ?? [],
-            closedCount: gl.closedCounts?.[cfg.key],
-            closedUrl: gitlabClosedPageUrl(cfg.kind, gl.login),
-        };
-        for (const src of [github, gitlab]) {
-            const id = `${cfg.key}:${src.platform}`;
+        for (const src of sources) {
+            const id = `${cfg.key}:${src.key}`;
             const collapsed = ui.collapsed.includes(id);
-            const count = listBadge(cfg.key, src.platform === 'gitlab'
-                ? {status: 'signed-out', gitlab: gl}
-                : {...state, gitlab: null});
-            ui.menu.addMenuItem(new SectionToggle(src.platform === 'gitlab' ? 'GitLab' : 'GitHub', count, collapsed,
+            ui.menu.addMenuItem(new SectionToggle(truncate(src.title, 48), sourceBadge(cfg.key, src), collapsed,
                 () => ui.toggleCollapsed(id)));
             if (!collapsed)
-                renderPlatform(ui, cfg, src);
+                renderSource(ui, cfg, src);
         }
     }
 
     const closed = state.recentlyClosed.filter(item => item.kind === cfg.kind);
-    if (closed.length > 0 && (signedIn(state) || gl?.status === 'ready')) {
+    if (closed.length > 0 && signedIn(state)) {
         addInfo(ui, _('Recently closed'), 'sourceglance-section');
         for (const item of closed)
             addItem(ui, item);
@@ -412,20 +407,20 @@ export function renderPrs(ui) {
     });
 }
 
-export function renderProjects(ui) {
-    if (!listReady(ui))
-        return;
-    const {boards, boardsError, busy} = ui.state;
-    if (boardsError) {
-        addInfo(ui, _('Source Glance can’t read your project boards. Organization boards need the ' +
+/** One GitHub account's boards and their draft items. */
+function renderBoards(ui, src) {
+    const {busy} = ui.state;
+    if (src.boardsError) {
+        addInfo(ui, _('Source Glance can’t read the project boards of this account. Organization boards need the ' +
             'app installed on the organization.'), 'sourceglance-message');
         return;
     }
-    if (boards === null) {
-        addInfo(ui, _('Loading project boards…'), 'sourceglance-message');
+    if (src.boards === null) {
+        addInfo(ui, src.updatedAt || src.status !== 'error' ? _('Loading project boards…')
+            : errorText(src.error, ui.state.intervalMinutes), 'sourceglance-message');
         return;
     }
-    const withDrafts = boards.filter(board => board.drafts.length > 0);
+    const withDrafts = src.boards.filter(board => board.drafts.length > 0);
     if (withDrafts.length === 0) {
         addInfo(ui, _('No draft items on your project boards'), 'sourceglance-message');
         return;
@@ -453,20 +448,46 @@ export function renderProjects(ui) {
     }
 }
 
-function headerText(state) {
-    const {status, login, refreshing, updatedAt} = state;
-    if (status === 'signed-out')
-        return _('Sign in to see your GitHub issues');
-    if (!login)
-        return status === 'error' ? _('GitHub') : _('Loading…');
-    if (refreshing)
-        return _('@%s · Refreshing…').format(login);
-    if (updatedAt)
-        return _('@%s · updated %s').format(login, formatRelative(updatedAt));
-    return `@${login}`;
+export function renderProjects(ui) {
+    if (!listReady(ui))
+        return;
+    // Project boards are GitHub's; each GitHub account gets its own section when there are several.
+    const sources = ui.state.sources.filter(src => src.platform === 'github' && src.status !== 'signed-out');
+    if (sources.length === 0) {
+        addInfo(ui, _('Project boards come from GitHub accounts. Add one under Settings → Accounts.'), 'sourceglance-message');
+        return;
+    }
+    if (sources.length === 1) {
+        renderBoards(ui, sources[0]);
+        return;
+    }
+    for (const src of sources) {
+        const id = `projects:${src.key}`;
+        const collapsed = ui.collapsed.includes(id);
+        ui.menu.addMenuItem(new SectionToggle(truncate(src.title, 48), sourceBadge('projects', src), collapsed,
+            () => ui.toggleCollapsed(id)));
+        if (!collapsed)
+            renderBoards(ui, src);
+    }
 }
 
-/** The sourceglance list: status, profile, Refresh, Settings and About. */
+function headerText(state) {
+    const {status, sources, refreshing, updatedAt} = state;
+    if (status === 'signed-out')
+        return _('Sign in to see your issues');
+    const logins = sources.filter(src => src.login).map(src => `@${src.login}`);
+    if (logins.length === 0)
+        return status === 'error' ? _('Source Glance') : _('Loading…');
+    const who = logins.length === 1 ? logins[0]
+        : ngettext('%d account', '%d accounts', sources.length).format(sources.length);
+    if (refreshing)
+        return _('%s · Refreshing…').format(who);
+    if (updatedAt)
+        return _('%s · updated %s').format(who, formatRelative(updatedAt));
+    return who;
+}
+
+/** The sourceglance list: status, profiles, Refresh, Settings and About. */
 export function renderApp(ui) {
     const {state} = ui;
     addInfo(ui, headerText(state), 'sourceglance-header');
@@ -475,8 +496,11 @@ export function renderApp(ui) {
     ui.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
     if (signedIn(state)) {
-        if (isValidLogin(state.login))
-            addAction(ui, _('Your GitHub profile'), () => openUri(`https://github.com/${state.login}`), icon('profile'));
+        const profiles = state.sources.map(src => ({src, url: profileUrl(src.account)})).filter(({url}) => url);
+        for (const {src, url} of profiles) {
+            addAction(ui, profiles.length === 1 && src.platform === 'github' ? _('Your GitHub profile')
+                : _('Profile: %s').format(truncate(src.title, 40)), () => openUri(url), icon('profile'));
+        }
         addAction(ui, _('Refresh'), () => ui.onRefresh(), icon('refresh')).setSensitive(!state.refreshing);
     }
     if (signedIn(state))

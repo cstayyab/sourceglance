@@ -41,16 +41,20 @@ test('searchBoards and searchCount count matches across lists and platforms', ()
     const boards = [{title: 'Roadmap', drafts: [{title: 'Write release notes', status: 'Todo'}, {title: 'Plan the beta', status: 'Done'}]}];
     assert.equal(searchBoards(boards, searchTerms('beta'))[0].drafts.length, 1);
     assert.equal(searchBoards(boards, searchTerms('roadmap'))[0].drafts.length, 2);
-    const state = {
+    const github = {
+        platform: 'github', status: 'ready',
         groups: [{repo: 'example/web-app', issues: [issue(42, 'Fix the login redirect'), issue(37, 'Dark mode')]}],
         prGroups: [{repo: 'example/web-app', issues: [issue(45, 'Login health checks', {kind: 'pr'})]}],
         boards,
-        gitlab: {status: 'ready', groups: [{repo: 'acme/api', issues: [issue(7, 'Login rate limit', {platform: 'gitlab', repo: 'acme/api'})]}], prGroups: []},
     };
+    const gitlab = {platform: 'gitlab', status: 'ready', boards: null, prGroups: [],
+        groups: [{repo: 'acme/api', issues: [issue(7, 'Login rate limit', {platform: 'gitlab', repo: 'acme/api'})]}]};
+    const state = {sources: [github, gitlab]};
     const terms = searchTerms('login');
     assert.equal(searchCount('issues', state, terms), 2);
     assert.equal(searchCount('prs', state, terms), 1);
     assert.equal(searchCount('projects', state, terms), 0);
-    assert.equal(searchCount('issues', {...state, gitlab: {status: 'signed-out'}}, terms), 1);
-    assert.equal(searchCount('projects', {...state, boards: null}, terms), 0);
+    assert.equal(searchCount('issues', {sources: [github, {...gitlab, status: 'signed-out'}]}, terms), 1);
+    assert.equal(searchCount('projects', {sources: [{...github, boards: null}]}, terms), 0);
+    assert.equal(searchCount('projects', {sources: [github, {...github, boards}]}, searchTerms('beta')), 2);
 });

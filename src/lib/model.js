@@ -58,10 +58,13 @@ export function buildSearchPath(repos = [], search = 'issue') {
     return `/search/issues?q=${q}&sort=updated&order=desc&per_page=${perPage}`;
 }
 
-/** github.com page listing what a search finds, for "View on GitHub" links and list footers. */
-export function searchPageUrl(search, repos = []) {
+/**
+ * Page listing what a search finds, for "View on GitHub" links and list footers. `base` is
+ * the instance (GitHub Enterprise Server has the same pages).
+ */
+export function searchPageUrl(search, repos = [], base = 'https://github.com') {
     const page = search.startsWith('pr') ? 'pulls' : 'issues';
-    return `https://github.com/${page}?q=${encodeURIComponent(buildSearchQuery(repos, search))}`;
+    return `${base}/${page}?q=${encodeURIComponent(buildSearchQuery(repos, search))}`;
 }
 
 // The lists that can have a top-bar button, in their fixed order. The sourceglance button
@@ -109,9 +112,10 @@ export function formEncode(fields) {
 
 /**
  * Validate GitHub's device-code response. Returns null if it is unusable. The verification
- * link is untrusted data, so anything other than a github.com link falls back to the known one.
+ * link is untrusted data, so anything other than a link on the instance (`isSafe`) falls back
+ * to the known one (`fallback`).
  */
-export function parseDeviceCodeResponse(json) {
+export function parseDeviceCodeResponse(json, {isSafe = isSafeGitHubUrl, fallback = DEVICE_VERIFICATION_URL} = {}) {
     const {device_code: deviceCode, user_code: userCode} = json ?? {};
     if (typeof deviceCode !== 'string' || !deviceCode ||
         typeof userCode !== 'string' || !/^[A-Z0-9-]{4,16}$/.test(userCode))
@@ -120,7 +124,7 @@ export function parseDeviceCodeResponse(json) {
     return {
         deviceCode,
         userCode,
-        verificationUri: isSafeGitHubUrl(uri) ? uri : DEVICE_VERIFICATION_URL,
+        verificationUri: isSafe(uri) ? uri : fallback,
         expiresIn: positiveInt(json.expires_in, 900),
         interval: positiveInt(json.interval, 5),
     };
@@ -258,9 +262,10 @@ export function parseLogins(list) {
 
 /**
  * Items from a search response. `search` is the search that produced it ('issue',
- * 'pr-assigned' or 'pr-review'); items of the other kind are dropped.
+ * 'pr-assigned' or 'pr-review'); items of the other kind are dropped. `isSafeUrl` checks
+ * links (github.com by default; the account's instance for GitHub Enterprise Server).
  */
-export function parseSearchResponse(json, search = 'issue') {
+export function parseSearchResponse(json, search = 'issue', isSafeUrl = isSafeGitHubUrl) {
     const wantPr = search !== 'issue';
     const raw = Array.isArray(json?.items) ? json.items : [];
     const items = raw
@@ -270,7 +275,7 @@ export function parseSearchResponse(json, search = 'issue') {
             reason: search === 'pr-review' ? 'review' : 'assigned',
             number: item.number,
             title: cappedString(item.title, 300),
-            url: isSafeGitHubUrl(item.html_url) ? item.html_url : null,
+            url: isSafeUrl(item.html_url) ? item.html_url : null,
             repo: repoFromApiUrl(item.repository_url),
             nodeId: cappedString(item.node_id, 100) || null,
             state: item.state === 'closed' ? 'closed' : 'open',
@@ -295,12 +300,18 @@ export function mergeItems(...lists) {
     return [...seen.values()];
 }
 
-/** Stable identity of an issue or PR: "owner/name#number". */
+/**
+ * Stable identity of an issue or PR: "owner/name#number". Items of accounts added since
+ * multiple accounts (anything but the github.com and gitlab.com ids) are prefixed with the
+ * account id, since two accounts can list the same item.
+ */
 export function itemKey(item) {
     // GitLab paths can match GitHub ones, and issue #3 and merge request !3 differ.
-    if (item.platform === 'gitlab')
-        return `gitlab:${item.repo}${item.kind === 'pr' ? '!' : '#'}${item.number}`;
-    return `${item.repo}#${item.number}`;
+    const key = item.platform === 'gitlab'
+        ? `gitlab:${item.repo}${item.kind === 'pr' ? '!' : '#'}${item.number}`
+        : `${item.repo}#${item.number}`;
+    return item.accountId && item.accountId !== 'github.com' && item.accountId !== 'gitlab.com'
+        ? `${item.accountId}|${key}` : key;
 }
 
 /** "#12" for issues and GitHub PRs, "!12" for GitLab merge requests. */
@@ -481,7 +492,7 @@ export function viewerBoardsRequest() {
     return {method: 'POST', path: '/graphql', graphql: true, body: {query: VIEWER_BOARDS_QUERY, variables: {}}};
 }
 
-function parseBoard(project) {
+function parseBoard(project, isSafeUrl) {
     const field = project?.field;
     if (!isNodeId(project?.id) || project.closed)
         return null;
@@ -506,7 +517,7 @@ function parseBoard(project) {
     return {
         projectId: project.id,
         title,
-        url: isSafeGitHubUrl(project.url) ? project.url : null,
+        url: isSafeUrl(project.url) ? project.url : null,
         fieldId: isNodeId(field?.id) ? field.id : null,
         options,
         drafts,
@@ -519,7 +530,7 @@ function parseBoard(project) {
  * Boards from VIEWER_BOARDS_QUERY: open boards with their non-archived draft items. Tolerant of
  * partial data (`errors` for boards the sign-in can't read); duplicates are dropped.
  */
-export function parseViewerBoards(json) {
+export function parseViewerBoards(json, isSafeUrl = isSafeGitHubUrl) {
     const viewer = json?.data?.viewer;
     const projects = [
         ...(viewer?.projectsV2?.nodes ?? []),
@@ -528,7 +539,7 @@ export function parseViewerBoards(json) {
     const seen = new Set();
     const boards = [];
     for (const project of projects) {
-        const board = parseBoard(project);
+        const board = parseBoard(project, isSafeUrl);
         if (board && !seen.has(board.projectId)) {
             seen.add(board.projectId);
             boards.push(board);
@@ -543,7 +554,8 @@ export function parseViewerBoards(json) {
  */
 export function draftTarget(board, draft) {
     return {
-        item: {kind: 'draft', repo: 'project', number: draft.itemId, title: draft.title, labels: [], assignees: []},
+        item: {kind: 'draft', repo: 'project', number: draft.itemId, title: draft.title, labels: [], assignees: [],
+            accountId: board.accountId ?? null},
         board: {
             itemId: draft.itemId,
             projectId: board.projectId,
@@ -752,34 +764,45 @@ export function truncate(text, max = 48) {
     return chars.length > max ? `${chars.slice(0, max - 1).join('').trimEnd()}…` : text;
 }
 
+/** True once a source (one account's lists, see sourceFrom() in accounts.js) has loaded. */
+function sourceLoaded(source) {
+    return (source.status === 'ready' || source.status === 'error') && Boolean(source.updatedAt);
+}
+
 /**
  * Count for a list's top-bar button, tab or sidebar row: '0' included once loaded; ''
- * hides it (signed out, or not loaded yet). `state` has status, updatedAt, issueTotal/Shown,
- * prTotal/Shown, boards and boardsError.
+ * hides it (signed out, or not loaded yet). `state.sources` holds each account's lists
+ * (status, updatedAt, issueTotal/Shown, prTotal/Shown, boards, boardsError); the count adds
+ * them up.
  */
 export function listBadge(id, state) {
-    const github = (state.status === 'ready' || state.status === 'error') && state.updatedAt !== null;
-    // GitLab counts are added once loaded (state.gitlab, same field names).
-    const gl = state.gitlab?.status === 'ready' || (state.gitlab?.status === 'error' && state.gitlab.updatedAt)
-        ? state.gitlab : null;
-    if (!github && !gl)
+    const loaded = (state.sources ?? []).filter(sourceLoaded);
+    if (loaded.length === 0)
         return '';
-    const sum = (total, shown) => countLabel((github ? state[total] : 0) + (gl ? gl[total] : 0),
-        (github ? state[shown] : 0) + (gl ? gl[shown] : 0)) || '0';
+    const sum = (total, shown) => countLabel(loaded.reduce((n, source) => n + source[total], 0),
+        loaded.reduce((n, source) => n + source[shown], 0)) || '0';
     switch (id) {
     case 'issues':
         return sum('issueTotal', 'issueShown');
     case 'prs':
         return sum('prTotal', 'prShown');
-    case 'projects':
-        if (!github)
+    case 'projects': {
+        // Project boards are GitHub's; accounts that can't read them don't count.
+        const boards = loaded.filter(source => source.platform === 'github' && !source.boardsError);
+        if (boards.length === 0)
             return '';
-        if (state.boards === null)
-            return state.boardsError ? '' : '…';
-        return String(state.boards.reduce((sum, board) => sum + board.drafts.length, 0));
+        if (boards.some(source => source.boards === null))
+            return '…';
+        return String(boards.reduce((n, source) => n + source.boards.reduce((m, board) => m + board.drafts.length, 0), 0));
+    }
     default:
         return '';
     }
+}
+
+/** The count for one account's section of a list. */
+export function sourceBadge(id, source) {
+    return listBadge(id, {sources: [source]});
 }
 
 /** Text for the panel badge: '' (hidden), '7', or '25+' when results were cut off. */
@@ -833,17 +856,18 @@ export function searchBoards(boards, terms) {
     }));
 }
 
-/** How many loaded items in list `id` ('issues', 'prs', 'projects') match, across GitHub and GitLab. */
+/** How many loaded items in list `id` ('issues', 'prs', 'projects') match, across all accounts. */
 export function searchCount(id, state, terms) {
     const count = groups => searchGroups(groups ?? [], terms).reduce((sum, group) => sum + group.issues.length, 0);
-    const gitlab = state.gitlab?.status === 'signed-out' ? null : state.gitlab;
+    const sources = (state.sources ?? []).filter(source => source.status !== 'signed-out');
     switch (id) {
     case 'issues':
-        return count(state.groups) + count(gitlab?.groups);
+        return sources.reduce((sum, source) => sum + count(source.groups), 0);
     case 'prs':
-        return count(state.prGroups) + count(gitlab?.prGroups);
+        return sources.reduce((sum, source) => sum + count(source.prGroups), 0);
     case 'projects':
-        return searchBoards(state.boards ?? [], terms).reduce((sum, board) => sum + board.drafts.length, 0);
+        return sources.reduce((sum, source) =>
+            sum + searchBoards(source.boards ?? [], terms).reduce((n, board) => n + board.drafts.length, 0), 0);
     default:
         return 0;
     }
@@ -852,9 +876,11 @@ export function searchCount(id, state, terms) {
 /**
  * The id a repository group (or project board, by its node id) is remembered by in the
  * `collapsed-groups` setting, e.g. issues:github:owner/repo or projects:github:PVT_….
+ * `section` is the account's sectionKey() (accounts.js): "github" or "gitlab" for the
+ * first sign-ins, the account id for accounts added later.
  */
-export function groupCollapseId(list, platform, name) {
-    return `${list}:${platform}:${name}`;
+export function groupCollapseId(list, section, name) {
+    return `${list}:${section}:${name}`;
 }
 
 /** `ids` with `id` added, or without it if it was there (collapsed ↔ expanded). */

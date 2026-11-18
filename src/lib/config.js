@@ -9,8 +9,8 @@ export const GITHUB_APP_CLIENT_ID = 'Iv23liXr0uuVtDh96Z4k';
 // The app's URL name, from https://github.com/apps/<slug>, for "Choose repositories".
 export const GITHUB_APP_SLUG = 'sourceglance';
 
-// The GitHub App is the only sign-in shown. Set to true to also offer "Sign in with full
-// access" and the personal access token under "More sign-in options" (kept for evaluation).
+// Set to true to also offer "Sign in with full access" (the OAuth App below) when adding a
+// github.com account. A personal access token is always offered (ADR 0007).
 export const SHOW_OTHER_SIGN_IN_OPTIONS = false;
 
 // The sourceglance OAuth App: the opt-in "Sign in with full access". It needs the `repo` and

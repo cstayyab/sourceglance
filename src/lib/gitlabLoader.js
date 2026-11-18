@@ -1,7 +1,6 @@
-// Loads the GitLab lists in one go, for the top bar (extension.js) and the window
-// (window/data.js). The result uses the same field names as the GitHub state, under
-// state.gitlab, so views and counts can treat both alike.
-import {GITLAB_CLIENT_ID} from './config.js';
+// Loads one GitLab account's lists in one go, for the top bar (extension.js) and the window
+// (window/data.js), through accountStore.js. The result uses the same field names as
+// GitHub's, so views and counts can treat both alike.
 import {isCancelled} from './github.js';
 import {mergeItems} from './model.js';
 
@@ -10,7 +9,7 @@ import {mergeItems} from './model.js';
  *   issues, prs, issueTotal, prTotal, closedCounts}. Throws on API errors.
  */
 export async function loadGitLab(client, cancellable = null) {
-    const token = await client.accessToken(GITLAB_CLIENT_ID, cancellable);
+    const token = await client.accessToken(cancellable);
     if (!token)
         return {status: 'signed-out'};
     const viewer = await client.getViewer(token, cancellable);

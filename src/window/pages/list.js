@@ -1,12 +1,12 @@
-// Lists → Issues / Pull requests: items grouped by repository, a label filter, actions per
-// item, and the closed-but-assigned count. Text from GitHub is always shown as plain text.
+// Lists → Issues / Pull requests: one section per account, items grouped by repository, a
+// label filter, actions per item, and the closed-but-assigned count. Text from GitHub and
+// GitLab is always shown as plain text.
 import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _, ngettext} from '../i18n.js';
 
-import {gitlabClosedPageUrl} from '../../lib/gitlabModel.js';
 import {
     filterByLabel,
     groupCollapseId,
@@ -14,11 +14,11 @@ import {
     itemKey,
     itemRef,
     labelOptions,
-    listBadge,
     searchGroups,
-    searchPageUrl,
+    sourceBadge,
     toggleId,
 } from '../../lib/model.js';
+import {closedPageUrl} from '../../lib/requests.js';
 import {actionButton, collapsibleGroup, noMatchesGroup, statusText} from './common.js';
 
 // Built on use: gettext only works once the window has set up translations, not at import.
@@ -30,7 +30,6 @@ function copyFor(key) {
             emptyGitLab: _('No open GitLab issues assigned to you'),
             closedGitLab: n => ngettext('%d closed GitLab issue still assigned to you',
                 '%d closed GitLab issues still assigned to you', n).format(n),
-            closedSearch: 'issue-closed',
             closedIcon: 'issueClosed',
             closed: n => ngettext('%d closed issue still assigned to you', '%d closed issues still assigned to you', n).format(n),
         },
@@ -40,7 +39,6 @@ function copyFor(key) {
             emptyGitLab: _('No open merge requests for you'),
             closedGitLab: n => ngettext('%d merged or closed merge request still assigned to you',
                 '%d merged or closed merge requests still assigned to you', n).format(n),
-            closedSearch: 'pr-closed',
             closedIcon: 'prMerged',
             closed: n => ngettext('%d merged or closed pull request still assigned to you',
                 '%d merged or closed pull requests still assigned to you', n).format(n),
@@ -72,8 +70,8 @@ export class ListPage {
         this._actions = actions;
         this._repos = repos;
         this._settings = settings;
-        // Label chosen per platform; null shows everything.
-        this._filters = {github: null, gitlab: null};
+        // Label chosen per account section; null shows everything.
+        this._filters = {};
         this._state = null;
         this._groups = [];
         this._onClearSearch = onClearSearch;
@@ -98,10 +96,9 @@ export class ListPage {
 
     update(state) {
         this._state = state;
-        const gl = state.gitlab;
-        const sections = gl && gl.status !== 'signed-out';
-        // Without GitLab, the page is GitHub's alone: its status replaces the list.
-        const status = sections ? null : statusText(state);
+        const sources = state.sources;
+        // With one account, the page is its alone: its status replaces the list.
+        const status = sources.length > 1 ? null : statusText(state);
         if (status) {
             this._statusPage.set({icon_name: status.icon, title: status.title, description: status.description});
             this.widget.visible_child_name = 'status';
@@ -117,32 +114,22 @@ export class ListPage {
         };
 
         const copy = copyFor(this._key);
-        const github = {
-            platform: 'github', status: state.status, updatedAt: state.updatedAt,
-            groups: this._key === 'issues' ? state.groups : state.prGroups,
-            closedCount: state.closedCounts[this._key],
-            closedUrl: searchPageUrl(copy.closedSearch, this._repos()),
-        };
-        if (!sections) {
-            this._renderPlatform(github, copy, state, add);
+        if (sources.length === 1) {
+            this._renderSource(sources[0], copy, state, add);
             return;
         }
-        const gitlab = {
-            platform: 'gitlab', status: gl.status, updatedAt: gl.updatedAt,
-            groups: (this._key === 'issues' ? gl.groups : gl.prGroups) ?? [],
-            closedCount: gl.closedCounts?.[this._key],
-            closedUrl: gitlabClosedPageUrl(this._key === 'issues' ? 'issue' : 'pr', gl.login),
-        };
-        for (const src of [github, gitlab]) {
+        for (const src of sources) {
             // Same ids as the top-bar menus, so a section collapses in both places.
-            const id = `${this._key}:${src.platform}`;
+            const id = `${this._key}:${src.key}`;
             const collapsed = this._settings.get_strv('collapsed-sections').includes(id);
-            const header = new Adw.PreferencesGroup({title: src.platform === 'gitlab' ? 'GitLab' : 'GitHub'});
+            // Titles are platform, host and login only: no markup characters (accounts.js checks them).
+            const header = new Adw.PreferencesGroup({title: src.title});
             const suffix = new Gtk.Box({spacing: 8});
             // While searching, the section counts its matches instead of its total.
+            const groups = this._key === 'issues' ? src.groups : src.prGroups;
             const count = this._terms.length
-                ? String(searchGroups(src.groups ?? [], this._terms).reduce((sum, group) => sum + group.issues.length, 0))
-                : listBadge(this._key, src.platform === 'gitlab' ? {status: 'signed-out', gitlab: gl} : {...state, gitlab: null});
+                ? String(searchGroups(groups, this._terms).reduce((sum, group) => sum + group.issues.length, 0))
+                : sourceBadge(this._key, src);
             if (count)
                 suffix.append(new Gtk.Label({label: count, css_classes: ['sourceglance-count-pill'], valign: Gtk.Align.CENTER}));
             const toggle = new Gtk.Button({icon_name: collapsed ? 'pan-end-symbolic' : 'pan-down-symbolic',
@@ -158,28 +145,30 @@ export class ListPage {
             header.set_header_suffix(suffix);
             add(header);
             if (!collapsed)
-                this._renderPlatform(src, copy, state, add);
+                this._renderSource(src, copy, state, add);
         }
     }
 
-    /** One platform: its status, label filter, items by repository, and closed footer. */
-    _renderPlatform(src, copy, state, add) {
+    /** One account: its status, label filter, items by repository, and closed footer. */
+    _renderSource(src, copy, state, add) {
         const gitlab = src.platform === 'gitlab';
+        const groups = this._key === 'issues' ? src.groups : src.prGroups;
         if (src.status === 'signed-out' || !src.updatedAt) {
             const note = new Adw.PreferencesGroup();
             note.add(new Adw.ActionRow({
                 title: src.status === 'signed-out'
-                    ? _('Not signed in. Sign in under Settings → Accounts.')
-                    : src.status === 'error' ? _('Couldn’t load. Retrying soon.') : _('Loading…'),
+                    ? _('Not signed in. Sign in again under Settings → Accounts.')
+                    : src.error?.kind === 'insecure'
+                        ? _('This instance uses plain http:// and isn’t on your local network now.')
+                        : src.status === 'error' ? _('Couldn’t load. Retrying soon.') : _('Loading…'),
                 use_markup: false, css_classes: ['dim-label'],
             }));
             add(note);
             return;
         }
-        const options = labelOptions(src.groups);
-        if (this._filters[src.platform] !== null && !options.some(option => option.name === this._filters[src.platform]))
-            this._filters[src.platform] = null;
-        const filter = this._filters[src.platform];
+        const options = labelOptions(groups);
+        const filter = options.some(option => option.name === this._filters[src.key]) ? this._filters[src.key] : null;
+        this._filters[src.key] = filter;
 
         const filterGroup = new Adw.PreferencesGroup();
         const names = [null, ...options.map(option => option.name)];
@@ -192,7 +181,7 @@ export class ListPage {
         });
         combo.add_prefix(new Gtk.Image({gicon: this._icons.label}));
         combo.connect('notify::selected', () => {
-            this._filters[src.platform] = names[combo.selected] ?? null;
+            this._filters[src.key] = names[combo.selected] ?? null;
             // Rebuild after this signal: the combo itself is replaced.
             GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
                 this.update(this._state);
@@ -202,7 +191,7 @@ export class ListPage {
         filterGroup.add(combo);
         add(filterGroup);
 
-        const shown = filterByLabel(searchGroups(src.groups, this._terms), filter);
+        const shown = filterByLabel(searchGroups(groups, this._terms), filter);
         if (shown.length === 0 && this._terms.length) {
             add(noMatchesGroup(this._query, () => this._onClearSearch()));
         } else if (shown.length === 0) {
@@ -213,7 +202,7 @@ export class ListPage {
         const collapsedGroups = this._settings.get_strv('collapsed-groups');
         for (const group of shown) {
             // Same ids as the top-bar menus, so a repository collapses in both places.
-            const id = groupCollapseId(this._key, src.platform, group.repo);
+            const id = groupCollapseId(this._key, src.key, group.repo);
             const collapsed = isGroupCollapsed(collapsedGroups, id, this._terms);
             const repoGroup = collapsibleGroup({
                 title: group.repo, count: group.issues.length, collapsed, toggleable: this._terms.length === 0,
@@ -229,13 +218,15 @@ export class ListPage {
             add(repoGroup);
         }
 
-        if (src.closedCount !== null && src.closedCount !== undefined) {
+        const closedCount = src.closedCounts?.[this._key];
+        if (closedCount !== null && closedCount !== undefined) {
             const footer = new Adw.PreferencesGroup();
-            const row = new Adw.ActionRow({title: (gitlab ? copy.closedGitLab : copy.closed)(src.closedCount),
+            const row = new Adw.ActionRow({title: (gitlab ? copy.closedGitLab : copy.closed)(closedCount),
                 activatable: true, use_markup: false});
             row.add_prefix(new Gtk.Image({gicon: this._icons[copy.closedIcon]}));
             row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
-            row.connect('activated', () => this._actions.open(src.closedUrl));
+            const url = closedPageUrl(src.account, this._key === 'issues' ? 'issue' : 'pr', this._repos());
+            row.connect('activated', () => this._actions.open(url));
             footer.add(row);
             add(footer);
         }
@@ -262,7 +253,7 @@ export class ListPage {
         });
         const a = this._actions;
         buttons.append(actionButton({iconName: 'web-browser-symbolic',
-            label: item.platform === 'gitlab' ? _('Open on GitLab') : _('Open on GitHub'), onClick: () => a.open(item.url)}));
+            label: a.openLabel(item), onClick: () => a.open(item.url)}));
         buttons.append(actionButton({iconName: 'chat-message-new-symbolic', label: _('Comment'), onClick: () => a.comment(item)}));
         buttons.append(item.kind === 'pr'
             ? actionButton({gicon: this._icons.prClosed, label: _('Close'), onClick: () => a.close(item)})

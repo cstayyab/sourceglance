@@ -4,18 +4,17 @@ import Gio from 'gi://Gio';
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {AccountClients, loadAccount, loadAccounts, rememberLogin} from './lib/accountStore.js';
+import {aggregateStatus, firstError, latestUpdate, sourceFrom} from './lib/accounts.js';
 import {ActionController} from './lib/actions.js';
 import {installLauncher, removeLauncher} from './lib/appLauncher.js';
 import {GitHubClient, GitHubError, isCancelled} from './lib/github.js';
-import {GitLabClient} from './lib/gitlab.js';
-import {loadGitLab} from './lib/gitlabLoader.js';
 import {ToolbarButton} from './lib/indicator.js';
+import {allowLinkBases} from './lib/requests.js';
 import {UpdateNotice} from './lib/updateNotice.js';
 import {backgroundSettings, forgetStaleSavedWallpaper} from './lib/wallpaper.js';
 import {DesktopWidgets} from './lib/widgets.js';
-import {groupIssues, itemKey, mergeItems, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
-import {GITLAB_CLIENT_ID} from './lib/config.js';
-import {lookupToken} from './lib/tokenStore.js';
+import {itemKey, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
 
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
@@ -33,24 +32,14 @@ const MAX_RECENTLY_CLOSED = 5;
 // Search can list a just-closed item as open for a while; after this, believe the search.
 const REOPENED_ELSEWHERE_MS = 2 * 60 * 1000;
 
+// `sources` has one entry per account, in the order of Settings → Accounts (see sourceFrom()
+// in lib/accounts.js): its lists grouped by repository, counts, closed counts and, for GitHub,
+// project boards. `status`, `updatedAt` and `error` sum them up.
 const INITIAL_STATE = {
     status: 'loading',
-    login: null,
-    groups: [],
-    prGroups: [],
+    sources: [],
     recentlyClosed: [],
     busy: [],
-    issueTotal: 0,
-    issueShown: 0,
-    prTotal: 0,
-    prShown: 0,
-    // Closed items still assigned to you; null until counted.
-    closedCounts: {issues: null, prs: null},
-    // Your project boards with their draft items; null until loaded.
-    boards: null,
-    boardsError: null,
-    // GitLab's lists, with the same field names; 'signed-out' shows no GitLab sections.
-    gitlab: {status: 'signed-out'},
     updatedAt: null,
     error: null,
     refreshing: false,
@@ -60,23 +49,22 @@ const INITIAL_STATE = {
 export default class SourceglanceExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
+        // For the update notice: sourceglance's releases are on github.com, signed in or not.
         this._client = new GitHubClient(this.metadata['version-name'] ?? 'dev');
-        this._gitlab = new GitLabClient(this.metadata['version-name'] ?? 'dev');
-        this._glResults = null;
+        this._clients = new AccountClients(this.metadata['version-name'] ?? 'dev');
         this._state = {...INITIAL_STATE};
-        this._login = null;
+        this._accounts = [];
         this._cancellable = null;
         this._timeoutId = 0;
-        this._results = null;
+        // Each account's last load, by account id: {account, status, updatedAt, error, issues, …}.
+        this._results = new Map();
         this._closed = new Map();
         this._busy = new Set();
 
         this._actions = new ActionController({
-            client: this._client,
-            gitlabClient: this._gitlab,
-            getToken: () => this._readToken(null),
-            getGitlabToken: () => this._gitlab.accessToken(GITLAB_CLIENT_ID),
-            getLogin: platform => platform === 'gitlab' ? this._state?.gitlab?.login ?? null : this._login,
+            clients: this._clients,
+            getAccount: id => this._accounts.find(account => account.id === id) ?? null,
+            getLogin: id => this._state?.sources.find(source => source.account.id === id)?.login ?? null,
             setBusy: (item, busy) => this._setBusy(item, busy),
             onChanged: (item, change) => this._onItemChanged(item, change),
         });
@@ -105,8 +93,6 @@ export default class SourceglanceExtension extends Extension {
                 this._syncLauncher();
             if (!this._running || UI_ONLY_KEYS.includes(key))
                 return;
-            if (key === 'token-changed')
-                this._login = null;
             if (TOOLBAR_KEYS.includes(key)) {
                 this._buildButtons();
                 this._setState({});
@@ -215,9 +201,9 @@ export default class SourceglanceExtension extends Extension {
 
         this._client?.destroy();
         this._client = null;
-        this._gitlab?.destroy();
-        this._gitlab = null;
-        this._glResults = null;
+        this._clients?.destroy();
+        this._clients = null;
+        this._accounts = null;
         this._results = null;
         this._closed = null;
         this._busy = null;
@@ -230,7 +216,6 @@ export default class SourceglanceExtension extends Extension {
         this._icons = null;
 
         this._state = null;
-        this._login = null;
     }
 
     /** The lists shown in the top bar, from Settings. */
@@ -325,96 +310,54 @@ export default class SourceglanceExtension extends Extension {
         this._schedule(3);
     }
 
-    /**
-     * Adds project board info to the listed items. Optional: if the sign-in can't read
-     * projects, the menu just shows no boards.
-     */
-    async _loadBoards(token, items, cancellable) {
-        try {
-            const boards = await this._client.getProjectBoards(token, items.map(item => item.nodeId), cancellable);
-            for (const item of items)
-                item.boards = boards.get(item.nodeId) ?? [];
-            this._publish();
-        } catch (e) {
-            if (isCancelled(e))
-                throw e;
-            if (!this._boardsWarned) {
-                this._boardsWarned = true;
-                console.warn(`sourceglance: project boards unavailable: ${e.kind ?? e.message}`);
+    /** Pushes every account's latest lists to the menus, hiding items closed from the menu. */
+    _publish() {
+        if (!this._results || !this._accounts)
+            return;
+        // Still open in search long after we closed it: it was reopened elsewhere.
+        for (const result of this._results.values()) {
+            for (const item of [...result.issues ?? [], ...result.prs ?? []]) {
+                const closed = this._closed.get(itemKey(item));
+                if (closed && Date.now() - closed.closedAt > REOPENED_ELSEWHERE_MS)
+                    this._closed.delete(itemKey(item));
             }
         }
-    }
-
-    /** Loads your boards and their draft items for the Projects list. Optional, like _loadBoards(). */
-    async _loadViewerBoards(token, cancellable) {
-        try {
-            const boards = await this._client.getViewerBoards(token, cancellable);
-            this._setState({boards, boardsError: null});
-        } catch (e) {
-            if (isCancelled(e))
-                throw e;
-            console.warn(`sourceglance: project boards unavailable: ${e.kind ?? e.message}`);
-            this._setState({boardsError: e.kind ?? 'unknown'});
-        }
-    }
-
-    /** Pushes the latest search results to the menu, hiding items closed from the menu. */
-    _publish() {
-        if (this._glResults) {
-            const gl = this._glResults;
-            const shownIssues = gl.issues.filter(item => !this._closed.has(itemKey(item)));
-            const shownPrs = gl.prs.filter(item => !this._closed.has(itemKey(item)));
-            this._setState({gitlab: {
-                status: 'ready', login: gl.login, updatedAt: gl.updatedAt, error: null,
-                closedCounts: gl.closedCounts,
-                groups: groupIssues(shownIssues),
-                prGroups: groupIssues(shownPrs),
-                issueTotal: Math.max(0, gl.issueTotal - (gl.issues.length - shownIssues.length)),
-                issueShown: shownIssues.length,
-                prTotal: Math.max(0, gl.prTotal - (gl.prs.length - shownPrs.length)),
-                prShown: shownPrs.length,
-            }});
-        }
-        if (!this._results)
-            return;
-        const {issues, prs, issueTotal, prTotal} = this._results;
-        // Still open in search long after we closed it: it was reopened elsewhere.
-        for (const item of [...issues, ...prs]) {
-            const closed = this._closed.get(itemKey(item));
-            if (closed && Date.now() - closed.closedAt > REOPENED_ELSEWHERE_MS)
-                this._closed.delete(itemKey(item));
-        }
-        const visible = list => list.filter(item => !this._closed.has(itemKey(item)));
-        const shownIssues = visible(issues);
-        const shownPrs = visible(prs);
+        const hidden = item => this._closed.has(itemKey(item));
+        const sources = this._accounts.map(account => sourceFrom(account, this._results.get(account.id), hidden));
         this._setState({
-            groups: groupIssues(shownIssues),
-            prGroups: groupIssues(shownPrs),
+            sources,
+            status: aggregateStatus(sources),
+            updatedAt: latestUpdate(sources),
+            error: firstError(sources),
             recentlyClosed: [...this._closed.values()].reverse(),
-            issueTotal: Math.max(0, issueTotal - (issues.length - shownIssues.length)),
-            issueShown: shownIssues.length,
-            prTotal: Math.max(0, prTotal - (prs.length - shownPrs.length)),
-            prShown: shownPrs.length,
         });
     }
 
-    /** Loads GitLab next to GitHub; its errors only mark the GitLab sections. */
-    async _loadGitLab(cancellable) {
+    /** Loads one account; its errors only mark its own section. Resolves to the error, if any. */
+    async _loadAccount(account, options, cancellable) {
         try {
-            const gl = await loadGitLab(this._gitlab, cancellable);
-            if (gl.status === 'signed-out') {
-                this._glResults = null;
-                this._setState({gitlab: {status: 'signed-out'}});
-            } else {
-                this._glResults = gl;
-                this._publish();
-            }
+            const result = await loadAccount(this._clients, account, options, cancellable);
+            if (cancellable.is_cancelled())
+                return null;
+            this._results.set(account.id, result.status === 'signed-out'
+                ? {status: 'signed-out'}
+                : {...result, updatedAt: new Date(), error: null});
+            if (result.login && result.login !== account.login)
+                rememberLogin(this._settings, account.id, result.login);
+            this._publish();
+            return null;
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
-                return;
-            console.warn(`sourceglance: GitLab refresh failed: ${e.kind ?? e.message}`);
-            this._setState({gitlab: {...this._state.gitlab, status: 'error',
-                error: {kind: e.kind ?? 'unknown', retryAt: e.retryAt ?? null}}});
+                return null;
+            const error = e instanceof GitHubError
+                ? {kind: e.kind, retryAt: e.retryAt ?? null}
+                : {kind: 'unknown', retryAt: null};
+            if (!(e instanceof GitHubError))
+                console.error(`sourceglance: refresh of ${account.platform} account failed`, e);
+            // Keep the last lists, marked with the error.
+            this._results.set(account.id, {...this._results.get(account.id), status: 'error', error});
+            this._publish();
+            return error;
         }
     }
 
@@ -430,18 +373,6 @@ export default class SourceglanceExtension extends Extension {
         });
     }
 
-    async _readToken(cancellable) {
-        try {
-            return await lookupToken(cancellable);
-        } catch (e) {
-            if (isCancelled(e))
-                throw e;
-            // A locked or missing keyring is treated as signed out (ADR 0002).
-            console.warn(`sourceglance: keyring unavailable: ${e.message}`);
-            return null;
-        }
-    }
-
     async _refresh() {
         if (!this._running)
             return;
@@ -452,79 +383,40 @@ export default class SourceglanceExtension extends Extension {
 
         const intervalMinutes = this._settings.get_int('refresh-interval');
         this._setState({refreshing: true, intervalMinutes});
-        const gitlabDone = this._loadGitLab(cancellable);
-
-        let error = null;
+        let errors = [];
         try {
-            const token = await this._readToken(cancellable);
-            if (!token) {
-                this._login = null;
-                this._results = null;
+            this._accounts = await loadAccounts(this._settings, cancellable);
+            allowLinkBases(this._accounts.map(account => account.base));
+            this._clients.prune(this._accounts);
+            for (const id of [...this._results.keys()]) {
+                if (!this._accounts.some(account => account.id === id))
+                    this._results.delete(id);
+            }
+            if (this._accounts.length === 0) {
                 this._closed.clear();
-                this._setState({...INITIAL_STATE, gitlab: this._state.gitlab, status: 'signed-out', intervalMinutes});
+                this._setState({...INITIAL_STATE, status: 'signed-out', intervalMinutes, busy: this._state.busy});
                 return;
             }
-            if (this._state.status === 'signed-out')
-                this._setState({status: 'loading'});
-
-            this._login ??= await this._client.getViewer(token, cancellable);
-            const repos = this._settings.get_strv('repositories');
-            // The closed counts only fill the list footers, so a failure there isn't fatal.
-            const count = search => this._client.countSearch(token, repos, search, cancellable)
-                .catch(e => {
-                    if (isCancelled(e))
-                        throw e;
-                    return null;
-                });
-            const [issues, assigned, review, closedIssues, closedPrs] = await Promise.all([
-                ...['issue', 'pr-assigned', 'pr-review'].map(search =>
-                    this._client.search(token, repos, search, cancellable)),
-                count('issue-closed'),
-                count('pr-closed'),
-            ]);
-            const prs = mergeItems(assigned.items, review.items);
-            // Results past the first page of either PR search aren't in `prs`.
-            const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
-                Math.max(0, review.total - review.items.length);
-
-            // Show boards from the last refresh until the new ones arrive.
-            const previous = new Map([...this._results?.issues ?? [], ...this._results?.prs ?? []]
-                .map(item => [itemKey(item), item.boards]));
-            const all = [...issues.items, ...prs];
-            for (const item of all)
-                item.boards = previous.get(itemKey(item)) ?? [];
-
-            this._results = {issues: issues.items, prs, issueTotal: issues.total, prTotal};
-            this._setState({
-                status: 'ready',
-                login: this._login,
-                closedCounts: {issues: closedIssues, prs: closedPrs},
-                updatedAt: new Date(),
-                error: null,
-                refreshing: false,
-            });
             this._publish();
-            await this._loadBoards(token, all, cancellable);
             // Boards feed the Projects list and the projects and summary widgets.
             const widgets = normalizeWidgets(this._settings.get_strv('widgets'));
-            if (this._lists().includes('projects') || widgets.includes('projects') || widgets.includes('summary'))
-                await this._loadViewerBoards(token, cancellable);
+            const options = {
+                repos: this._settings.get_strv('repositories'),
+                projects: this._lists().includes('projects') || widgets.includes('projects') || widgets.includes('summary'),
+            };
+            errors = (await Promise.all(this._accounts.map(account =>
+                this._loadAccount(account, options, cancellable)))).filter(Boolean);
         } catch (e) {
             if (isCancelled(e) || cancellable.is_cancelled())
                 return;
-            if (e instanceof GitHubError) {
-                error = {kind: e.kind, retryAt: e.retryAt};
-                if (e.kind === 'auth')
-                    this._login = null;
-            } else {
-                error = {kind: 'unknown', retryAt: null};
-                console.error('sourceglance: refresh failed', e);
-            }
-            this._setState({status: 'error', login: this._login, error, refreshing: false});
+            console.error('sourceglance: refresh failed', e);
+            errors = [{kind: 'unknown', retryAt: null}];
         } finally {
-            await gitlabDone;
             if (this._cancellable === cancellable) {
                 this._cancellable = null;
+                this._setState({refreshing: false});
+                // A rate limit on any account waits for its reset; other errors retry sooner.
+                const error = errors.find(e => e.kind === 'rate-limit') ?? errors[0] ?? null;
                 this._schedule(nextRefreshDelaySeconds(intervalMinutes, error));
             }
         }

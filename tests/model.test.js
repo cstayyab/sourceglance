@@ -515,15 +515,17 @@ test('assignee and label pickers: choices and change requests', () => {
 });
 
 test('listBadge shows counts once loaded, 0 included', () => {
-    const base = {status: 'ready', updatedAt: new Date(), issueTotal: 0, issueShown: 0, prTotal: 30, prShown: 25,
-        boards: [{drafts: [1, 2]}], boardsError: null};
-    assert.equal(listBadge('issues', base), '0');
-    assert.equal(listBadge('prs', base), '25+');
-    assert.equal(listBadge('projects', base), '2');
-    assert.equal(listBadge('projects', {...base, boards: null}), '…');
-    assert.equal(listBadge('projects', {...base, boards: null, boardsError: 'forbidden'}), '');
-    assert.equal(listBadge('issues', {...base, status: 'signed-out'}), '');
-    assert.equal(listBadge('issues', {...base, updatedAt: null}), '');
+    const base = {platform: 'github', status: 'ready', updatedAt: new Date(), issueTotal: 0, issueShown: 0, prTotal: 30,
+        prShown: 25, boards: [{drafts: [1, 2]}], boardsError: null};
+    const one = source => ({sources: [source]});
+    assert.equal(listBadge('issues', one(base)), '0');
+    assert.equal(listBadge('prs', one(base)), '25+');
+    assert.equal(listBadge('projects', one(base)), '2');
+    assert.equal(listBadge('projects', one({...base, boards: null})), '…');
+    assert.equal(listBadge('projects', one({...base, boards: null, boardsError: 'forbidden'})), '');
+    assert.equal(listBadge('issues', one({...base, status: 'signed-out'})), '');
+    assert.equal(listBadge('issues', one({...base, updatedAt: null})), '');
+    assert.equal(listBadge('issues', {sources: []}), '');
 });
 
 test('desktop widget ids, default spots and clamping', () => {

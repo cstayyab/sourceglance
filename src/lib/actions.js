@@ -11,6 +11,7 @@ import {
     labelChoices,
     moveStatusRequest,
 } from './model.js';
+import {accountForItem} from './accounts.js';
 import {assigneeRequests, closeRequests, commentRequests, labelRequests, reopenRequests} from './requests.js';
 
 // Repository labels and assignable users change rarely; refetch after this long.
@@ -41,6 +42,10 @@ function actionErrorText(error, item = null) {
     switch (error.kind) {
     case 'auth':
         return _('Your sign-in was rejected. Sign in again in Settings.');
+    case 'signed-out':
+        return _('The account this came from is no longer signed in.');
+    case 'insecure':
+        return _('This instance uses plain http:// and isn’t on your local network now, so Source Glance won’t send your sign-in to it.');
     case 'forbidden':
         return forbiddenText(item);
     case 'not-found':
@@ -60,20 +65,18 @@ function actionErrorText(error, item = null) {
 
 export class ActionController {
     /**
+     * Every change runs as the account the item came from (item.accountId).
+     *
      * @param {object} params
-     * @param {GitHubClient} params.client
-     * @param {GitLabClient} params.gitlabClient
-     * @param {() => Promise<string|null>} params.getToken GitHub
-     * @param {() => Promise<string|null>} params.getGitlabToken
-     * @param {(platform: string) => string|null} params.getLogin
+     * @param {AccountClients} params.clients a client and token per account (accountStore.js)
+     * @param {(id: string) => object|null} params.getAccount the account with that id
+     * @param {(id: string) => string|null} params.getLogin that account's login
      * @param {(item, busy: boolean) => void} params.setBusy
      * @param {(item, change: 'closed'|'reopened'|'updated') => void} params.onChanged
      */
-    constructor({client, gitlabClient, getToken, getGitlabToken, getLogin, setBusy, onChanged}) {
-        this._client = client;
-        this._gitlabClient = gitlabClient;
-        this._getToken = getToken;
-        this._getGitlabToken = getGitlabToken;
+    constructor({clients, getAccount, getLogin, setBusy, onChanged}) {
+        this._clients = clients;
+        this._getAccount = getAccount;
         this._getLogin = getLogin;
         this._setBusy = setBusy;
         this._onChanged = onChanged;
@@ -91,16 +94,16 @@ export class ActionController {
         this._dialog?.close();
         this._dialog = null;
         this._cache.clear();
-        this._client = null;
-        this._gitlabClient = null;
+        this._clients = null;
     }
 
-    _clientFor(item) {
-        return item.platform === 'gitlab' ? this._gitlabClient : this._client;
-    }
-
-    _tokenFor(item) {
-        return item.platform === 'gitlab' ? this._getGitlabToken() : this._getToken();
+    /** The item's account, its client and token; throws a sign-in error when it's gone. */
+    async _session(item) {
+        const account = this._getAccount(accountForItem(item));
+        const token = account ? await this._clients.tokenFor(account) : null;
+        if (!token)
+            throw new GitHubError({kind: account ? 'auth' : 'signed-out', status: 401, retryAt: null});
+        return {account, client: this._clients.clientFor(account), token};
     }
 
     /** `arg` is the project board for 'status'. */
@@ -157,8 +160,8 @@ export class ActionController {
         dialog.open();
     }
 
-    async _cachedList(kind, repo, fetch) {
-        const key = `${kind}:${repo}`;
+    async _cachedList(kind, item, fetch) {
+        const key = `${accountForItem(item)}\n${kind}:${item.repo}`;
         const hit = this._cache.get(key);
         if (hit && Date.now() - hit.at < LIST_CACHE_MS)
             return hit.list;
@@ -170,13 +173,13 @@ export class ActionController {
     async _pickAssignees(item) {
         // GitLab assigns by user id, so keep its members ({id, username}) for the request.
         const gitlab = item.platform === 'gitlab';
-        const members = await this._load(item, token => this._cachedList(`assignees:${item.platform ?? 'github'}`, item.repo,
+        const members = await this._load(item, ({client, token}) => this._cachedList('assignees', item,
             () => gitlab
-                ? this._gitlabClient.listMembers(token, item.projectId)
-                : this._client.listAssignable(token, item.repo).then(logins => logins.map(username => ({username})))));
+                ? client.listMembers(token, item.projectId)
+                : client.listAssignable(token, item.repo).then(logins => logins.map(username => ({username})))));
         if (!members)
             return;
-        const me = this._getLogin(item.platform ?? 'github');
+        const me = this._getLogin(accountForItem(item));
         const all = assigneeChoices(item, me, members.map(member => member.username));
         this._open(new PickerDialog({
             title: _('Assignees'),
@@ -189,10 +192,10 @@ export class ActionController {
     }
 
     async _pickLabels(item) {
-        const labels = await this._load(item, token => this._cachedList(`labels:${item.platform ?? 'github'}`, item.repo,
+        const labels = await this._load(item, ({client, token}) => this._cachedList('labels', item,
             () => item.platform === 'gitlab'
-                ? this._gitlabClient.listLabels(token, item.projectId)
-                : this._client.listLabels(token, item.repo)));
+                ? client.listLabels(token, item.projectId)
+                : client.listLabels(token, item.repo)));
         if (!labels)
             return;
         const current = item.labels.map(label => label.name);
@@ -211,10 +214,7 @@ export class ActionController {
     async _load(item, fetch) {
         this._setBusy(item, true);
         try {
-            const token = await this._tokenFor(item);
-            if (!token)
-                throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
-            return await fetch(token);
+            return await fetch(await this._session(item));
         } catch (e) {
             if (!isCancelled(e))
                 Main.notify(_('Source Glance'), actionErrorText(e, item));
@@ -230,11 +230,9 @@ export class ActionController {
             return;
         this._setBusy(item, true);
         try {
-            const token = await this._tokenFor(item);
-            if (!token)
-                throw new GitHubError({kind: 'auth', status: 401, retryAt: null});
+            const {client, token} = await this._session(item);
             for (const request of requests)
-                await this._clientFor(item).send(token, request);
+                await client.send(token, request);
             Main.notify(_('Source Glance'), _('%s: %s').format(doneText, itemText(item)));
             this._onChanged(item, change);
         } catch (e) {
