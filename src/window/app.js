@@ -77,7 +77,13 @@ export function fillWindow(window, {settings, dir, version}) {
         showCounts();
         refresh.sensitive = !state.refreshing;
     }});
-    const actions = new WindowActions({window, clients, data, toast, icons});
+    // The preview shows in the window's right panel (built with the layout, below).
+    const panel = {
+        show: params => main?.showPanel(params),
+        hide: () => main?.hidePanel(),
+        isFor: owner => main?.isPanelFor(owner) ?? false,
+    };
+    const actions = new WindowActions({window, clients, data, toast, icons, panel});
     const repos = () => settings.get_strv('repositories');
     const onClearSearch = () => {
         search.text = '';

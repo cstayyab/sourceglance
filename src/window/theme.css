@@ -180,3 +180,13 @@
     font-size: smaller;
     font-weight: bold;
 }
+
+/* The right panel (an item's preview): docked beside the list, its own small header. */
+.sourceglance-window .sourceglance-panel {
+    background-color: @window_bg_color;
+}
+
+.sourceglance-window .sourceglance-panel-head {
+    min-height: 46px;
+    padding: 0 6px;
+}

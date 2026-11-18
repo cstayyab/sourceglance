@@ -9,9 +9,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Preview** an issue, pull or merge request, or project draft from its row in the window:
-  the description, which you can edit, then its comments and reactions (read only) and a box
-  to add a comment. Project drafts show their description only.
+- **Preview** an issue, pull or merge request, or project draft from its row in the window,
+  in a panel on the right beside the list: the description, which you can edit, then its
+  comments and reactions (read only) and a box to add a comment. Drag the panel's edge to
+  resize it. Project drafts show their description only.
 - A small **Markdown editor** for comments and descriptions, with a toolbar for bold, italic,
   strikethrough, inline code, bulleted and numbered lists, quotes and code blocks, plus
   Ctrl+B, Ctrl+I and Ctrl+Enter to post.

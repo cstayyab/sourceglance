@@ -103,8 +103,10 @@ function errorText(error, item = null) {
 
 export class WindowActions {
     /** `data` is the WindowData; `clients` an AccountClients; `window` parents the dialogs. */
-    constructor({window, clients, data, toast, icons}) {
+    /** `panel` is {show({title, subtitle, child, owner}), hide(), isFor(owner)}: the window's right panel. */
+    constructor({window, clients, data, toast, icons, panel}) {
         this._window = window;
+        this._panel = panel;
         this._icons = icons;
         // Items whose labels and assignees are showing (collapsed by default), by itemKey().
         this._expanded = new Set();
@@ -247,24 +249,17 @@ export class WindowActions {
     }
 
     /**
-     * The preview: the description (editable), the comments and reactions (read only), and a
-     * box to add a comment. Drafts show only their description. Text stays plain.
+     * The preview, in the window's right panel: the description (editable), the comments and
+     * reactions (read only), and a box to add a comment. Drafts show only their description.
+     * Text stays plain.
      */
     preview(item) {
         const draft = item.kind === 'draft';
-        const header = new Adw.HeaderBar({title_widget: new Adw.WindowTitle({title: itemText(item),
-            subtitle: draft ? '' : item.repo})});
-        const stack = new Gtk.Stack({transition_type: Gtk.StackTransitionType.CROSSFADE});
-        stack.add_named(new Gtk.Spinner({spinning: true, width_request: 32, height_request: 32,
-            halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}), 'loading');
-        const scroller = new Gtk.ScrolledWindow({hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true});
-        stack.add_named(scroller, 'details');
-        const toolbarView = new Adw.ToolbarView({content: stack});
-        toolbarView.add_top_bar(header);
-        const dialog = new Adw.Dialog({child: toolbarView, content_width: 640, content_height: 680, title: itemText(item)});
-
+        const owner = itemKey(item);
+        const show = child => this._panel.show({title: itemText(item), subtitle: draft ? '' : item.repo, child, owner});
         const load = async () => {
-            stack.visible_child_name = 'loading';
+            show(new Gtk.Spinner({spinning: true, width_request: 32, height_request: 32,
+                halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
             const {requests, parse} = previewRequests(item);
             const details = await this._fetch(item, async ({client, token}) => {
                 const responses = [];
@@ -272,20 +267,22 @@ export class WindowActions {
                     responses.push(await client.send(token, request));
                 return parse(responses);
             }, false);
+            // Another item's preview may have replaced this one meanwhile, or it was closed.
+            if (!this._panel.isFor(owner))
+                return;
             if (!details) {
-                dialog.close();
+                this._panel.hide();
                 return;
             }
-            scroller.child = this._previewContent(item, details, load);
-            stack.visible_child_name = 'details';
+            show(new Gtk.ScrolledWindow({child: this._previewContent(item, details, load),
+                hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true}));
         };
-        dialog.present(this._window);
         load();
     }
 
     _previewContent(item, details, reload) {
-        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 18,
-            margin_top: 18, margin_bottom: 18, margin_start: 18, margin_end: 18});
+        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 14,
+            margin_top: 14, margin_bottom: 14, margin_start: 14, margin_end: 14});
 
         // Description: shown, or the editor while editing.
         const heading = new Gtk.Box({spacing: 6});

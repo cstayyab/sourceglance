@@ -66,7 +66,8 @@ function entryRow(entry) {
  * @param {Gtk.Widget} [params.headerEnd] shown at the end of the content header bar
  * @param {Function} [params.onPageChanged] called with the selected entry's id
  * @returns {{setCount(id: string, text: string): void, setSubtitle(text: string): void,
- *   select(id: string): void, current(): string|null}}
+ *   select(id: string): void, current(): string|null, showPanel(params: object): void,
+ *   hidePanel(): void, isPanelFor(owner: string): boolean}}
  */
 export function buildMainWindow(window, {appIcon, overlay, entries, headerStart = null, headerEnd = null,
     onPageChanged = null}) {
@@ -95,7 +96,30 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerStart 
     sidebarView.add_top_bar(sidebarHeader);
     const sidebarPage = new Adw.NavigationPage({title: 'Source Glance', child: sidebarView});
 
-    const contentView = new Adw.ToolbarView({content: stack});
+    // A panel docked on the right of the page (e.g. an item's preview): beside the list, not
+    // over it, shown and hidden at once. Drag the divider to resize it.
+    const panelTitle = new Adw.WindowTitle();
+    const panelClose = new Gtk.Button({icon_name: 'window-close-symbolic', tooltip_text: _('Close'),
+        css_classes: ['flat'], valign: Gtk.Align.CENTER});
+    const panelHead = new Gtk.CenterBox({center_widget: panelTitle, end_widget: panelClose,
+        css_classes: ['sourceglance-panel-head']});
+    const panelBody = new Adw.Bin({vexpand: true});
+    const panel = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, visible: false, width_request: 320,
+        css_classes: ['sourceglance-panel']});
+    panel.append(panelHead);
+    panel.append(new Gtk.Separator());
+    panel.append(panelBody);
+    const paned = new Gtk.Paned({start_child: stack, end_child: panel, resize_start_child: true,
+        resize_end_child: false, shrink_start_child: false, shrink_end_child: false, wide_handle: false});
+    let panelOwner = null;
+    const hidePanel = () => {
+        panel.visible = false;
+        panelBody.child = null;
+        panelOwner = null;
+    };
+    panelClose.connect('clicked', hidePanel);
+
+    const contentView = new Adw.ToolbarView({content: paned});
     // The page's name, with a subtitle such as the number of search results.
     const windowTitle = new Adw.WindowTitle();
     const contentHeader = new Adw.HeaderBar({title_widget: windowTitle});
@@ -180,5 +204,23 @@ export function buildMainWindow(window, {appIcon, overlay, entries, headerStart 
             windowTitle.subtitle = text;
         },
         select,
+        /**
+         * Shows `child` in the right panel under `title` (and `subtitle`). `owner` tells who
+         * has it now, e.g. an item's key; isPanelFor() checks it.
+         */
+        showPanel({title, subtitle = '', child, owner = null}) {
+            panelTitle.title = title;
+            panelTitle.subtitle = subtitle;
+            panelBody.child = child;
+            panelOwner = owner;
+            if (!panel.visible) {
+                panel.visible = true;
+                const width = paned.get_width();
+                if (width > 0)
+                    paned.position = Math.max(360, width - Math.min(460, Math.round(width * 0.45)));
+            }
+        },
+        hidePanel,
+        isPanelFor: owner => panel.visible && panelOwner === owner,
     };
 }

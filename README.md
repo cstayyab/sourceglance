@@ -222,8 +222,9 @@ Click any issue, pull request or merge request in a menu for its actions:
 
 In the window, each row has its actions as icons on the title line (hover one for its name):
 
-- **Preview**: the description, which you can edit, then the comments and reactions (read
-  only) and a box to add a comment. Project drafts show their description only.
+- **Preview**: opens a panel on the right of the window, beside the list, with the
+  description, which you can edit, then the comments and reactions (read only) and a box to
+  add a comment. Drag its edge to resize it. Project drafts show their description only.
 - **Comment**, with the number of comments on the button's corner.
 - **Close**, and a button for each project board it's on, to move it to another status.
 - **Open** in your browser.
