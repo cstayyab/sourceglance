@@ -28,7 +28,8 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   Drag them anywhere, set their opacity, click an item to open it. Apply the wallpaper
   they're made for (GNOME's Adwaita) in one click, and Reset to put yours back.
 - **Top bar**: buttons for Source Glance, Issues, Pull requests and Projects as one tinted
-  group or as tabs in one menu, each with its count (0 included).
+  group or as tabs in one menu, each with its count (0 included). The menus have a steady
+  width that fits your screen.
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
 - **Preview and edit in the window**: read an item's description, comments and reactions,
@@ -211,6 +212,11 @@ The top bar shows Source Glance's buttons as one tinted block, each list with it
 Each list can be filtered by label and ends with how many closed items are still assigned
 to you. In **Settings → System Tray** you choose which lists to show, and whether they're
 separate buttons or **tabs in one menu**.
+
+The menus are about a quarter of your screen wide (28 %), never narrower than 360 or wider
+than 560 pixels at 100 % scaling. The width is set when Source Glance starts and stays put
+as lists load, refresh or switch tabs; it changes only when you change the screen
+resolution or display scaling.
 
 ### Actions
 

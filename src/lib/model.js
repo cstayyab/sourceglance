@@ -158,6 +158,22 @@ export function classifyDeviceTokenResponse(json, interval) {
     }
 }
 
+// Top-bar menu width (lib/indicator.js): a share of the screen, within readable limits.
+export const MENU_WIDTH_SHARE = 0.28;
+export const MENU_MIN_WIDTH = 360;
+export const MENU_MAX_WIDTH = 560;
+
+/**
+ * Width of a top-bar menu, in the same pixels as `monitorWidth`. The share applies to the
+ * screen, and the limits (logical pixels) are multiplied by `scale`, the shell's scale factor,
+ * so the menu is neither cramped on a small screen nor stretched on a wide one.
+ */
+export function menuWidth(monitorWidth, scale = 1) {
+    const factor = scale > 0 ? scale : 1;
+    const wanted = monitorWidth * MENU_WIDTH_SHARE;
+    return Math.round(Math.min(Math.max(wanted, MENU_MIN_WIDTH * factor), MENU_MAX_WIDTH * factor));
+}
+
 // Desktop widgets (lib/widgets.js): which cards, and where they go.
 export const WIDGET_IDS = ['summary', 'issues', 'prs', 'projects'];
 export const WIDGET_WIDTH = 320;

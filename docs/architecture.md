@@ -43,7 +43,7 @@ It runs in two processes that share code under `src/lib/`:
 | `extension.js` | Lifecycle (`enable`/`disable`), refresh timer, reacts to settings and keyring changes, builds the state passed to the indicator | everything below |
 | `launcher.js` | Source Glance's own app: splash, then the window (`window/app.js`); `--open` skips the splash | `window/app.js` |
 | `prefs.js` | The same window when GNOME's Extensions app opens it | `window/app.js` |
-| `lib/indicator.js` | `PanelMenu.Button` subclass. Pure view: `render(state)` rebuilds the menu. No network or storage access. | `model` |
+| `lib/indicator.js` | `PanelMenu.Button` subclass. Pure view: `render(state)` rebuilds the menu. Sizes the menu once from the primary monitor (`menuWidth`), again only on `monitors-changed` or a scale-factor change. No network or storage access. | `model` |
 | `lib/github.js` | `GitHubClient`: authenticated REST calls to github.com or a GitHub Enterprise Server instance, maps HTTP failures to typed errors | `model`, `accounts`, `transport` |
 | `lib/gitlab.js` | `GitLabClient`: the same for gitlab.com or a self-managed instance, with token renewal | `gitlabModel`, `accounts`, `transport` |
 | `lib/transport.js` | Sends requests for one instance; plain http:// only to checked LAN addresses, pinned per connection; no redirects for self-hosted instances ([ADR 0007](adr/0007-multiple-accounts-and-self-hosted-instances.md)) | `accounts` |
