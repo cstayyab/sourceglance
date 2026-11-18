@@ -40,21 +40,15 @@ allow it:
 
 ## 4. Double-click and follow the wizard
 
-![Welcome page of sourceglance Setup](images/setup-welcome.png)
-
 1. **Welcome** — click **Next**.
 2. **License Agreement** — read the MIT License. sourceglance is provided *as is*, without
    warranty. Choose **I accept** to continue.
-
-   ![License Agreement page](images/setup-license.png)
 
 3. **Before You Install** — what Setup will change, and the risks.
 4. **Setup Options** — sourceglance installs only for you; leave **Turn on sourceglance after
    installation** on.
 5. **System Check** — every line needs a ✓. If **User extensions are turned off**, click
    **Turn On**.
-
-   ![System Check page](images/setup-check.png)
 
 6. **Ready to Install** — click **Install**.
 7. **Completed** — tick **Log out now** if you like, then **Finish**.
@@ -73,8 +67,6 @@ After you log back in, click the sourceglance icon in the top bar and choose **S
 
 Run the same setup file again. If sourceglance is already installed, Setup opens on
 **Program Maintenance**:
-
-![Program Maintenance page](images/setup-maintenance.png)
 
 - **Repair** reinstalls the files. Your settings and saved token are kept.
 - **Remove** uninstalls sourceglance. Deleting your saved token and resetting settings are

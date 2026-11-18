@@ -19,9 +19,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **A main window** with every list, a search box, and all settings in one place.
 - **One-click updates**: a verified download, applied without logging out.
 
-![Source Glance desktop widgets and top-bar buttons on an Ubuntu desktop](docs/images/widgets.png)
-
-> **Status: early releases.** v0.4.2 is the latest, published as a pre-release. Try it, and
+> **Status: early releases.** v0.5.0 is the latest, published as a pre-release. Try it, and
 > [report anything odd](https://github.com/omer-gh/sourceglance/issues).
 
 ## Features
@@ -192,8 +190,6 @@ Organization repositories need an organization owner to install it.
 
 ### Top bar
 
-![The Issues menu with GitHub and GitLab sections](docs/images/menu.png)
-
 The top bar shows Source Glance's buttons as one tinted block, each list with its count:
 
 - **Source Glance**: who you're signed in as, Refresh, Settings and **About Source Glance**,
@@ -218,8 +214,6 @@ Click any issue, pull request or merge request, in a menu or in the window, for 
 - **Board: Status…** for each project board it's on
 
 ### Main window
-
-![The Source Glance window with the Issues list and the settings sidebar](docs/images/window.png)
 
 The window has your **Issues**, **Pull requests** and **Projects** in a sidebar, with counts
 and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
