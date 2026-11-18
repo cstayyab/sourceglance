@@ -7,12 +7,14 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-18
+
 ### Changed
 
 - The **top-bar menus keep one width**: about a quarter of your screen (28 %), at least 360
   and at most 560 pixels at 100 % scaling, so they no longer grow or shrink as lists load,
   refresh or switch tabs. The width changes only when you change the screen resolution or
-  display scaling.
+  display scaling. ([#74](https://github.com/omer-gh/sourceglance/pull/74))
 
 ## [0.7.0] - 2026-11-18
 
@@ -227,7 +229,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/omer-gh/sourceglance/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/omer-gh/sourceglance/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/omer-gh/sourceglance/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/omer-gh/sourceglance/compare/v0.4.2...v0.5.0
