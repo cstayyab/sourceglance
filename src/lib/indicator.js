@@ -7,10 +7,11 @@ import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {gtypeName, toggleId} from './model.js';
+import {gtypeName, menuWidth, toggleId} from './model.js';
 import {TabBar} from './tabs.js';
 import {VIEWS, addAppFooter, badgeText} from './views.js';
 
@@ -72,11 +73,29 @@ class ToolbarButton extends PanelMenu.Button {
         box.add_child(this._count);
         this.add_child(box);
 
+        // The menu keeps one width while the shell runs, whatever the list holds; it changes
+        // only when the screen's resolution or scaling does.
+        this._themeContext = St.ThemeContext.get_for_stage(global.stage);
+        this._sizeMenu();
+        const monitorsId = Main.layoutManager.connect('monitors-changed', () => this._sizeMenu());
+        const scaleId = this._themeContext.connect('notify::scale-factor', () => this._sizeMenu());
+        this.connect('destroy', () => {
+            Main.layoutManager.disconnect(monitorsId);
+            this._themeContext.disconnect(scaleId);
+        });
+
         // Rebuild on open so "updated N min ago" is current.
         this.menu.connect('open-state-changed', (_menu, open) => {
             if (open && this._state)
                 this._rebuildMenu();
         });
+    }
+
+    _sizeMenu() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return;
+        this.menu.box.width = menuWidth(monitor.width, this._themeContext.scale_factor);
     }
 
     render(state) {

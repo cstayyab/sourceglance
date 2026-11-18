@@ -7,6 +7,13 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The **top-bar menus keep one width**: about a quarter of your screen (28 %), at least 360
+  and at most 560 pixels at 100 % scaling, so they no longer grow or shrink as lists load,
+  refresh or switch tabs. The width changes only when you change the screen resolution or
+  display scaling.
+
 ## [0.7.0] - 2026-11-18
 
 ### Added
