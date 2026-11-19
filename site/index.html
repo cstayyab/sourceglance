@@ -16,7 +16,8 @@
     <div class="wrap header-row">
       <a class="brand" href="#top"><img src="icon.svg" alt="" width="28" height="28"> Source Glance</a>
       <nav>
-        <a class="wide-only" href="#in-action">In action</a>
+        <a class="wide-only" href="#new">What's new</a>
+          <a class="wide-only" href="#in-action">In action</a>
         <a class="wide-only" href="#features">Features</a>
         <a href="#install">Install</a>
         <a href="#contribute">Contribute</a>
@@ -79,6 +80,39 @@
           <div class="notice" data-el="toast"><b>Source Glance</b>Closed: #42 Fix the login redirect</div>
           <i class="cursor" data-el="cursor" aria-hidden="true"></i>
         </figure>
+      </div>
+    </section>
+
+    <section id="new" class="whats-new">
+      <div class="wrap">
+        <p class="kicker">New in this release</p>
+        <h2>Widgets you arrange, sizes you pick, the whole team in view</h2>
+        <div class="new-grid">
+          <article>
+            <i class="feat ic-widgets"></i>
+            <h3>Widgets in the window</h3>
+            <p>Glance → Widgets draws your cards on your wallpaper at their real size. Drag to
+              rearrange, and choose which ones also sit on the desktop.</p>
+          </article>
+          <article>
+            <i class="feat ic-size"></i>
+            <h3>Sizes and arrangements</h3>
+            <p>Small, Medium or Large, per card or for all. On the desktop: a grid at the top
+              right, a column at either edge, or a row along the top or bottom.</p>
+          </article>
+          <article>
+            <i class="feat ic-filter"></i>
+            <h3>Custom widgets</h3>
+            <p>Build a card from filters: account, repositories, labels, review requests or
+              search words. Name it, pick an icon; it stays through updates.</p>
+          </article>
+          <article>
+            <i class="feat ic-team"></i>
+            <h3>The whole team, custom fields</h3>
+            <p>The window can show everything open in your repositories, whoever has it. Each
+              item's ⋮ menu edits its custom and project fields.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -240,8 +274,9 @@
         <div class="scene" id="scene-desk" role="tabpanel" aria-labelledby="tab-desk" hidden>
           <div class="scene-copy">
             <h3>Your day, right on the wallpaper</h3>
-            <p>Summary, Issues, Pull requests and Projects cards sit on your desktop. Drag them where
-              you like; they update with the top bar, so a glance between windows is enough.</p>
+            <p>Summary, Issues, Pull requests, Projects and widgets you make yourself sit on your
+              desktop, Small, Medium or Large. Arrange them in the window or drag them on the desktop;
+              they update with the top bar, so a glance between windows is enough.</p>
           </div>
           <figure class="demo desk" data-scene="desk" aria-label="Animation: desktop widgets appear on the wallpaper and a new review request raises the pull request count">
             <div class="widget w-sum" data-el="w1"><b>Source Glance</b><span><i class="ic ic-check"></i>Issues<em>3</em></span><span><i class="ic ic-pr"></i>Pull requests<em data-el="prs">2</em></span><span><i class="ic ic-checklist"></i>Project drafts<em>4</em></span></div>
@@ -267,7 +302,7 @@
           <article>
             <i class="feat ic-pr"></i>
             <h3>Act where you are</h3>
-            <p>Comment, close or reopen, edit assignees and labels, and move items between
+            <p>Comment, close or reopen, edit assignees, labels and custom fields, and move items between
               statuses on your project boards, from the top bar or the window. Comment opens a
               box right under the item; the ⋮ menu copies references and links.</p>
           </article>
