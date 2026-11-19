@@ -14,7 +14,7 @@ People asked for three things:
 - several accounts per platform, such as a personal and a work account;
 - GitLab self-managed and GitHub Enterprise Server;
 - Gitea and Forgejo, which are tracked in
-  [#60](https://github.com/omer-gh/sourceglance/issues/60) and not part of this decision.
+  [#11](https://github.com/omer-gh/sourceglance/issues/11) and not part of this decision.
 
 Self-hosted instances change the security model. The user now chooses hosts that receive a
 token. Some of those hosts sit on a home or office network without HTTPS.
@@ -84,7 +84,7 @@ to say under each one which repositories it reaches:
 
 **Platforms and sign-in.** github.com and gitlab.com keep Source Glance's own apps. Self-hosted
 browser sign-in needs an app that the user registers on their instance; the wizard links to
-the page where they register it. Source Glance doesn't support Gitea or Forgejo yet (#60).
+the page where they register it. Source Glance doesn't support Gitea or Forgejo yet (#11).
 
 What each method reaches, from each platform's documentation:
 
@@ -148,4 +148,4 @@ these steps:
     allowed there.
   - An instance whose certificate the system doesn't trust can't be added; there is no
     certificate pinning.
-  - Gitea and Forgejo are in #60.
+  - Gitea and Forgejo are in #11.

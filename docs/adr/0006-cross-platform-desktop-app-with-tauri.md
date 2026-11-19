@@ -8,8 +8,8 @@
 sourceglance runs only on GNOME Shell ([ADR 0001](0001-gnome-shell-extension.md)). We want
 Windows and macOS versions with the same experience: counts in a bar at the top of the
 screen, flyouts in our own blue theme with the same actions, and desktop widgets. The plans
-are in [#50](https://github.com/omer-gh/sourceglance/issues/50) (Windows: a Rainmeter-style
-bar and widgets) and [#51](https://github.com/omer-gh/sourceglance/issues/51) (macOS: menu
+are in [#9](https://github.com/omer-gh/sourceglance/issues/9) (Windows: a Rainmeter-style
+bar and widgets) and [#10](https://github.com/omer-gh/sourceglance/issues/10) (macOS: menu
 bar, popovers and widgets).
 
 Forces:
@@ -66,19 +66,24 @@ a GNOME Shell extension; this ADR doesn't change ADR 0001.
 3. **Network and secrets live in Rust, never in the webview.**
    - Requests go through `reqwest`, which also gets around GitHub's device-flow endpoints not
      allowing CORS.
-   - Tokens go through the `keyring` crate (Windows Credential Manager / macOS Keychain).
-     Rust adds the `Authorization` header itself, and tokens are never returned to
-     JavaScript.
-   - Only `https://api.github.com`, `https://github.com` and `https://gitlab.com` are
-     allowed.
+   - Tokens go through the `keyring` crate (Windows Credential Manager / macOS Keychain),
+     one entry per account id. Rust adds the `Authorization` header itself, and tokens are
+     never returned to JavaScript.
+   - Requests go only to `https://api.github.com`, `https://github.com`,
+     `https://gitlab.com` and the self-hosted instances the user added. The user picks
+     those, so a static Tauri capability list can't cover them: Rust checks every request
+     against the account list, with the network rules of
+     [ADR 0007](0007-multiple-accounts-and-self-hosted-instances.md) (no redirects on
+     self-hosted instances, plain `http://` only to local-network addresses, re-checked and
+     pinned on every request).
    - The same GitHub App and GitLab client IDs and scopes as on Linux (`src/lib/config.js`).
 4. **Locked-down webview.**
    - It loads only bundled files, never remote content.
    - A strict CSP.
    - Only the Tauri plugins we use are enabled; the shell, fs and http plugins are not
      exposed to JavaScript.
-   - Links open in the default browser through one Rust command that accepts `https` URLs
-     on github.com and gitlab.com only.
+   - Links open in the default browser through one Rust command that accepts only links
+     on github.com, gitlab.com or a signed-in account's own instance, as on Linux.
 5. **Native code is isolated per platform:** `desktop/src-tauri/src/windows/` (AppBar,
    desktop pinning) and `desktop/src-tauri/src/macos/` (status-item images, window levels,
    later the WidgetKit snapshot). Each one exposes a few commands and falls back cleanly if
@@ -99,8 +104,8 @@ a GNOME Shell extension; this ADR doesn't change ADR 0001.
 - The webviews differ (Chromium-based WebView2 vs. WebKit), so the desktop UI sticks to
   widely supported CSS and is checked on both.
 - New secrets to manage: the Tauri updater signing key, Apple Developer ID and notarization
-  credentials, and a Windows signing identity if we add one (open questions in #50 and #51).
+  credentials, and a Windows signing identity if we add one (open questions in #9 and #10).
 - The threat model gains entries for the Rust command surface, the webview, the update
   channel and the macOS App Group snapshot.
-- Revisit this ADR if Tauri's tray or window APIs block the plans in #50 and #51, or if
+- Revisit this ADR if Tauri's tray or window APIs block the plans in #9 and #10, or if
   WidgetKit grows enough to justify moving the Mac version to native Swift (option 3).
