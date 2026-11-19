@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-19
+
 ### Added
 
 - **The whole team in the window**: the window's lists now also load everything open in your
@@ -14,38 +16,38 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it's assigned to. **Assignee** starts as your accounts, so you still see only your own
   work. Check **Unassigned** or a teammate to see theirs, or **Clear filters** to see everyone's.
   Useful for product managers, project coordinators and owners who follow a whole project.
-  The top bar, the widgets and every count still show only your own items.
+  The top bar, the widgets and every count still show only your own items. ([c4601f7](https://github.com/omer-gh/sourceglance/commit/c4601f771cc79dbe53343dd6647fea87de9801e4))
 - **Custom widgets**: make a widget of your own from filters over your lists (issues, pull
   requests or project drafts, by account, repository, label, review or search words), with
   a name and one of Source Glance's icons. They're kept in your settings, so they stay
-  through updates.
+  through updates. ([8b63251](https://github.com/omer-gh/sourceglance/commit/8b6325151eb0ed5455193378eaa6d5208e6d282c))
 - **Widget sizes**: Small, Medium or Large. Each card's size button, before its trash button,
   sets its own size, and **All widgets** sets one size for every card. Medium is sized from
-  your screen, as before.
+  your screen, as before. ([8b63251](https://github.com/omer-gh/sourceglance/commit/8b6325151eb0ed5455193378eaa6d5208e6d282c))
 
 ### Changed
 
 - **Glance → Widgets** (was Desktop Widgets) draws the cards in the window, on your
   wallpaper and at their real size. Drag a card by its header to rearrange them. Each card
   has **On desktop** and its own opacity slider, and a trash button that moves it under
-  **Add widget**, with a + to bring it back.
+  **Add widget**, with a + to bring it back. ([8b63251](https://github.com/omer-gh/sourceglance/commit/8b6325151eb0ed5455193378eaa6d5208e6d282c))
 - **All widgets**, a gear under the cards: every card on or off the desktop at once, one
   opacity and size for all, where cards go on the desktop (a grid at the top right, a column at the
   right or left, or a row along the top or bottom), Tidy up, Reset desktop positions, the
-  wallpaper behind the cards, and the Adwaita wallpaper.
+  wallpaper behind the cards, and the Adwaita wallpaper. ([8b63251](https://github.com/omer-gh/sourceglance/commit/8b6325151eb0ed5455193378eaa6d5208e6d282c))
 - On the desktop, cards you haven't moved follow the window's order, in the arrangement
-  chosen in All widgets (a grid at the top right by default) instead of a column on the right.
+  chosen in All widgets (a grid at the top right by default) instead of a column on the right. ([8b63251](https://github.com/omer-gh/sourceglance/commit/8b6325151eb0ed5455193378eaa6d5208e6d282c))
 - **Glance → System Tray** previews both layouts as tiles: click one to use it, and click a
   list's icon or tab on the preview to show or hide it. The refresh interval sits beside the
-  heading.
+  heading. ([8b63251](https://github.com/omer-gh/sourceglance/commit/8b6325151eb0ed5455193378eaa6d5208e6d282c))
 - **Filter chips** are smaller and tidier: compact pills at their own width that wrap like
-  words, with an icon for the kind of filter (point at a chip to see it) instead of the word.
+  words, with an icon for the kind of filter (point at a chip to see it) instead of the word. ([c4601f7](https://github.com/omer-gh/sourceglance/commit/c4601f771cc79dbe53343dd6647fea87de9801e4))
 - **Custom fields** in each item's ⋮ menu in the window, under their own **Custom fields**
   label: an issue's GitHub issue fields, the fields of every project board an issue, pull
   request or draft is on, and a GitLab issue's custom fields. Text, number, date, single and
   multiple choice, and iteration fields each get a matching control in the menu, and a change
   is saved at once.
-  ([#16](https://github.com/omer-gh/sourceglance/issues/16))
+  ([#16](https://github.com/omer-gh/sourceglance/issues/16), [c4601f7](https://github.com/omer-gh/sourceglance/commit/c4601f771cc79dbe53343dd6647fea87de9801e4))
 
 ## [0.11.0] - 2026-11-19
 
@@ -344,7 +346,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/omer-gh/sourceglance/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/omer-gh/sourceglance/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/omer-gh/sourceglance/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/omer-gh/sourceglance/compare/v0.8.0...v0.9.0
