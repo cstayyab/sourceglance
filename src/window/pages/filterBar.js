@@ -2,12 +2,16 @@
 // Assignee), each a check list with counts, then what's checked as chips on a row of their
 // own, each with × to remove it, and Clear filters. All Tasks shows all four; the lists by
 // kind show Labels and Assignee (their accounts and kinds are already sections and pages).
+// Assignee starts as your accounts (defaultTaskFilters()); it also offers Unassigned and the
+// rest of the team, and Clear filters shows everyone's.
+import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _} from '../i18n.js';
 
-import {taskFilterGroups, toggleTaskFilter} from '../../lib/model.js';
+import {UNASSIGNED, defaultTaskFilters, taskFilterGroups, toggleTaskFilter} from '../../lib/model.js';
 
 function kindTitle(kind) {
     return {issue: _('Issues'), pr: _('Pull requests'), draft: _('Projects')}[kind];
@@ -22,8 +26,30 @@ function typeTooltip(type) {
         kind: _('Show issues, pull requests or project drafts'),
         account: _('Show what one of your accounts has'),
         label: _('Show items with a label'),
-        assignee: _('Show items assigned to someone'),
+        assignee: _('Show items assigned to you, someone else, or no one'),
     }[type];
+}
+
+/** What an option or chip says: the kind's name, "Unassigned", "@alice", or "@me (you)". */
+function optionTitle(type, value, mine) {
+    if (type === 'kind')
+        return kindTitle(value);
+    if (type !== 'assignee')
+        return null;
+    if (value === UNASSIGNED)
+        return _('Unassigned');
+    return mine ? _('@%s (you)').format(value) : `@${value}`;
+}
+
+// The chip's kind of filter as a small icon before its name (the word is its tooltip).
+const LABEL_ICON = Gio.File.new_for_uri(import.meta.url).get_parent().get_parent().get_parent()
+    .get_child('icons').get_child('label-symbolic.svg');
+
+function chipIcon(type) {
+    if (type === 'label')
+        return new Gtk.Image({gicon: new Gio.FileIcon({file: LABEL_ICON})});
+    return new Gtk.Image({icon_name: {kind: 'view-list-symbolic', account: 'avatar-default-symbolic',
+        assignee: 'system-users-symbolic'}[type]});
 }
 
 /** The chip's kind of filter, before its name. */
@@ -36,8 +62,10 @@ export class FilterBar {
     constructor({types, onChange}) {
         this._types = types;
         this._onChange = onChange;
-        // Active filters, in the order added: [{type, value, title}].
+        // Active filters, in the order added: [{type, value, title}]. Until you change them,
+        // they follow your accounts (the default: what's assigned to you).
         this.filters = [];
+        this._touched = false;
 
         const buttons = new Gtk.Box({spacing: 6});
         this._menus = {};
@@ -51,9 +79,14 @@ export class FilterBar {
             this._menus[type] = {menu, count};
             buttons.append(menu);
         }
-        this._chipBox = new Gtk.FlowBox({selection_mode: Gtk.SelectionMode.NONE, column_spacing: 6, row_spacing: 6,
-            max_children_per_line: 30, hexpand: true});
-        const clear = new Gtk.Button({label: _('Clear filters'), css_classes: ['flat'], valign: Gtk.Align.START});
+        // Chips at their own width, wrapping like words. A FlowBox (before libadwaita 1.7) lines
+        // them up in columns, which stretches the short ones; there they at least stay compact.
+        this._chipBox = Adw.WrapBox
+            ? new Adw.WrapBox({child_spacing: 6, line_spacing: 6, hexpand: true, valign: Gtk.Align.CENTER})
+            : new Gtk.FlowBox({selection_mode: Gtk.SelectionMode.NONE, column_spacing: 6, row_spacing: 6,
+                max_children_per_line: 30, hexpand: true});
+        const clear = new Gtk.Button({label: _('Clear filters'), css_classes: ['flat', 'sourceglance-chip-clear'],
+            valign: Gtk.Align.START});
         clear.connect('clicked', () => this._set([]));
         this._chipRow = new Gtk.Box({spacing: 6, visible: false});
         this._chipRow.append(this._chipBox);
@@ -73,8 +106,14 @@ export class FilterBar {
      * label no item has any more) are dropped.
      */
     update(tasks, sources) {
+        if (!this._touched)
+            this.filters = defaultTaskFilters(sources).filter(filter => this._types.includes(filter.type));
         const groups = taskFilterGroups(tasks, sources, this.filters);
-        this.filters = this.filters.filter(filter => groups[filter.type]?.some(option => option.value === filter.value));
+        this.filters = this.filters.filter(filter => groups[filter.type]?.some(option => option.value === filter.value))
+            .map(filter => {
+                const option = groups[filter.type].find(other => other.value === filter.value);
+                return {...filter, title: optionTitle(filter.type, filter.value, option.mine) ?? filter.title};
+            });
 
         for (let child = this._chipBox.get_first_child(); child;) {
             const next = child.get_next_sibling();
@@ -82,10 +121,13 @@ export class FilterBar {
             child = next;
         }
         for (const filter of this.filters) {
-            const title = filter.type === 'kind' ? kindTitle(filter.value) : filter.title;
-            const chip = new Gtk.Box({spacing: 4, css_classes: ['sourceglance-chip'], valign: Gtk.Align.CENTER});
-            chip.append(new Gtk.Label({label: chipType(filter.type), css_classes: ['dim-label']}));
-            chip.append(new Gtk.Label({label: title, ellipsize: 3 /* END */, max_width_chars: 24}));
+            const title = filter.title;
+            const chip = new Gtk.Box({spacing: 4, css_classes: ['sourceglance-chip'], valign: Gtk.Align.CENTER,
+                halign: Gtk.Align.START, tooltip_text: `${chipType(filter.type)}: ${title}`});
+            const icon = chipIcon(filter.type);
+            icon.add_css_class('sourceglance-chip-type');
+            chip.append(icon);
+            chip.append(new Gtk.Label({label: title, ellipsize: 3 /* END */, max_width_chars: 24, css_classes: ['sourceglance-chip-value']}));
             const remove = new Gtk.Button({icon_name: 'window-close-symbolic', tooltip_text: _('Remove this filter'),
                 css_classes: ['flat', 'sourceglance-chip-remove'], valign: Gtk.Align.CENTER});
             remove.update_property([Gtk.AccessibleProperty.LABEL], [_('Remove the filter %s').format(title)]);
@@ -105,7 +147,7 @@ export class FilterBar {
             const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 2,
                 margin_top: 4, margin_bottom: 4, margin_start: 4, margin_end: 4});
             for (const option of options) {
-                const title = type === 'kind' ? kindTitle(option.value) : option.title;
+                const title = optionTitle(type, option.value, option.mine) ?? option.title;
                 const line = new Gtk.Box({spacing: 12});
                 line.append(new Gtk.Label({label: title, xalign: 0, hexpand: true, ellipsize: 3 /* END */, max_width_chars: 32}));
                 line.append(new Gtk.Label({label: String(option.count), css_classes: ['dim-label', 'numeric']}));
@@ -126,7 +168,13 @@ export class FilterBar {
         }
     }
 
+    /** Whether the filters are still the default (your accounts), not changed by you. */
+    get isDefault() {
+        return !this._touched;
+    }
+
     _set(filters) {
+        this._touched = true;
         this.filters = filters;
         this._onChange();
     }

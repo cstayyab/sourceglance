@@ -92,6 +92,10 @@ collapsible section ([ADR 0007](adr/0007-multiple-accounts-and-self-hosted-insta
      and the PR searches ([ADR 0003](adr/0003-rest-search-api-for-issues.md)), then the project
      boards.
    - GitLab: the assigned issues and merge requests, and those awaiting your review.
+   - The window only also loads the team's open items (reason `team`), for its Assignee
+     filter: GitHub's `GET /issues?filter=all&state=open&per_page=100` (your repositories,
+     collaborations and organizations), and on GitLab the open issues and merge requests of
+     your 10 most recently active projects. The counts stay yours (`isMine()` in `model.js`).
 4. Group each account's results by repository into its source. If one account fails, its
    previous groups stay and only its section shows the error. For rate limits, the next
    refresh is scheduled at the reset time.
@@ -99,6 +103,25 @@ collapsible section ([ADR 0007](adr/0007-multiple-accounts-and-self-hosted-insta
 Tokens are re-read from the keyring on every refresh. Settings → Accounts bumps a
 `token-changed` GSettings counter so the extension refreshes immediately, and writing the
 `accounts` key has the same effect.
+
+## Custom fields
+
+The window's ⋮ menu ends with the item's custom fields, after a separator and a **Custom
+fields** label ([#16](https://github.com/omer-gh/sourceglance/issues/16)). Fields aren't part of
+the lists: the menu loads them each time it opens (`fieldsSection()` in `window/actions.js`),
+and each change is sent right away without rebuilding the row. `fieldsRequests()` and
+`fieldRequests()` in `lib/requests.js` pick the platform:
+
+| Source | Read | Write |
+| -------- | ------ | ------- |
+| GitHub issue fields (issues) | `repository.issueFields`, `issue.issueFieldValues` (header `GraphQL-Features: issue_fields`) | `setIssueFieldValue`, one call for all of them |
+| Project board fields (issues, PRs, drafts) | `projectItems` / the draft's board item: `project.fields`, `fieldValues` | `updateProjectV2ItemFieldValue` or `clearProjectV2ItemFieldValue`, one per field |
+| GitLab custom fields (issues) | `namespace.workItem(iid)` → `customFieldValues` (GraphQL at `/api/graphql`) | `workItemUpdate(customFieldsWidget: …)` |
+
+Each source is a section and each field `{id, name, type, options, value, selected}`. The parsers
+are in `lib/model.js` and `lib/gitlabModel.js` and are tested with Node. A source that can't be
+read (no access, a plan without fields, an older instance) is left out rather than failing the
+dialog. Board Status (the Move button) and built-in fields are not listed.
 
 ## Security
 

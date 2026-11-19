@@ -48,9 +48,10 @@
     margin: 8px 6px 2px 18px;
 }
 
-/* Icons only: the count over the icon's top-right corner, the icon moved down-left for it. */
+/* Icons only: the count over the icon's top-right corner, the icon moved down for it. The same
+   space on both sides keeps the icon centred over its short name. */
 .sourceglance-window .sourceglance-sidebar-icon > image {
-    margin: 7px 9px 0 0;
+    margin: 7px 9px 0 9px;
 }
 
 .sourceglance-window .sourceglance-sidebar-badge {
@@ -411,15 +412,39 @@
 }
 
 .sourceglance-window .sourceglance-chip {
-    border-radius: 6px;
-    padding: 2px 2px 2px 8px;
-    background-color: alpha(currentColor, 0.1);
+    min-height: 22px;
+    border-radius: 999px;
+    padding: 0 2px 0 8px;
+    background-color: alpha(@accent_bg_color, 0.12);
+    border: 1px solid alpha(@accent_bg_color, 0.25);
+    font-size: 0.92em;
+}
+
+/* The filter's kind (Assignee, Label…) as a small icon, quieter than its value. */
+.sourceglance-window .sourceglance-chip-type {
+    opacity: 0.65;
+    -gtk-icon-size: 12px;
+}
+
+.sourceglance-window .sourceglance-chip-value {
+    font-weight: 600;
 }
 
 .sourceglance-window .sourceglance-chip-remove {
-    min-width: 22px;
-    min-height: 22px;
+    min-width: 18px;
+    min-height: 18px;
     padding: 0;
+    border-radius: 999px;
+}
+
+.sourceglance-window .sourceglance-chip-remove image {
+    -gtk-icon-size: 10px;
+}
+
+.sourceglance-window .sourceglance-chip-clear {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: smaller;
 }
 
 .sourceglance-window .sourceglance-expander {

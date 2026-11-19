@@ -2,8 +2,10 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+    UNASSIGNED,
     allTasks,
     asTask,
+    defaultTaskFilters,
     filterDraftsBy,
     filterGroupsBy,
     filterTasks,
@@ -119,7 +121,8 @@ test('taskFilterGroups lists every choice of each kind, with counts and what is 
     assert.deepEqual(groups.account.map(label), ['github.com:3', 'gitlab.com:1']);
     assert.equal(groups.account[0].title, '@me · GitHub');
     assert.deepEqual(groups.label.map(label), ['bug:2*', 'ui:1']);
-    assert.deepEqual(groups.assignee.map(label), ['amy:2', 'me:2']);
+    // GitLab's issue #3 has no assignee.
+    assert.deepEqual(groups.assignee.map(label), ['(unassigned):1', 'amy:2', 'me:2']);
     // One account still gets the Accounts menu.
     assert.equal(taskFilterGroups(allTasks([assigned]), [assigned]).account.length, 1);
 });
@@ -153,4 +156,51 @@ test('filterGroupsBy and filterDraftsBy apply the filter bar to the lists by kin
     assert.deepEqual(filterDraftsBy(board, [person('me')]).drafts, []);
     assert.deepEqual(asTask(board.drafts[0]).kind, 'draft');
     assert.deepEqual(asTask(groups[0].issues[0]).kind, 'issue');
+});
+
+// The team's items: the window also loads what's open in your repositories, for the Assignee
+// filter, which starts as you.
+const team = source({
+    key: 'github.com', title: 'GitHub · @me', assignee: '@me · GitHub', login: 'me',
+    groups: [{repo: 'octo/app', issues: [
+        item('issue', 'octo/app', 1, '2026-11-18T09:00:00Z', {assignees: ['me'], reason: 'assigned'}),
+        item('issue', 'octo/app', 4, '2026-11-18T07:00:00Z', {assignees: ['zed'], reason: 'team'}),
+        item('issue', 'octo/app', 5, '2026-11-18T06:00:00Z', {reason: 'team'}),
+    ]}],
+    prGroups: [{repo: 'octo/app', issues: [
+        item('pr', 'octo/app', 9, '2026-11-18T10:00:00Z', {reason: 'review', reviewer: 'me'}),
+    ]}],
+    issueTotal: 1, issueShown: 1, prTotal: 1, prShown: 1,
+});
+
+test('defaultTaskFilters picks your accounts\' logins once each', () => {
+    const other = source({key: 'gitlab.com', login: 'me', platform: 'gitlab'});
+    const work2 = source({key: 'work', login: 'me-at-work'});
+    const out = source({key: 'old', login: 'gone', status: 'signed-out'});
+    assert.deepEqual(defaultTaskFilters([team, other, work2, out]).map(filter => filter.value), ['me', 'me-at-work']);
+    assert.deepEqual(defaultTaskFilters([source({key: 'new'})]), []);
+});
+
+test('the Assignee filter: you first (with reviews), then Unassigned, then the team', () => {
+    const tasks = allTasks([team]);
+    const groups = taskFilterGroups(tasks, [team], defaultTaskFilters([team]));
+    assert.deepEqual(groups.assignee.map(option => `${option.value}:${option.count}${option.mine ? ' mine' : ''}${option.active ? '*' : ''}`),
+        ['me:2 mine*', `${UNASSIGNED}:2`, 'zed:1']);
+    const ref = task => task.ref;
+    // By default only yours: assigned to you, or awaiting your review.
+    assert.deepEqual(filterTasks(tasks, defaultTaskFilters([team])).map(ref), ['#9', '#1']);
+    assert.deepEqual(filterTasks(tasks, [{type: 'assignee', value: UNASSIGNED}]).map(ref), ['#9', '#5']);
+    assert.deepEqual(filterTasks(tasks, [{type: 'assignee', value: 'zed'}]).map(ref), ['#4']);
+    assert.equal(filterTasks(tasks, []).length, 4);
+    // Your logins stay offered with nothing assigned, so the default isn't dropped.
+    const idle = source({key: 'github.com', login: 'me'});
+    assert.deepEqual(taskFilterGroups([], [idle]).assignee.map(option => `${option.value}:${option.count}`), ['me:0']);
+});
+
+test('badges and search counts stay yours when the team\'s items are loaded', () => {
+    const state = {sources: [team]};
+    assert.equal(listBadge('issues', state), '1');
+    assert.equal(listBadge('tasks', state), '2');
+    assert.equal(searchCount('issues', state, ['octo']), 1);
+    assert.equal(searchCount('tasks', state, ['octo']), 2);
 });

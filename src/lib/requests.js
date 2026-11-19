@@ -8,24 +8,32 @@ import {
     gitlabCloseRequest,
     gitlabCommentRequest,
     gitlabDetailsRequests,
+    gitlabFieldRequests,
+    gitlabFieldsRequest,
     gitlabLabelsRequest,
     gitlabReopenRequest,
     isSafeGitLabUrl,
     parseGitLabDetails,
+    parseGitLabFields,
 } from './gitlabModel.js';
 import {
     assigneeChangeRequests,
     bodyRequest,
+    boardFieldsRequest,
     closeRequest,
     commentRequest,
     detailsRequests,
     draftAssigneesRequest,
     draftBodyRequest,
     draftDetailsRequest,
+    githubFieldRequests,
     isSafeGitHubUrl,
+    issueFieldsRequest,
     labelChangeRequests,
+    parseBoardFields,
     parseDetails,
     parseDraftDetails,
+    parseIssueFields,
     reopenRequest,
     searchPageUrl,
 } from './model.js';
@@ -108,4 +116,31 @@ export function bodyRequests(item, text) {
     const request = item.kind === 'draft' ? draftBodyRequest(item, text)
         : isGitLab(item) ? gitlabBodyRequest(item, text) : bodyRequest(item, text);
     return request ? [request] : [];
+}
+
+/**
+ * The Fields dialog's GET requests and how to read them: GitHub issue fields (issues only)
+ * and every board's fields (issues, PRs, drafts), or GitLab's custom fields (issues only).
+ * `parse` takes the responses in order, null for one that failed, and returns the sections.
+ */
+export function fieldsRequests(item) {
+    if (isGitLab(item)) {
+        const request = gitlabFieldsRequest(item);
+        return {requests: request ? [request] : [], parse: ([json]) => (json ? parseGitLabFields(json) : [])};
+    }
+    const issue = issueFieldsRequest(item);
+    const boards = boardFieldsRequest(item);
+    return {
+        requests: [issue, boards].filter(Boolean),
+        parse: responses => {
+            const [issueJson, boardsJson] = issue ? responses : [null, responses[0]];
+            return [issue && issueJson ? parseIssueFields(issueJson) : null, ...(boards && boardsJson ? parseBoardFields(boardsJson) : [])]
+                .filter(Boolean);
+        },
+    };
+}
+
+/** Requests that apply the Fields dialog's edits ({section, field, value|selected}). */
+export function fieldRequests(item, edits) {
+    return isGitLab(item) ? gitlabFieldRequests(edits) : githubFieldRequests(edits);
 }

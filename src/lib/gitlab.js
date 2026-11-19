@@ -18,7 +18,10 @@ import {
     parseGitLabLabels,
     parseGitLabMembers,
     parseGitLabToken,
+    parseProjectIds,
     parseStoredAuth,
+    teamListPath,
+    teamProjectsPath,
     tokenNeedsRefresh,
 } from './gitlabModel.js';
 import {DEVICE_GRANT_TYPE, classifyDeviceTokenResponse, classifyHttpError, formEncode} from './model.js';
@@ -202,6 +205,28 @@ export class GitLabClient {
         return {total: Number.isNaN(total) ? items.length : total, items};
     }
 
+    /**
+     * The team's open items in your most recently active projects: {issues, prs}, with
+     * reason 'team'. A project that can't be read is skipped.
+     */
+    async listTeam(token, cancellable = null) {
+        const {json} = await this._api('GET', teamProjectsPath(), token, null, cancellable);
+        const one = async path => {
+            try {
+                return (await this._api('GET', path, token, null, cancellable)).json;
+            } catch (e) {
+                if (isCancelled(e))
+                    throw e;
+                return [];
+            }
+        };
+        const lists = await Promise.all(parseProjectIds(json).map(async id => {
+            const [issues, mrs] = await Promise.all([one(teamListPath(id, 'team-issue')), one(teamListPath(id, 'team-mr'))]);
+            return {issues: parseGitLabItems(issues, 'team-issue', this.base), prs: parseGitLabItems(mrs, 'team-mr', this.base)};
+        }));
+        return {issues: lists.flatMap(list => list.issues), prs: lists.flatMap(list => list.prs)};
+    }
+
     /** Closed issues and closed-or-merged MRs still assigned to you: {issues, prs}. */
     async closedCounts(token, cancellable = null) {
         const count = async paths => {
@@ -229,10 +254,22 @@ export class GitLabClient {
         return parseGitLabLabels(json);
     }
 
-    /** Runs a request built by gitlabModel.js. */
+    /**
+     * Runs a request built by gitlabModel.js. GraphQL ones go to the instance's /api/graphql
+     * and fail on any `errors`, including a mutation's own.
+     */
     async send(token, request, cancellable = null) {
         if (!request)
             throw new TypeError('sourceglance: empty request');
-        return (await this._api(request.method, request.path, token, request.body, cancellable)).json;
+        if (!request.graphql)
+            return (await this._api(request.method, request.path, token, request.body, cancellable)).json;
+        const message = Soup.Message.new('POST', `${this.base}/api/graphql`);
+        message.get_request_headers().append('Authorization', `Bearer ${token}`);
+        message.set_request_body_from_bytes('application/json',
+            new GLib.Bytes(new TextEncoder().encode(JSON.stringify(request.body))));
+        const {json} = await this._send(message, cancellable);
+        if (json?.errors?.length || Object.values(json?.data ?? {}).some(result => result?.errors?.length))
+            throw new ApiError({kind: 'unknown', status: 200, retryAt: null});
+        return json;
     }
 }

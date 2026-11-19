@@ -20,8 +20,10 @@ import {
     parseLogins,
     parseProjectItems,
     parseSearchResponse,
+    parseTeamItems,
     parseViewerBoards,
     projectItemsRequest,
+    teamItemsPath,
     viewerBoardsRequest,
 } from './model.js';
 import {DOWNLOAD_PREFIX, RELEASES_PATH} from './updates.js';
@@ -106,8 +108,11 @@ export class GitHubClient {
         return this._request('GET', path, token, null, cancellable);
     }
 
-    /** REST call with an optional JSON body. Resolves to the parsed JSON, or null for 204. */
-    async _request(method, path, token, body, cancellable) {
+    /**
+     * REST call with an optional JSON body. Resolves to the parsed JSON, or null for 204.
+     * `features` asks GraphQL for preview features (the GraphQL-Features header).
+     */
+    async _request(method, path, token, body, cancellable, features = null) {
         const url = path === '/graphql' ? this._urls.graphql : `${this._urls.api}${path}`;
         const message = Soup.Message.new(method, url);
         const headers = message.get_request_headers();
@@ -115,6 +120,8 @@ export class GitHubClient {
         headers.append('X-GitHub-Api-Version', '2022-11-28');
         if (token)
             headers.append('Authorization', `Bearer ${token}`);
+        if (features && /^[a-z_,]+$/.test(features))
+            headers.append('GraphQL-Features', features);
         if (body !== null && body !== undefined) {
             message.set_request_body_from_bytes('application/json',
                 new GLib.Bytes(new TextEncoder().encode(JSON.stringify(body))));
@@ -211,6 +218,14 @@ export class GitHubClient {
         return parseSearchResponse(json, search, this._isSafe);
     }
 
+    /**
+     * Resolves to {issues, prs}: what's open in your repositories and your organizations',
+     * whoever it's assigned to (see parseTeamItems()). `repos` keeps only those repositories.
+     */
+    async listTeam(token, repos = [], cancellable = null) {
+        return parseTeamItems(await this._get(teamItemsPath(), token, cancellable), repos, this._isSafe);
+    }
+
     /** Resolves to how many items a search finds, e.g. 'issue-closed' or 'pr-closed'. */
     async countSearch(token, repos = [], search = 'issue-closed', cancellable = null) {
         const json = await this._get(buildSearchPath(repos, search), token, cancellable);
@@ -231,13 +246,14 @@ export class GitHubClient {
 
     /**
      * Runs a request built by model.js (closeRequest(), moveStatusRequest() and so on).
-     * GraphQL requests fail on any `errors`, since a write must apply fully.
+     * GraphQL requests fail on any `errors`, since a write must apply fully; reads marked
+     * `partial` keep what came back (boards the sign-in can't see are just missing).
      */
     async send(token, request, cancellable = null) {
         if (!request)
             throw new TypeError('sourceglance: empty request');
-        const json = await this._request(request.method, request.path, token, request.body, cancellable);
-        if (request.graphql && json?.errors?.length)
+        const json = await this._request(request.method, request.path, token, request.body, cancellable, request.features);
+        if (request.graphql && json?.errors?.length && !(request.partial && json.data))
             throw new GitHubError({kind: classifyGraphqlErrors(json.errors), status: 200, retryAt: null});
         return json;
     }

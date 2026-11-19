@@ -137,6 +137,8 @@ export class WindowData {
                 repos: this._settings.get_strv('repositories'),
                 // The window always has a Projects page, whatever the top bar shows.
                 projects: true,
+                // Everyone's open items in your repositories, for the Assignee filter.
+                team: true,
             };
             await Promise.all(this.accounts.map(account => this._loadAccount(account, options, cancellable)));
         } catch (e) {

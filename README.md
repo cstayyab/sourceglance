@@ -32,6 +32,11 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   width that fits your screen.
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
+- **Custom fields**: an item's ⋮ menu in the window ends with its custom fields, under
+  **Custom fields**: GitHub issue fields, the fields of every project board it's on, and
+  GitLab custom fields. Each type gets its own control right there: an entry for text, numbers
+  and dates (saved on Enter), a drop-down for one choice or an iteration, and check boxes for
+  several choices. A change is saved at once.
 - **Preview and edit in the window**: read an item's description, comments and reactions,
   edit the description and add a comment, all with a small Markdown editor. The preview
   reads like a web page: the item's kind as a coloured icon in its header, the description
@@ -45,7 +50,10 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   the window and the menus. Source Glance remembers what you collapsed.
 - **All Tasks**: everything assigned to you in one list, newest first, with the same actions
   as the lists. Filter it with **Kind**, **Accounts**, **Labels** and **Assignee**, each a
-  check list; what you pick shows as chips below them, each removed with ×. Issues, Pull
+  check list; what you pick shows as chips below them, each removed with ×. **Assignee**
+  starts as you. Check **Unassigned** or a teammate to see what's open across your
+  repositories and organizations: the window loads the whole team's open items, so product
+  managers, project coordinators and owners can follow a whole project. Issues, Pull
   requests and Projects follow it in the Tasks menu, with **Labels** and **Assignee** filters
   (Projects: **Assignee**), since their kind and accounts are already the page and its
   sections.

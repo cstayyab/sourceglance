@@ -9,6 +9,12 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The whole team in the window**: the window's lists now also load everything open in your
+  repositories and your organizations' (on GitLab, your 10 most active projects), whoever
+  it's assigned to. **Assignee** starts as your accounts, so you still see only your own
+  work. Check **Unassigned** or a teammate to see theirs, or **Clear filters** to see everyone's.
+  Useful for product managers, project coordinators and owners who follow a whole project.
+  The top bar, the widgets and every count still show only your own items.
 - **Custom widgets**: make a widget of your own from filters over your lists (issues, pull
   requests or project drafts, by account, repository, label, review or search words), with
   a name and one of Source Glance's icons. They're kept in your settings, so they stay
@@ -24,7 +30,7 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   has **On desktop** and its own opacity slider, and a trash button that moves it under
   **Add widget**, with a + to bring it back.
 - **All widgets**, a gear under the cards: every card on or off the desktop at once, one
-  opacity for all, where cards go on the desktop (a grid at the top right, a column at the
+  opacity and size for all, where cards go on the desktop (a grid at the top right, a column at the
   right or left, or a row along the top or bottom), Tidy up, Reset desktop positions, the
   wallpaper behind the cards, and the Adwaita wallpaper.
 - On the desktop, cards you haven't moved follow the window's order, in the arrangement
@@ -32,6 +38,14 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Glance → System Tray** previews both layouts as tiles: click one to use it, and click a
   list's icon or tab on the preview to show or hide it. The refresh interval sits beside the
   heading.
+- **Filter chips** are smaller and tidier: compact pills at their own width that wrap like
+  words, with an icon for the kind of filter (point at a chip to see it) instead of the word.
+- **Custom fields** in each item's ⋮ menu in the window, under their own **Custom fields**
+  label: an issue's GitHub issue fields, the fields of every project board an issue, pull
+  request or draft is on, and a GitLab issue's custom fields. Text, number, date, single and
+  multiple choice, and iteration fields each get a matching control in the menu, and a change
+  is saved at once.
+  ([#16](https://github.com/omer-gh/sourceglance/issues/16))
 
 ## [0.11.0] - 2026-11-19
 

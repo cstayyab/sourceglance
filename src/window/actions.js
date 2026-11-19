@@ -11,13 +11,15 @@ import {gettext as _, ngettext} from './i18n.js';
 import {accountForItem, hostLabel, isDefaultBase} from '../lib/accounts.js';
 import {GitHubError, isCancelled} from '../lib/github.js';
 import {applyFormat, inlineMarkup, markdownBlocks} from '../lib/markdown.js';
-import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest, relativeTime} from '../lib/model.js';
+import {assigneeChoices, fieldEditProblem, itemKey, itemRef, labelChoices, moveStatusRequest, relativeTime} from '../lib/model.js';
 import {
     assigneeRequests,
     bodyRequests,
     closeReasons,
     closeRequests,
     commentRequests,
+    fieldRequests,
+    fieldsRequests,
     isSafeLink,
     labelRequests,
     previewRequests,
@@ -137,6 +139,56 @@ function formatAgo(date) {
 
 function itemText(item) {
     return item.kind === 'draft' ? item.title : `${itemRef(item)} ${item.title}`;
+}
+
+/**
+ * The ⋮ menu's control for one custom field: an entry (text, number, date), a drop-down with
+ * None (single select, iteration) or check buttons (multi select). `onCommit(edit)` gets
+ * {value} or {selected} when it changes: right away for choices, on Enter or leaving the
+ * entry for text, and only for a valid number or date.
+ */
+function fieldControl(field, onCommit) {
+    if (['text', 'number', 'date'].includes(field.type)) {
+        const entry = new Gtk.Entry({text: field.value, hexpand: true, width_chars: 16,
+            placeholder_text: field.type === 'date' ? _('YYYY-MM-DD') : field.type === 'number' ? _('Number') : _('Empty')});
+        entry.update_property([Gtk.AccessibleProperty.LABEL], [field.name]);
+        const problem = () => fieldEditProblem(field, {value: entry.text});
+        entry.connect('changed', () => {
+            if (problem())
+                entry.add_css_class('error');
+            else
+                entry.remove_css_class('error');
+            entry.tooltip_text = problem() === 'date' ? _('Enter a date as YYYY-MM-DD')
+                : problem() === 'number' ? _('Enter a number') : null;
+        });
+        const commit = () => {
+            if (!problem() && entry.text !== field.value)
+                onCommit({value: entry.text});
+        };
+        entry.connect('activate', commit);
+        const focus = new Gtk.EventControllerFocus();
+        focus.connect('leave', commit);
+        entry.add_controller(focus);
+        return entry;
+    }
+    if (field.type === 'multi') {
+        const flow = new Gtk.FlowBox({selection_mode: Gtk.SelectionMode.NONE, max_children_per_line: 2, hexpand: true});
+        const checks = field.options.map(option => {
+            const button = new Gtk.CheckButton({label: option.name, active: field.selected.includes(option.id)});
+            flow.append(button);
+            return {id: option.id, button};
+        });
+        for (const {button} of checks)
+            button.connect('toggled', () => onCommit({selected: checks.filter(c => c.button.active).map(c => c.id)}));
+        return flow;
+    }
+    const dropDown = Gtk.DropDown.new_from_strings([_('None'), ...field.options.map(option => option.name)]);
+    dropDown.hexpand = true;
+    dropDown.selected = field.selected.length ? field.options.findIndex(option => option.id === field.selected[0]) + 1 : 0;
+    dropDown.update_property([Gtk.AccessibleProperty.LABEL], [field.name]);
+    dropDown.connect('notify::selected', () =>
+        onCommit({selected: dropDown.selected > 0 ? [field.options[dropDown.selected - 1].id] : []}));
+    return dropDown;
 }
 
 /**
@@ -584,6 +636,86 @@ export class WindowActions {
             empty: _('This repository has no labels.'),
             onApply: wanted => this._send(item, labelRequests(item, wanted), _('Labels updated')),
         });
+    }
+
+    /**
+     * The custom fields at the end of the item's ⋮ menu, under a separator and a "Custom fields"
+     * label: GitHub issue fields, each board's fields and GitLab custom fields, a heading per
+     * source and a control per field. Loaded each time the menu opens; a change is saved right
+     * away (the menu stays open). A source that can't be read just has nothing to show.
+     */
+    fieldsSection(item) {
+        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, width_request: 300});
+        box.append(new Gtk.Separator({margin_top: 4}));
+        box.append(new Gtk.Label({label: _('Custom fields'), xalign: 0, css_classes: ['heading'], margin_start: 10}));
+        const body = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, margin_start: 10, margin_end: 10,
+            margin_bottom: 6});
+        const note = text => new Gtk.Label({label: text, xalign: 0, wrap: true, max_width_chars: 36,
+            css_classes: ['dim-label', 'caption']});
+        const loading = note(_('Loading…'));
+        body.append(loading);
+        box.append(body);
+
+        const {requests, parse} = fieldsRequests(item);
+        this._fetch(item, async ({client, token}) => {
+            const responses = [];
+            for (const request of requests) {
+                try {
+                    responses.push(await client.send(token, request));
+                } catch (e) {
+                    if (isCancelled(e))
+                        throw e;
+                    responses.push(null);
+                }
+            }
+            return parse(responses);
+        }, false).then(sections => {
+            body.remove(loading);
+            if (!sections?.length) {
+                body.append(note(_('None here, or your sign-in can’t read them.')));
+                return;
+            }
+            for (const section of sections) {
+                const title = section.kind === 'board' ? _('Board: %s').format(section.title)
+                    : section.kind === 'issue' ? _('Issue fields') : null;
+                if (title && (sections.length > 1 || section.kind === 'board'))
+                    body.append(new Gtk.Label({label: title, xalign: 0, use_markup: false, css_classes: ['dim-label', 'caption-heading']}));
+                const grid = new Gtk.Grid({column_spacing: 12, row_spacing: 6});
+                section.fields.forEach((field, row) => {
+                    grid.attach(new Gtk.Label({label: field.name, xalign: 0, valign: Gtk.Align.CENTER, use_markup: false,
+                        ellipsize: 3 /* END */, max_width_chars: 14, tooltip_text: field.name}), 0, row, 1, 1);
+                    grid.attach(fieldControl(field, edit => this._saveField(item, section, field, edit)), 1, row, 1, 1);
+                });
+                body.append(grid);
+            }
+        });
+        return box;
+    }
+
+    /** Saves one custom field without rebuilding the row (lists don't show fields), then keeps the new value. */
+    async _saveField(item, section, field, edit) {
+        let requests;
+        try {
+            requests = fieldRequests(item, [{section, field, ...edit}]);
+        } catch (e) {
+            this._toast(errorText(e, item));
+            return;
+        }
+        if (requests.length === 0)
+            return;
+        try {
+            const {client, token} = await this._session(item);
+            for (const request of requests)
+                await client.send(token, request);
+            if ('value' in edit)
+                field.value = field.type === 'text' ? edit.value : edit.value.trim();
+            else
+                field.selected = [...edit.selected];
+            this._toast(_('%s updated: %s').format(field.name, itemText(item)));
+        } catch (e) {
+            if (!isCancelled(e))
+                this._toast(errorText(e, item));
+        }
     }
 
     isExpanded(item) {
