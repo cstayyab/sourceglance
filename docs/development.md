@@ -42,8 +42,10 @@ src/
 │   ├── requests.js   # Write and preview requests for either platform
 │   ├── tokenStore.js # Token in the GNOME keyring (libsecret)
 │   └── model.js      # Pure logic, no GNOME imports, unit-tested with Node
-├── window/           # The window: app.js builds it, actions.js (dialogs, preview, chips), i18n.js,
-│                     # pages/ (All Tasks, lists, settings, accounts wizard; rows in common.js,
+├── window/           # The window: app.js builds it, mainWindow.js (sidebar: primary column and
+│                     # docked submenu), actions.js (dialogs, preview, chips), headerButtons.js
+│                     # (Refresh with its problem note, Accounts), i18n.js, pages/ (Glance, All
+│                     # Tasks, lists, Settings with About, accounts wizard; rows in common.js,
 │                     # the filter bar in filterBar.js)
 ├── metadata.json     # UUID, name, supported GNOME Shell versions
 ├── stylesheet.css    # Styles for the panel menu

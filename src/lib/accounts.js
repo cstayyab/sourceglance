@@ -429,6 +429,27 @@ export function firstError(sources) {
 }
 
 /**
+ * The first account whose lists didn't load, for the window's warning: {kind, title, retryAt},
+ * or null. An account that's added but signed out counts; no accounts at all doesn't (that's a
+ * fresh start, not a problem).
+ */
+export function fetchProblem(sources) {
+    const source = sources.find(s => s.status === 'error' || s.status === 'signed-out');
+    if (!source)
+        return null;
+    return {
+        kind: source.status === 'signed-out' ? 'signed-out' : source.error?.kind ?? 'unknown',
+        title: source.title,
+        retryAt: source.error?.retryAt ?? null,
+    };
+}
+
+/** Where a fetchProblem() kind gets fixed: 'accounts' (sign in again, or check access) or 'retry'. */
+export function problemFix(kind) {
+    return ['auth', 'signed-out', 'forbidden', 'insecure', 'not-found', 'gone'].includes(kind) ? 'accounts' : 'retry';
+}
+
+/**
  * The id of the account an item came from. Items from before multiple accounts (in memory
  * only, e.g. recently closed) fall back to the first sign-in of their platform.
  */

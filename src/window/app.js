@@ -12,15 +12,15 @@ import {WindowActions} from './actions.js';
 import {WindowData} from './data.js';
 import {gettext as _, ngettext} from './i18n.js';
 import {buildMainWindow, loadTheme} from './mainWindow.js';
+import {AccountsButton, RefreshButton} from './headerButtons.js';
 import {UpdateButton} from './updateButton.js';
 import {buildAboutPage} from './pages/about.js';
 import {buildAccountsPage} from './pages/accounts.js';
+import {buildGlancePage} from './pages/glance.js';
 import {ListPage} from './pages/list.js';
 import {ProjectsPage} from './pages/projects.js';
 import {TasksPage} from './pages/tasks.js';
 import {buildSystemStartPage} from './pages/systemStart.js';
-import {buildSystemTrayPage} from './pages/systemTray.js';
-import {buildWidgetsPage} from './pages/widgets.js';
 
 /**
  * @param {Adw.Window} window
@@ -32,7 +32,7 @@ import {buildWidgetsPage} from './pages/widgets.js';
 export function fillWindow(window, {settings, dir, version}) {
     // For the update check: sourceglance's releases are on github.com.
     const client = new GitHubClient(version);
-    // One client per account, for the lists, the actions and Settings → Accounts.
+    // One client per account, for the lists, the actions and the Accounts page.
     const clients = new AccountClients(version);
     window.set_default_size(960, 680);
     loadTheme(window, dir);
@@ -62,6 +62,9 @@ export function fillWindow(window, {settings, dir, version}) {
     let terms = [];
     // Set once the layout is built; pages can change (and call back) while it's being built.
     let main = null;
+    // The title bar's Refresh and Accounts (headerButtons.js), built below.
+    let refresh = null;
+    let accountsButton = null;
     const showCounts = () => {
         const state = data.state;
         for (const id of LISTS)
@@ -75,7 +78,8 @@ export function fillWindow(window, {settings, dir, version}) {
         for (const page of pages)
             page.update(state);
         showCounts();
-        refresh.sensitive = !state.refreshing;
+        refresh?.update(state);
+        accountsButton?.update(state);
     }});
     // The preview shows in the window's right panel (built with the layout, below).
     const panel = {
@@ -109,21 +113,30 @@ export function fillWindow(window, {settings, dir, version}) {
 
     const update = new UpdateButton({window, client, settings, toast, version: version,
         currentPage: () => main?.current()});
-    const refresh = new Gtk.Button({icon_name: 'view-refresh-symbolic', tooltip_text: _('Refresh')});
-    refresh.connect('clicked', () => {
+    const showPage = id => main?.select(id);
+    refresh = new RefreshButton({openPage: showPage, onRefresh: () => {
         data.refresh();
         update.check();
-    });
+    }});
+    accountsButton = new AccountsButton({openPage: showPage});
     // The search box sits on the right of the title, always shown, next to the buttons.
     const headerEnd = new Gtk.Box({spacing: 6});
     headerEnd.append(search);
     headerEnd.append(update.widget);
-    headerEnd.append(refresh);
+    headerEnd.append(refresh.widget);
+    headerEnd.append(accountsButton.widget);
+
+    // Desktop Widgets and System Tray share the Glance page.
+    const glancePage = buildGlancePage(ctx);
+    // About is a panel on the Settings page.
+    const settingsPage = buildSystemStartPage({...ctx,
+        about: buildAboutPage({window, appIcon: icon('sourceglance-app'), version})});
 
     // Whether the sidebar shows icons only. Kept in settings when this version's schema has it.
     const hasNarrowKey = settings.settings_schema.has_key('sidebar-narrow');
     main = buildMainWindow(window, {
         appIcon: icon('sourceglance-app'),
+        exitIcon: icon('exit-symbolic'),
         overlay,
         headerEnd,
         narrow: hasNarrowKey && settings.get_boolean('sidebar-narrow'),
@@ -134,27 +147,32 @@ export function fillWindow(window, {settings, dir, version}) {
         onPageChanged: id => {
             currentPage = id;
             showCounts();
+            accountsButton.setPage(id);
         },
         entries: [
-            {heading: _('Lists')},
-            // Everything in one list, then the lists by kind.
-            {id: 'tasks', title: _('All Tasks'), iconName: 'view-list-bullet-symbolic', page: tasksPage.widget},
-            {id: 'issues', title: _('Issues'), iconName: 'checkbox-checked-symbolic', page: issuesPage.widget},
-            {id: 'prs', title: _('Pull requests'), gicon: icons.pr, page: prsPage.widget},
-            {id: 'projects', title: _('Projects'), gicon: icons.projects, page: projectsPage.widget},
-            {heading: _('Glance Tools')},
-            {id: 'widgets', title: _('Desktop Widgets'), iconName: 'view-grid-symbolic',
-                page: buildWidgetsPage(ctx)},
-            {id: 'tray', title: _('System Tray'), iconName: 'preferences-desktop-display-symbolic',
-                page: buildSystemTrayPage(ctx)},
-            {heading: _('Settings')},
-            {id: 'accounts', title: _('Accounts'), iconName: 'avatar-default-symbolic',
-                page: buildAccountsPage(ctx)},
-            {id: 'start', title: _('System Start'), iconName: 'system-run-symbolic',
-                page: buildSystemStartPage(ctx)},
-            {id: 'about', title: _('About'), iconName: 'help-about-symbolic',
-                page: buildAboutPage({window, appIcon: icon('sourceglance-app'),
-                    version: version})},
+            // Glance first, and open at launch: Desktop Widgets and System Tray on one page.
+            {id: 'glance', title: _('Glance'), gicon: icon('sourceglance-symbolic'), group: true},
+            {id: 'widgets', parent: 'glance', title: _('Desktop Widgets'), shortTitle: _('Widgets'),
+                iconName: 'view-grid-symbolic', page: glancePage.widget, pageId: 'glance', pageTitle: _('Glance'),
+                onShow: () => glancePage.scrollTo('widgets')},
+            {id: 'tray', parent: 'glance', title: _('System Tray'), shortTitle: _('Tray'),
+                iconName: 'preferences-desktop-display-symbolic', page: glancePage.widget, pageId: 'glance',
+                pageTitle: _('Glance'), onShow: () => glancePage.scrollTo('tray')},
+            // Tasks: everything in one list, then the lists by kind.
+            {id: 'tasks-group', title: _('Tasks'), iconName: 'view-list-bullet-symbolic', group: true},
+            {id: 'tasks', parent: 'tasks-group', title: _('All Tasks'), shortTitle: _('All'),
+                iconName: 'view-list-symbolic', page: tasksPage.widget, count: true},
+            {id: 'issues', parent: 'tasks-group', title: _('Issues'), iconName: 'checkbox-checked-symbolic',
+                page: issuesPage.widget, count: true},
+            {id: 'prs', parent: 'tasks-group', title: _('Pull requests'), shortTitle: _('PRs'), gicon: icons.pr,
+                page: prsPage.widget, count: true},
+            {id: 'projects', parent: 'tasks-group', title: _('Projects'), gicon: icons.projects,
+                page: projectsPage.widget, count: true},
+            // Accounts opens from the title bar; Settings sits above Exit (its id is still
+            // 'start', the page it replaced, so pages saved by older versions still open).
+            {id: 'accounts', title: _('Accounts'), page: buildAccountsPage(ctx), hidden: true},
+            {id: 'start', title: _('Settings'), iconName: 'emblem-system-symbolic', page: settingsPage.widget,
+                bottom: true},
         ],
     });
 
@@ -164,7 +182,12 @@ export function fillWindow(window, {settings, dir, version}) {
         const id = settings.get_string('open-page');
         if (!id)
             return;
-        main.select(id);
+        if (id === 'about') {
+            main.select('start');
+            settingsPage.showAbout();
+        } else {
+            main.select(id);
+        }
         settings.set_string('open-page', '');
     };
     const openPageId = settings.connect('changed::open-page', openPage);
@@ -208,7 +231,7 @@ export function fillWindow(window, {settings, dir, version}) {
     // Quit in the top bar closes the window too.
     const quitRequestId = settings.connect('changed::quit-request', () => window.close());
 
-    // Adding or removing an account under Settings → Accounts reloads the lists.
+    // Adding or removing an account on the Accounts page reloads the lists.
     const tokenChangedId = settings.connect('changed::token-changed', () => data.refresh());
     window.connect('close-request', () => {
         settings.disconnect(tokenChangedId);
@@ -216,6 +239,8 @@ export function fillWindow(window, {settings, dir, version}) {
         settings.disconnect(openPageId);
         settings.disconnect(installUpdateId);
         update.destroy();
+        refresh.destroy();
+        accountsButton.destroy();
         data.stop();
         client.destroy();
         clients.destroy();
@@ -223,6 +248,8 @@ export function fillWindow(window, {settings, dir, version}) {
     });
     for (const page of pages)
         page.update(data.state);
+    refresh.update(data.state);
+    accountsButton.update(data.state);
     data.start();
     update.check();
     installUpdate();

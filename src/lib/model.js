@@ -1060,7 +1060,7 @@ export function isGroupCollapsed(collapsed, id, terms = []) {
     return terms.length === 0 && collapsed.includes(id);
 }
 
-// The wallpaper Settings → Desktop Widgets recommends to go with the cards: GNOME's default,
+// The wallpaper Glance → Desktop Widgets recommends to go with the cards: GNOME's default,
 // Adwaita (gnome-backgrounds), with the values from its gnome-background-properties entry.
 export const RECOMMENDED_WALLPAPER = {
     'picture-uri': 'file:///usr/share/backgrounds/gnome/adwaita-l.jxl',

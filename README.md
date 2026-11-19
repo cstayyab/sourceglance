@@ -33,18 +33,20 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
 - **Act from anywhere**: comment, close or reopen, edit assignees and labels, and move
   items between statuses on your project boards, from the menus or the window.
 - **Preview and edit in the window**: read an item's description, comments and reactions,
-  edit the description and add a comment, all with a small Markdown editor. Labels and
+  edit the description and add a comment, all with a small Markdown editor. The preview
+  reads like a web page: the item's kind as a coloured icon in its header, the description
+  under its own heading, and comments as a feed with each author's avatar. Labels and
   assignees show as chips under the title: × removes one, + adds one.
 - **Several accounts, self-hosted too**: add as many GitHub and GitLab accounts as you like,
   each with its own collapsible section in every list, menu and widget. A wizard in
-  **Settings → Accounts** connects GitHub Enterprise Server and GitLab self-managed. Counts
+  **Accounts** (top right of the window) connects GitHub Enterprise Server and GitLab self-managed. Counts
   add up across all of them.
 - **Collapsible repositories**: click a repository heading to hide or show its items, in
   the window and the menus. Source Glance remembers what you collapsed.
 - **All Tasks**: everything assigned to you in one list, newest first, with the same actions
   as the lists. Filter it with **Kind**, **Accounts**, **Labels** and **Assignee**, each a
   check list; what you pick shows as chips below them, each removed with ×. Issues, Pull
-  requests and Projects follow it in the sidebar, with **Labels** and **Assignee** filters
+  requests and Projects follow it in the Tasks menu, with **Labels** and **Assignee** filters
   (Projects: **Assignee**), since their kind and accounts are already the page and its
   sections.
 - **Projects**: draft items on your GitHub Projects (v2) boards, grouped by status.
@@ -53,21 +55,29 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   to see everything again.
 - **Filter by label** in the menus, and see how many closed or merged items are still
   assigned to you.
-- **Main window** with a sidebar for your lists and settings (Desktop Widgets, System Tray,
-  Accounts, System Start, About), a splash screen, and an app grid icon, all in the top
-  bar's blue. It's an app of its own, so the dock and Alt+Tab show it as Source Glance.
+- **Main window** with a slim sidebar: **Glance** (Desktop Widgets and System Tray) and
+  **Tasks** (All Tasks, Issues, Pull requests, Projects), each opening its menu right beside
+  it, then **Settings** and **Exit** at the foot. **Accounts** is in the title bar. A
+  splash screen and an app grid icon, all in the top bar's blue. It's an app of its own, so
+  the dock and Alt+Tab show it as Source Glance.
+- **Problems say how to fix them**: if an account's lists don't load, a red **!** on
+  Refresh says why (sign-in rejected, no connection, request limit…) with a button that
+  fixes it or tries again. With no account yet, a note under **Accounts** shows how to get
+  started.
 - **Public repositories** you don't own show up without any setup; private ones appear once
   their owner installs the Source Glance app.
 - **Limited access**: on github.com, sign in through a GitHub App that can only see issues,
   pull requests and projects (no code), or with a token you create. Tokens stay in the GNOME
   keyring. Self-hosted instances need HTTPS unless they're on your local network.
-- **Start automatically** at login, or **Quit** and start it again from the app grid.
+- **Start automatically** at login, or **Quit** (in the window: **Exit**) and start it again
+  from the app grid.
 - **One-file installer**: a setup wizard that installs, updates, repairs and removes
   Source Glance.
 - **Update notice** at login when a new version is out, with short release notes, and
   **Update available** in the window: one click downloads the new Setup, checks its SHA-256
   checksum, and updates Source Glance without logging out.
-- **About** page with the version, the author, and links to report an issue or contribute.
+- **About** (Settings → About Source Glance) with the version, the author, and links to
+  report an issue or contribute.
 
 Planned: desktop notifications for new assignments.
 
@@ -84,7 +94,7 @@ your work and stay clickable.
 | **Pull requests** | Pull and merge requests assigned to you or awaiting your review |
 | **Projects** | Draft items on your project boards, with their status |
 
-- **Turn cards on or off** in Source Glance → **Settings → Desktop Widgets**. Summary is on
+- **Turn cards on or off** in Source Glance → **Glance → Desktop Widgets**. Summary is on
   by default.
 - **Move a card** by dragging its header; Source Glance remembers where you put it.
   **Reset positions** puts them all back in a column on the right.
@@ -125,8 +135,8 @@ updates Source Glance in place and starts the new version straight away, with no
 then the window reopens on the new version. You can also just download and run the latest
 Setup yourself. Coming from v0.2.0 or earlier, log out once after this first update.
 
-Turn the check off in **Settings → System Start → Check for updates**. It only asks GitHub
-for the list of Source Glance releases; nothing about you is sent.
+Turn the check off in **Settings → Check for updates** (at the foot of the sidebar). It only
+asks GitHub for the list of Source Glance releases; nothing about you is sent.
 
 ### From source
 
@@ -163,7 +173,7 @@ Coming with the first stable release.
 ## Getting started
 
 Open Source Glance from the app grid (or the Source Glance button in the top bar →
-**Settings**), then go to **Accounts**:
+**Settings**), then click **Accounts** at the top right:
 
 1. Under **Add an account**, click **GitHub** and choose **Sign in with GitHub**. Source Glance
    copies a short code and opens GitHub; paste it and approve. This gives access to issues,
@@ -210,7 +220,7 @@ The top bar shows Source Glance's buttons as one tinted block, each list with it
 - **Projects**: draft items on your project boards, grouped by status
 
 Each list can be filtered by label and ends with how many closed items are still assigned
-to you. In **Settings → System Tray** you choose which lists to show, and whether they're
+to you. In **Glance → System Tray** you choose which lists to show, and whether they're
 separate buttons or **tabs in one menu**.
 
 The menus are about a quarter of your screen wide (28 %), never narrower than 360 or wider
@@ -247,17 +257,27 @@ or whoever is already on them) and previewed; GitHub drafts have no labels or co
 
 ### Main window
 
-The window has **All Tasks**, then your **Issues**, **Pull requests** and **Projects**, in a
-sidebar with counts and the same actions as the menus, and the settings pages: **Desktop Widgets**, **System
-Tray**, **Accounts** (all your GitHub and GitLab accounts, including self-hosted ones) and **System Start** (start at login,
-app grid icon). **About** shows the version and the author, with links to report an issue or
-fork the repository and contribute.
+The sidebar is a slim column of icons, each with its name under it (☰ at its top shows full
+names instead). Click one and its menu opens right beside it, with full names and counts:
+
+- **Glance**, which opens first: **Desktop Widgets** and **System Tray**, both on one page,
+  each under its own heading.
+- **Tasks**: **All Tasks**, then your **Issues**, **Pull requests** and **Projects**, each
+  with its count (0 until they load) and the same actions as the menus.
+- **Settings**, at the foot: start at login, the app grid icon, updates, and **About Source
+  Glance** (the version and the author, with links to report an issue or fork the repository
+  and contribute), which slides in from the right.
+- **Exit**, below it, stops Source Glance.
+
+**Accounts**, in the title bar, lists all your GitHub and GitLab accounts, including
+self-hosted ones, and adds more. **Refresh**, beside it, reloads the lists; a red **!** on its
+corner means an account's lists didn't load: point at it to see why and how to fix it.
 
 **Search** the lists from the box on the right of the title bar, always there on every page
-(or just start typing; Ctrl+F also jumps there). Searching from a settings page opens the
-first list. It matches titles, repositories, `#numbers`, labels, people and board
-statuses, across Issues, Pull requests and Projects at once. While you search, the sidebar
-counts and the title bar show how many items match. Clear the box, press Esc or click
+(or just start typing; Ctrl+F also jumps there). Searching from a settings page opens All
+Tasks. It matches titles, repositories, `#numbers`, labels, people and board
+statuses, across Issues, Pull requests and Projects at once. While you search, the Tasks
+menu's counts and the title bar show how many items match. Clear the box, press Esc or click
 **Clear search** to see your full lists and counts again; the list you're on stays selected.
 
 ## Roadmap

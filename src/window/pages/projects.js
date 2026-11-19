@@ -75,7 +75,7 @@ export class ProjectsPage {
         const sources = state.sources.filter(src => src.platform === 'github' && src.status !== 'signed-out');
         if (sources.length === 0) {
             this._status('avatar-default-symbolic', _('No GitHub account'),
-                _('Project boards come from GitHub. Add a GitHub account under Settings → Accounts.'));
+                _('Project boards come from GitHub. Add a GitHub account under Accounts, at the top right.'));
             return;
         }
         const readable = sources.filter(src => !src.boardsError);

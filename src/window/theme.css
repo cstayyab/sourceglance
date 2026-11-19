@@ -13,21 +13,25 @@
     }
 }
 
-/* Sidebar: tinted like the top-bar block, selection in the stronger blue. */
+/* Sidebar: the primary column lightly tinted, the submenu beside it a shade deeper. A selected
+   primary entry fills its row edge to edge in the submenu's colour, so the two read as one. The
+   colours are mixed (opaque), so the selection and the submenu match exactly. */
 .sourceglance-window .sourceglance-sidebar {
-    background-color: alpha(#58a6ff, 0.10);
+    background-color: mix(@window_bg_color, #58a6ff, 0.04);
 }
 
 .sourceglance-window .sourceglance-sidebar-header {
     background-image: linear-gradient(to bottom, alpha(#58a6ff, 0.32), alpha(#58a6ff, 0.16));
 }
 
-.sourceglance-window .navigation-sidebar.sourceglance-sidebar > row:selected {
-    background-color: alpha(#58a6ff, 0.32);
+.sourceglance-window .navigation-sidebar.sourceglance-sidebar > row {
+    margin: 0;
+    border-radius: 0;
 }
 
+.sourceglance-window .navigation-sidebar.sourceglance-sidebar > row:selected,
 .sourceglance-window .navigation-sidebar.sourceglance-sidebar > row:selected:hover {
-    background-color: alpha(#58a6ff, 0.40);
+    background-color: mix(@window_bg_color, #58a6ff, 0.16);
 }
 
 .sourceglance-window .sourceglance-sidebar-heading {
@@ -63,6 +67,18 @@
 .sourceglance-window .sourceglance-sidebar-quit {
     padding: 6px 10px;
     font-weight: normal;
+}
+
+/* The sidebar's foot (Settings, then Exit): one group, tinted like the sidebar, a line above. */
+.sourceglance-window .sourceglance-sidebar-footer {
+    background-color: mix(@window_bg_color, #58a6ff, 0.04);
+    border-top: 1px solid alpha(currentColor, 0.10);
+    padding: 6px 0;
+}
+
+.sourceglance-window .sourceglance-sidebar-footer .navigation-sidebar.sourceglance-sidebar {
+    background-color: transparent;
+    padding: 0;
 }
 
 .sourceglance-window .sourceglance-indent {
@@ -197,17 +213,70 @@
     .sourceglance-window .sourceglance-kind-done { color: #a371f7; }
 }
 
+/* The preview reads like a web page: section titles over flat text, roomy lines, and
+   comments as an activity feed (avatar, name, time, text) rather than boxed cards. */
+.sourceglance-window .sourceglance-section-title {
+    font-weight: 600;
+    font-size: 1.05em;
+    margin-top: 2px;
+}
+
+.sourceglance-window .sourceglance-md label {
+    line-height: 1.45;
+}
+
+.sourceglance-window .sourceglance-comment {
+    padding: 8px 8px 10px 8px;
+    margin: 0 -8px;
+    border-radius: 6px;
+}
+
+.sourceglance-window .sourceglance-comment:hover {
+    background-color: alpha(currentColor, 0.04);
+}
+
+.sourceglance-window .sourceglance-comment-author {
+    font-weight: 600;
+}
+
+.sourceglance-window .sourceglance-composer {
+    border-radius: 6px;
+}
+
 /* Rendered Markdown in the preview. */
 .sourceglance-window .sourceglance-md-code {
-    background-color: alpha(currentColor, 0.06);
-    border-radius: 6px;
+    background-color: alpha(currentColor, 0.05);
+    border: 1px solid alpha(currentColor, 0.12);
+    border-radius: 4px;
     padding: 8px 10px;
 }
 
 .sourceglance-window .sourceglance-md-quote {
-    border-left: 3px solid alpha(currentColor, 0.25);
-    padding-left: 10px;
-    opacity: 0.8;
+    border-left: 3px solid alpha(#58a6ff, 0.6);
+    padding-left: 12px;
+    opacity: 0.85;
+}
+
+.sourceglance-window .sourceglance-md-table-frame {
+    border: 1px solid alpha(currentColor, 0.15);
+    border-radius: 4px;
+}
+
+.sourceglance-window .sourceglance-md-table {
+    padding: 6px 10px;
+}
+
+/* "!" on Refresh's bottom-right corner when an account's lists didn't load. */
+.sourceglance-window .sourceglance-problem-badge {
+    background-color: #cf222e;
+    color: #ffffff;
+    border: 2px solid @headerbar_bg_color;
+    border-radius: 999px;
+    min-width: 12px;
+    min-height: 12px;
+    padding: 0;
+    font-size: 10px;
+    font-weight: 800;
 }
 
 /* A count on an icon button's corner, in the button's own colour. */
@@ -248,4 +317,56 @@
 .sourceglance-window .sourceglance-panel-head {
     min-height: 46px;
     padding: 0 6px;
+}
+
+/* Settings: the status bar at its foot, and About sliding over it from the right. */
+.sourceglance-window .sourceglance-status-bar {
+    padding: 2px 6px 2px 12px;
+    border-top: 1px solid alpha(currentColor, 0.12);
+}
+
+.sourceglance-window .sourceglance-about-panel {
+    border-left: 1px solid alpha(currentColor, 0.15);
+    box-shadow: -6px 0 18px alpha(black, 0.12);
+}
+
+/* The ✕ on a pinned note: small, in its top-right corner. */
+.sourceglance-window .sourceglance-note-close {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    margin: -4px -4px 0 0;
+}
+
+/* Icons only: each entry's short name, small, under its icon. */
+.sourceglance-window .sourceglance-sidebar-mini-label {
+    font-size: 9px;
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-sidebar-narrow > row {
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+/* The submenu docked right of the primary entries: a group's entries, with names and counts,
+   in the selected primary entry's colour. Its own selection is the solid accent, white on blue. */
+.sourceglance-window .sourceglance-submenu {
+    background-color: mix(@window_bg_color, #58a6ff, 0.16);
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-submenu-list {
+    background-color: transparent;
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-submenu-list > row:selected {
+    background-color: #1f6feb;
+    color: #ffffff;
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-submenu-list > row:selected:hover {
+    background-color: #1a62d6;
+}
+
+.sourceglance-window .navigation-sidebar.sourceglance-submenu-list > row:selected .sourceglance-count-pill {
+    background-color: alpha(#ffffff, 0.25);
 }

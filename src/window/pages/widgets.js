@@ -1,4 +1,4 @@
-// Settings → Desktop Widgets: which cards show on the desktop, and how.
+// Glance → Desktop Widgets: which cards show on the desktop, and how.
 import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import GdkPixbuf from 'gi://GdkPixbuf';
@@ -105,9 +105,8 @@ function buildWallpaperGroup({window, settings, toast}) {
     return group;
 }
 
-/** `ctx` is {window, settings, toast}. */
-export function buildWidgetsPage({window, settings, toast}) {
-    const page = new Adw.PreferencesPage();
+/** `ctx` is {window, settings, toast}. Adds its groups to `page` (a new one by default) and returns it. */
+export function buildWidgetsPage({window, settings, toast}, page = new Adw.PreferencesPage()) {
     const cards = new Adw.PreferencesGroup({
         title: _('Cards on the desktop'),
         description: _('Cards sit on the desktop, below your windows. Drag a card by its header to move it.'),

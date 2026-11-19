@@ -22,8 +22,9 @@ export const OAUTH_CLIENT_ID = '';
 // confidential, scope `api`, Device authorization grant enabled. Public by design.
 export const GITLAB_CLIENT_ID = 'b21497a4740f5b6acda34fd45ac48f42529611120e526a55ce85b505bbdf19f3';
 
-// Project links and author, shown on the About page.
+// Project links and author, shown on the About page. The year is the LICENSE's copyright year.
 export const AUTHOR_NAME = 'Mohammad Omer';
+export const COPYRIGHT_YEAR = '2026';
 export const AUTHOR_GITHUB = 'omer-gh';
 export const REPO_URL = 'https://github.com/omer-gh/sourceglance';
 export const HOME_URL = 'https://omer-gh.github.io/sourceglance/';
