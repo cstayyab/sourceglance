@@ -2,7 +2,7 @@
 
 Reviewed for every minor release and whenever a PR touches authentication, networking,
 storage, or anything rendered from GitHub or GitLab data. Last reviewed: **2026-11-19
-(v0.9.0: the window's preview renders Markdown from GitHub and GitLab through lib/markdown.js, see T6; Quit uses a new internal setting; v0.8.0: fixed top-bar menu width, no change to the model; v0.7.0: the window's preview shows descriptions, comments and reactions, and label colours
+(v0.10.0: the window's new layout; comment avatars show initials from logins and the failed-load note shows account names, both as plain text, see T6; no new data, settings or network access; v0.9.0: the window's preview renders Markdown from GitHub and GitLab through lib/markdown.js, see T6; Quit uses a new internal setting; v0.8.0: fixed top-bar menu width, no change to the model; v0.7.0: the window's preview shows descriptions, comments and reactions, and label colours
 reach CSS: see T6 and T28; v0.6.0: the Tasks list, no change to the model: it opens links through the same checks;
 v0.5.0: several accounts and self-hosted instances,
 [ADR 0007](../adr/0007-multiple-accounts-and-self-hosted-instances.md); update notice at

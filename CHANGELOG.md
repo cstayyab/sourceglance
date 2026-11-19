@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-19
+
 ### Added
 
 - **Glance**: Desktop Widgets and System Tray on one page, each under its own heading. It's
@@ -294,7 +296,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/omer-gh/sourceglance/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/omer-gh/sourceglance/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/omer-gh/sourceglance/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/omer-gh/sourceglance/compare/v0.6.0...v0.7.0
