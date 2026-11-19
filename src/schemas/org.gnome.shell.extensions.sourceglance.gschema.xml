@@ -44,8 +44,60 @@
     </key>
     <key name="widgets" type="as">
       <default>['summary']</default>
-      <summary>Desktop widgets</summary>
-      <description>Cards to show on the desktop: summary, issues, prs, projects.</description>
+      <summary>Widgets</summary>
+      <description>Cards to show in the window's Glance → Widgets, and on the desktop unless listed in widgets-off-desktop: summary, issues, prs, projects, or a custom widget's id. Cards left out wait under Add widget.</description>
+    </key>
+    <key name="widgets-off-desktop" type="as">
+      <default>[]</default>
+      <summary>Widgets kept off the desktop</summary>
+      <description>Cards shown only in the window, not on the desktop.</description>
+    </key>
+    <key name="custom-widgets" type="as">
+      <default>[]</default>
+      <summary>Custom widgets</summary>
+      <description>Widgets you made, one JSON object per widget: id (custom- and up to 16 letters or digits), name, icon (app, issue, pr, merge, closed, projects, label or code), kind (issues, prs or projects), account (an account id, or empty for all), relation (any, assigned or review; pull requests only), repos and labels (lists, empty for any) and words (search words).</description>
+    </key>
+    <key name="widget-opacities" type="a{si}">
+      <default>{}</default>
+      <summary>Each widget's opacity</summary>
+      <description>How opaque each card is, in percent (30 to 100), by card id. Cards not listed use widget-opacity.</description>
+    </key>
+    <key name="widget-size" type="s">
+      <choices>
+        <choice value="small"/>
+        <choice value="medium"/>
+        <choice value="large"/>
+      </choices>
+      <default>'medium'</default>
+      <summary>Widget size</summary>
+      <description>How big cards are, unless widget-sizes gives their own: "small", "medium" (sized from your screen) or "large".</description>
+    </key>
+    <key name="widget-sizes" type="a{ss}">
+      <default>{}</default>
+      <summary>Each widget's size</summary>
+      <description>Each card's own size ("small", "medium" or "large"), by card id. Cards not listed use widget-size.</description>
+    </key>
+    <key name="widget-layout" type="a{s(ii)}">
+      <default>{}</default>
+      <summary>Widget arrangement</summary>
+      <description>Where each card sits in the window's widget area, as the column and row of its top-left cell on a 4 × 4 grid. On the desktop, cards never dragged follow this order (see widget-arrangement).</description>
+    </key>
+    <key name="widget-arrangement" type="s">
+      <choices>
+        <choice value="top-right"/>
+        <choice value="right"/>
+        <choice value="top"/>
+        <choice value="left"/>
+        <choice value="bottom"/>
+      </choices>
+      <default>'top-right'</default>
+      <summary>Where widgets go on the desktop</summary>
+      <description>Where cards never dragged on the desktop sit, in the window's order: "top-right" (a grid two cards wide), "right" or "left" (a column at that edge), "top" or "bottom" (a row along that edge).</description>
+    </key>
+    <key name="widget-backdrop" type="b">
+      <default>true</default>
+      <summary>Wallpaper behind the widget area</summary>
+      <description>Whether the window's widget area shows your wallpaper behind the cards.</description>
     </key>
     <key name="widget-positions" type="a{s(ii)}">
       <default>{}</default>
@@ -55,8 +107,8 @@
     <key name="widget-opacity" type="i">
       <range min="30" max="100"/>
       <default>92</default>
-      <summary>Desktop widget opacity</summary>
-      <description>How opaque the cards are, in percent.</description>
+      <summary>Widget opacity</summary>
+      <description>How opaque cards are, in percent, unless widget-opacities gives their own.</description>
     </key>
     <key name="start-automatically" type="b">
       <default>true</default>
@@ -96,7 +148,7 @@
     <key name="saved-wallpaper" type="a{ss}">
       <default>{}</default>
       <summary>Wallpaper to put back</summary>
-      <description>Internal. The org.gnome.desktop.background values the recommended wallpaper replaced, kept by Glance → Desktop Widgets → Apply so Reset can put them back. Cleared when the wallpaper changes any other way.</description>
+      <description>Internal. The org.gnome.desktop.background values the recommended wallpaper replaced, kept by Glance → Widgets → Apply so Reset can put them back. Cleared when the wallpaper changes any other way.</description>
     </key>
     <key name="install-update" type="b">
       <default>false</default>

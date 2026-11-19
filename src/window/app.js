@@ -7,7 +7,7 @@ import Gtk from 'gi://Gtk';
 
 import {AccountClients} from '../lib/accountStore.js';
 import {GitHubClient} from '../lib/github.js';
-import {listBadge, searchCount, searchTerms} from '../lib/model.js';
+import {WIDGET_ICONS, listBadge, searchCount, searchTerms} from '../lib/model.js';
 import {WindowActions} from './actions.js';
 import {WindowData} from './data.js';
 import {gettext as _, ngettext} from './i18n.js';
@@ -47,10 +47,18 @@ export function fillWindow(window, {settings, dir, version}) {
         label: icon('label-symbolic'),
         projects: icon('checklist-symbolic'),
         code: icon('code-symbolic'),
+        app: icon('sourceglance-symbolic'),
+        opacity: icon('opacity-symbolic'),
+        size: icon('size-symbolic'),
+        desktop: icon('desktop-symbolic'),
+        desktopOff: icon('desktop-off-symbolic'),
+        widgetCustom: icon('widget-custom-symbolic'),
+        // Custom widgets' icons (WIDGET_ICONS in model.js).
+        ...Object.fromEntries(Object.entries(WIDGET_ICONS).map(([key, name]) => [`widget-${key}`, icon(`${name}-symbolic`)])),
     };
     const overlay = new Adw.ToastOverlay();
     const toast = title => overlay.add_toast(new Adw.Toast({title}));
-    const ctx = {window, settings, client, clients, version, toast, dir: dir};
+    const ctx = {window, settings, client, clients, version, toast, dir: dir, icons};
 
     // One search box, on the right of the title bar, filters all three lists. While it has text, the
     // sidebar counts and the title's subtitle show matches; clearing it shows everything.
@@ -74,12 +82,15 @@ export function fillWindow(window, {settings, dir, version}) {
     };
 
     const pages = [];
+    // Glance → Widgets draws the cards with the lists too; built below.
+    let glancePage = null;
     const data = new WindowData({clients, settings, onChange: state => {
         for (const page of pages)
             page.update(state);
         showCounts();
         refresh?.update(state);
         accountsButton?.update(state);
+        glancePage?.update(state);
     }});
     // The preview shows in the window's right panel (built with the layout, below).
     const panel = {
@@ -126,8 +137,8 @@ export function fillWindow(window, {settings, dir, version}) {
     headerEnd.append(refresh.widget);
     headerEnd.append(accountsButton.widget);
 
-    // Desktop Widgets and System Tray share the Glance page.
-    const glancePage = buildGlancePage(ctx);
+    // Widgets and System Tray share the Glance page.
+    glancePage = buildGlancePage(ctx);
     // About is a panel on the Settings page.
     const settingsPage = buildSystemStartPage({...ctx,
         about: buildAboutPage({window, appIcon: icon('sourceglance-app'), version})});
@@ -150,9 +161,9 @@ export function fillWindow(window, {settings, dir, version}) {
             accountsButton.setPage(id);
         },
         entries: [
-            // Glance first, and open at launch: Desktop Widgets and System Tray on one page.
+            // Glance first, and open at launch: Widgets and System Tray on one page.
             {id: 'glance', title: _('Glance'), gicon: icon('sourceglance-symbolic'), group: true},
-            {id: 'widgets', parent: 'glance', title: _('Desktop Widgets'), shortTitle: _('Widgets'),
+            {id: 'widgets', parent: 'glance', title: _('Widgets'),
                 iconName: 'view-grid-symbolic', page: glancePage.widget, pageId: 'glance', pageTitle: _('Glance'),
                 onShow: () => glancePage.scrollTo('widgets')},
             {id: 'tray', parent: 'glance', title: _('System Tray'), shortTitle: _('Tray'),

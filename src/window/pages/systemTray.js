@@ -1,60 +1,140 @@
-// Glance → System Tray: how sourceglance looks in the top bar.
-import Adw from 'gi://Adw';
+// Glance → System Tray: how sourceglance looks in the top bar. Two tiles preview the layouts;
+// click one to use it. On the previews, each list's button (a top-bar icon, or a tab in the
+// menu) shows or hides that list. The refresh interval sits beside the heading.
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
 import {gettext as _} from '../i18n.js';
 
-import {normalizeButtons} from '../../lib/model.js';
+import {TOOLBAR_LISTS, normalizeButtons} from '../../lib/model.js';
 
-/** `ctx` is {settings}. Adds its groups to `page` (a new one by default) and returns it. */
-export function buildSystemTrayPage({settings}, page = new Adw.PreferencesPage()) {
+const LAYOUTS = ['separate', 'tabs'];
 
-    const group = new Adw.PreferencesGroup({
-        title: _('Top bar'),
-        description: _('The Source Glance button, with status and Settings, is always shown.'),
-    });
-    page.add(group);
+function listInfo(id, icons) {
+    return {
+        issues: {title: _('Issues'), short: _('Issues'), gicon: icons.issue},
+        prs: {title: _('Pull requests'), short: _('PRs'), gicon: icons.pr},
+        projects: {title: _('Projects'), short: _('Projects'), gicon: icons.projects},
+    }[id];
+}
 
-    const layouts = ['separate', 'tabs'];
-    const layoutRow = new Adw.ComboRow({
-        title: _('Layout'),
-        model: Gtk.StringList.new([_('Separate top-bar icons'), _('Tabs in one menu')]),
-        selected: Math.max(0, layouts.indexOf(settings.get_string('layout'))),
-    });
-    layoutRow.connect('notify::selected', () =>
-        settings.set_string('layout', layouts[layoutRow.selected] ?? 'separate'));
-    group.add(layoutRow);
-
-    const lists = new Adw.PreferencesGroup({title: _('Lists')});
-    page.add(lists);
-    for (const [id, title, subtitle] of [
-        ['issues', _('Issues'), _('Open issues assigned to you')],
-        ['prs', _('Pull requests'), _('Assigned to you or awaiting your review')],
-        ['projects', _('Projects'), _('Draft items on your project boards')],
-    ]) {
-        const row = new Adw.SwitchRow({
-            title,
-            subtitle,
-            active: normalizeButtons(settings.get_strv('toolbar-buttons')).includes(id),
-        });
-        row.connect('notify::active', () => {
-            const current = normalizeButtons(settings.get_strv('toolbar-buttons'));
-            const next = row.active ? [...current, id] : current.filter(other => other !== id);
-            settings.set_strv('toolbar-buttons', normalizeButtons(next));
-        });
-        lists.add(row);
+function placeholderLines(box, widths) {
+    for (const width of widths) {
+        box.append(new Gtk.Box({css_classes: ['sourceglance-tray-line'], width_request: width,
+            halign: Gtk.Align.START}));
     }
+}
 
-    const updates = new Adw.PreferencesGroup({title: _('Updates')});
-    page.add(updates);
-    const intervalRow = new Adw.SpinRow({
-        title: _('Refresh interval'),
-        subtitle: _('Minutes between checks'),
-        adjustment: new Gtk.Adjustment({lower: 1, upper: 120, step_increment: 1}),
+/** `ctx` is {settings, icons, window}. Returns {suffix, widget}. */
+export function buildSystemTraySection({settings, icons, window}) {
+    // Beside the heading: minutes between checks.
+    const suffix = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER, tooltip_text: _('Minutes between checks')});
+    suffix.append(new Gtk.Image({icon_name: 'view-refresh-symbolic', css_classes: ['dim-label']}));
+    const interval = new Gtk.SpinButton({adjustment: new Gtk.Adjustment({lower: 1, upper: 120, step_increment: 1,
+        page_increment: 10}), width_chars: 3, valign: Gtk.Align.CENTER});
+    settings.bind('refresh-interval', interval, 'value', Gio.SettingsBindFlags.DEFAULT);
+    suffix.append(interval);
+    suffix.append(new Gtk.Label({label: _('min'), css_classes: ['dim-label']}));
+
+    // The list buttons on both previews, by list id, kept in step with the setting.
+    const toggles = new Map(TOOLBAR_LISTS.map(id => [id, []]));
+    const shown = () => normalizeButtons(settings.get_strv('toolbar-buttons'));
+    const trigger = (id, withLabel) => {
+        const info = listInfo(id, icons);
+        const content = new Gtk.Box({spacing: 4, halign: Gtk.Align.CENTER});
+        content.append(new Gtk.Image({gicon: info.gicon}));
+        if (withLabel)
+            content.append(new Gtk.Label({label: info.short}));
+        const badge = new Gtk.Image({halign: Gtk.Align.END, valign: Gtk.Align.START, pixel_size: 8,
+            css_classes: ['sourceglance-tray-badge'], can_target: false});
+        const overlay = new Gtk.Overlay({child: content});
+        overlay.add_overlay(badge);
+        const button = new Gtk.ToggleButton({child: overlay, css_classes: ['sourceglance-tray-trigger'],
+            hexpand: withLabel});
+        button.connect('toggled', () => {
+            const others = shown().filter(other => other !== id);
+            settings.set_strv('toolbar-buttons', normalizeButtons(button.active ? [...others, id] : others));
+        });
+        toggles.get(id).push({button, badge, title: info.title});
+        return button;
+    };
+    const syncToggles = () => {
+        const on = shown();
+        for (const [id, list] of toggles) {
+            for (const {button, badge, title} of list) {
+                const active = on.includes(id);
+                if (button.active !== active)
+                    button.active = active;
+                badge.icon_name = active ? 'object-select-symbolic' : 'list-add-symbolic';
+                button.tooltip_text = (active ? _('%s is shown. Click to hide it.') : _('%s is hidden. Click to show it.'))
+                    .format(title);
+            }
+        }
+    };
+
+    const tiles = new Gtk.Box({spacing: 12, homogeneous: true});
+    let group = null;
+    const radios = [];
+    const tile = (layout, label) => {
+        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8,
+            css_classes: ['card', 'sourceglance-tray-tile']});
+        const bar = new Gtk.Box({spacing: 6, css_classes: ['sourceglance-tray-bar']});
+        bar.append(new Gtk.Box({hexpand: true}));
+        bar.append(new Gtk.Image({gicon: icons.app, css_classes: ['sourceglance-tray-app'],
+            tooltip_text: _('The Source Glance button is always shown')}));
+        const menu = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, halign: Gtk.Align.END,
+            width_request: 200, css_classes: ['sourceglance-tray-menu']});
+        if (layout === 'separate') {
+            for (const id of TOOLBAR_LISTS)
+                bar.append(trigger(id, false));
+        } else {
+            const tabs = new Gtk.Box({spacing: 4});
+            for (const id of TOOLBAR_LISTS)
+                tabs.append(trigger(id, true));
+            menu.append(tabs);
+        }
+        placeholderLines(menu, [130, 170, 100]);
+        box.append(bar);
+        box.append(menu);
+        const radio = new Gtk.CheckButton({label, group, active: settings.get_string('layout') === layout});
+        group ??= radio;
+        radio.connect('toggled', () => {
+            if (radio.active)
+                settings.set_string('layout', layout);
+        });
+        radios.push([layout, radio, box]);
+        box.append(radio);
+        // A click anywhere else on the tile chooses it too.
+        const click = new Gtk.GestureClick();
+        click.connect('released', () => {
+            radio.active = true;
+        });
+        box.add_controller(click);
+        tiles.append(box);
+    };
+    tile('separate', _('Separate top-bar icons'));
+    tile('tabs', _('Tabs in one menu'));
+    const syncLayout = () => {
+        const layout = LAYOUTS.includes(settings.get_string('layout')) ? settings.get_string('layout') : 'separate';
+        for (const [id, radio, box] of radios) {
+            if (id === layout && !radio.active)
+                radio.active = true;
+            if (id === layout)
+                box.add_css_class('selected');
+            else
+                box.remove_css_class('selected');
+        }
+    };
+
+    const ids = [
+        settings.connect('changed::toolbar-buttons', syncToggles),
+        settings.connect('changed::layout', syncLayout),
+    ];
+    window.connect('close-request', () => {
+        ids.forEach(id => settings.disconnect(id));
+        return false;
     });
-    settings.bind('refresh-interval', intervalRow, 'value', Gio.SettingsBindFlags.DEFAULT);
-    updates.add(intervalRow);
-
-    return page;
+    syncToggles();
+    syncLayout();
+    return {suffix, widget: tiles};
 }

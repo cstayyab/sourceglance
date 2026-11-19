@@ -63,7 +63,7 @@ on GitHub and gitlab.com, and lets you act on it, without opening a browser:
   to see everything again.
 - **Filter by label** in the menus, and see how many closed or merged items are still
   assigned to you.
-- **Main window** with a slim sidebar: **Glance** (Desktop Widgets and System Tray) and
+- **Main window** with a slim sidebar: **Glance** (Widgets and System Tray) and
   **Tasks** (All Tasks, Issues, Pull requests, Projects), each opening its menu right beside
   it, then **Settings** and **Exit** at the foot. **Accounts** is in the title bar. A
   splash screen and an app grid icon, all in the top bar's blue. It's an app of its own, so
@@ -102,14 +102,23 @@ your work and stay clickable.
 | **Pull requests** | Pull and merge requests assigned to you or awaiting your review |
 | **Projects** | Draft items on your project boards, with their status |
 
-- **Turn cards on or off** in Source Glance → **Glance → Desktop Widgets**. Summary is on
-  by default.
-- **Move a card** by dragging its header; Source Glance remembers where you put it.
-  **Reset positions** puts them all back in a column on the right.
-- **Opacity** sets how see-through the cards are.
-- **Wallpaper**: the cards are made to sit on Adwaita, GNOME's default wallpaper. **Apply**
-  sets it and keeps yours; **Reset** puts yours back. Change the wallpaper any other way and
-  only **Apply** is offered again.
+- **Arrange them** in Source Glance → **Glance → Widgets**, which draws the cards on your
+  wallpaper at their real size. Drag a card by its header to move it; the desktop shows them
+  in that order. Summary is on by default.
+- **Each card** has a size button (Small, Medium or Large) and a trash button in its header
+  (the card waits under **Add widget**, where + brings it back) and, under its list, **On desktop** (off keeps it in the window
+  only) and its own opacity slider. Custom widgets also have a gear for their settings.
+- **All widgets**, the gear under the cards: every card on or off the desktop, one opacity
+  and one size for all, where cards go on the desktop (top right, right, top, left or bottom), **Tidy
+  up**, **Reset desktop positions**, and the background.
+- **Custom widget**, under Add widget, makes a card of your own: a name, an icon, and
+  filters (issues, pull requests or project drafts; account, repositories, labels, review
+  requests, search words). It's kept in your settings, so it stays through updates.
+- **Move a card on the desktop** by dragging its header; Source Glance remembers where you
+  put it. **Reset desktop positions**, in All widgets, puts them back in the arrangement.
+- **Wallpaper**, in All widgets: the cards are made to sit on Adwaita, GNOME's default
+  wallpaper. **Apply** sets it and keeps yours; **Reset** puts yours back. Change the
+  wallpaper any other way and only **Apply** is offered again.
 - **Click an item** to open it in your browser. Each card shows when it was last updated
   and refreshes with the rest of Source Glance.
 
@@ -268,8 +277,9 @@ or whoever is already on them) and previewed; GitHub drafts have no labels or co
 The sidebar is a slim column of icons, each with its name under it (☰ at its top shows full
 names instead). Click one and its menu opens right beside it, with full names and counts:
 
-- **Glance**, which opens first: **Desktop Widgets** and **System Tray**, both on one page,
-  each under its own heading.
+- **Glance**, which opens first: **Widgets** and **System Tray**, both on one page, each
+  under its own heading. System Tray previews both top-bar layouts as tiles; click a list on
+  a preview to show or hide it.
 - **Tasks**: **All Tasks**, then your **Issues**, **Pull requests** and **Projects**, each
   with its count (0 until they load) and the same actions as the menus.
 - **Settings**, at the foot: start at login, the app grid icon, updates, and **About Source

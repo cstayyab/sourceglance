@@ -15,9 +15,29 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   work. Check **Unassigned** or a teammate to see theirs, or **Clear filters** to see everyone's.
   Useful for product managers, project coordinators and owners who follow a whole project.
   The top bar, the widgets and every count still show only your own items.
+- **Custom widgets**: make a widget of your own from filters over your lists (issues, pull
+  requests or project drafts, by account, repository, label, review or search words), with
+  a name and one of Source Glance's icons. They're kept in your settings, so they stay
+  through updates.
+- **Widget sizes**: Small, Medium or Large. Each card's size button, before its trash button,
+  sets its own size, and **All widgets** sets one size for every card. Medium is sized from
+  your screen, as before.
 
 ### Changed
 
+- **Glance → Widgets** (was Desktop Widgets) draws the cards in the window, on your
+  wallpaper and at their real size. Drag a card by its header to rearrange them. Each card
+  has **On desktop** and its own opacity slider, and a trash button that moves it under
+  **Add widget**, with a + to bring it back.
+- **All widgets**, a gear under the cards: every card on or off the desktop at once, one
+  opacity and size for all, where cards go on the desktop (a grid at the top right, a column at the
+  right or left, or a row along the top or bottom), Tidy up, Reset desktop positions, the
+  wallpaper behind the cards, and the Adwaita wallpaper.
+- On the desktop, cards you haven't moved follow the window's order, in the arrangement
+  chosen in All widgets (a grid at the top right by default) instead of a column on the right.
+- **Glance → System Tray** previews both layouts as tiles: click one to use it, and click a
+  list's icon or tab on the preview to show or hide it. The refresh interval sits beside the
+  heading.
 - **Filter chips** are smaller and tidier: compact pills at their own width that wrap like
   words, with an icon for the kind of filter (point at a chip to see it) instead of the word.
 - **Custom fields** in each item's ⋮ menu in the window, under their own **Custom fields**

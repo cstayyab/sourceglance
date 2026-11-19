@@ -48,7 +48,7 @@ It runs in two processes that share code under `src/lib/`:
 | `lib/gitlab.js` | `GitLabClient`: the same for gitlab.com or a self-managed instance, with token renewal | `gitlabModel`, `accounts`, `transport` |
 | `lib/transport.js` | Sends requests for one instance; plain http:// only to checked LAN addresses, pinned per connection; no redirects for self-hosted instances ([ADR 0007](adr/0007-multiple-accounts-and-self-hosted-instances.md)) | `accounts` |
 | `lib/updateNotice.js` | Once per login, a notification when a newer release is out, with short release notes; Install opens the window and starts its update | `updates`, `github` |
-| `lib/wallpaper.js` | The recommended wallpaper (Glance → Desktop Widgets): Apply keeps yours in `saved-wallpaper`, Reset puts it back; the extension forgets the copy when the wallpaper changes any other way | `model` |
+| `lib/wallpaper.js` | The recommended wallpaper (Glance → Widgets): Apply keeps yours in `saved-wallpaper`, Reset puts it back; the extension forgets the copy when the wallpaper changes any other way | `model` |
 | `lib/accountStore.js` | The account list (GSettings `accounts`) and each account's keyring entry, migration of the first sign-ins, a client per account, loading one account's lists | clients, `tokenStore` |
 | `lib/accounts.js` | Pure: instance URLs, LAN addresses, account records and ids, section titles, one account's part of the state (`sourceFrom`) | `model` |
 | `lib/tokenStore.js` | Read/write/clear an account's sign-in in the keyring via libsecret | — |

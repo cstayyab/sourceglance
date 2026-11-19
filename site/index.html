@@ -16,7 +16,9 @@
     <div class="wrap header-row">
       <a class="brand" href="#top"><img src="icon.svg" alt="" width="28" height="28"> Source Glance</a>
       <nav>
-        <a class="wide-only" href="#in-action">In action</a>
+        <a class="wide-only" href="#new">What's new</a>
+          <a class="wide-only" href="#in-action">In action</a>
+          <a class="wide-only" href="#try">Try it</a>
         <a class="wide-only" href="#features">Features</a>
         <a href="#install">Install</a>
         <a href="#contribute">Contribute</a>
@@ -79,6 +81,39 @@
           <div class="notice" data-el="toast"><b>Source Glance</b>Closed: #42 Fix the login redirect</div>
           <i class="cursor" data-el="cursor" aria-hidden="true"></i>
         </figure>
+      </div>
+    </section>
+
+    <section id="new" class="whats-new">
+      <div class="wrap">
+        <p class="kicker">New in this release</p>
+        <h2>Widgets you arrange, sizes you pick, the whole team in view</h2>
+        <div class="new-grid">
+          <article>
+            <i class="feat ic-widgets"></i>
+            <h3>Widgets in the window</h3>
+            <p>Glance → Widgets draws your cards on your wallpaper at their real size. Drag to
+              rearrange, and choose which ones also sit on the desktop.</p>
+          </article>
+          <article>
+            <i class="feat ic-size"></i>
+            <h3>Sizes and arrangements</h3>
+            <p>Small, Medium or Large, per card or for all. On the desktop: a grid at the top
+              right, a column at either edge, or a row along the top or bottom.</p>
+          </article>
+          <article>
+            <i class="feat ic-filter"></i>
+            <h3>Custom widgets</h3>
+            <p>Build a card from filters: account, repositories, labels, review requests or
+              search words. Name it, pick an icon; it stays through updates.</p>
+          </article>
+          <article>
+            <i class="feat ic-team"></i>
+            <h3>The whole team, custom fields</h3>
+            <p>The window can show everything open in your repositories, whoever has it. Each
+              item's ⋮ menu edits its custom and project fields.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -240,14 +275,70 @@
         <div class="scene" id="scene-desk" role="tabpanel" aria-labelledby="tab-desk" hidden>
           <div class="scene-copy">
             <h3>Your day, right on the wallpaper</h3>
-            <p>Summary, Issues, Pull requests and Projects cards sit on your desktop. Drag them where
-              you like; they update with the top bar, so a glance between windows is enough.</p>
+            <p>Summary, Issues, Pull requests, Projects and widgets you make yourself sit on your
+              desktop, Small, Medium or Large. Arrange them in the window or drag them on the desktop;
+              they update with the top bar, so a glance between windows is enough.</p>
           </div>
           <figure class="demo desk" data-scene="desk" aria-label="Animation: desktop widgets appear on the wallpaper and a new review request raises the pull request count">
             <div class="widget w-sum" data-el="w1"><b>Source Glance</b><span><i class="ic ic-check"></i>Issues<em>3</em></span><span><i class="ic ic-pr"></i>Pull requests<em data-el="prs">2</em></span><span><i class="ic ic-checklist"></i>Project drafts<em>4</em></span></div>
             <div class="widget w-list" data-el="w2"><b>Pull requests</b><span data-el="newpr" class="newpr"><i class="ic ic-pr k-pr"></i>#93 Cache tokens<small>review</small></span><span><i class="ic ic-pr k-pr"></i>#88 New onboarding</span><span><i class="ic ic-pr k-pr"></i>!19 Retry on rate limits</span></div>
             <div class="widget w-list w-issues" data-el="w3"><b>Issues</b><span><i class="ic ic-issue k-issue"></i>#42 Fix the login redirect</span><span><i class="ic ic-issue k-issue"></i>#37 Dark mode</span></div>
           </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="try" class="try">
+      <div class="wrap">
+        <h2>Try it here</h2>
+        <p class="section-lede">Two parts of Source Glance you can click through right on this page.</p>
+
+        <div class="try-block">
+          <div class="try-copy">
+            <h3>The top bar, your way</h3>
+            <p>Show Issues, Pull requests and Projects as one tinted group or as tabs, each with its
+              live count. Turn off the lists you don't need. Click a button to open its menu, grouped
+              by account and repository.</p>
+            <div class="try-controls">
+              <span class="try-label" id="tb-layout-label">Layout</span>
+              <div class="segmented" role="radiogroup" aria-labelledby="tb-layout-label">
+                <button type="button" role="radio" aria-checked="true" data-layout="group">Group</button>
+                <button type="button" role="radio" aria-checked="false" data-layout="tabs">Tabs</button>
+              </div>
+              <span class="try-label" id="tb-lists-label">Lists</span>
+              <div class="toggles" role="group" aria-labelledby="tb-lists-label">
+                <button type="button" aria-pressed="true" data-list="issues"><i class="ic ic-check"></i>Issues</button>
+                <button type="button" aria-pressed="true" data-list="prs"><i class="ic ic-pr"></i>Pull requests</button>
+                <button type="button" aria-pressed="true" data-list="projects"><i class="ic ic-checklist"></i>Projects</button>
+              </div>
+            </div>
+          </div>
+          <div class="mock try-topbar" data-try="topbar">
+            <div class="mock-bar">
+              <span class="mock-clock">Mon 16 · 09:02</span>
+              <span class="mock-group" data-el="buttons"></span>
+            </div>
+            <div class="mock-menu show" data-el="menu" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="try-block">
+          <div class="try-copy">
+            <h3>Tasks: every list in one window</h3>
+            <p>All Tasks gathers your issues, pull requests and project cards from every account. Pick
+              a list in the sidebar, narrow it by label, or search by title, repository or number.</p>
+          </div>
+          <div class="win try-tasks" data-try="tasks">
+            <div class="win-sub" role="tablist" aria-label="Lists" aria-orientation="vertical" data-el="lists"></div>
+            <div class="win-main">
+              <div class="win-head"><b data-el="title">All Tasks</b>
+                <label class="try-search"><span class="visually-hidden">Search the list</span>
+                  <input type="search" placeholder="Search" data-el="search"></label>
+              </div>
+              <div class="chips try-labels" role="group" aria-label="Labels" data-el="labels"></div>
+              <div class="rows" data-el="rows" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -267,7 +358,7 @@
           <article>
             <i class="feat ic-pr"></i>
             <h3>Act where you are</h3>
-            <p>Comment, close or reopen, edit assignees and labels, and move items between
+            <p>Comment, close or reopen, edit assignees, labels and custom fields, and move items between
               statuses on your project boards, from the top bar or the window. Comment opens a
               box right under the item; the ⋮ menu copies references and links.</p>
           </article>
@@ -289,9 +380,9 @@
           <article>
             <i class="feat ic-label"></i>
             <h3>Desktop widgets</h3>
-            <p>Summary, Issues, Pull requests and Projects cards on your desktop. Drag them
-              anywhere, set their opacity, and set the wallpaper they're made for in one click,
-              with Reset to put yours back.</p>
+            <p>Summary, Issues, Pull requests and Projects cards, or ones you make from
+              filters, on your desktop. Arrange them in the window, set each one's size, opacity and where they sit,
+              and set the wallpaper they're made for in one click.</p>
           </article>
           <article>
             <i class="feat ic-lock"></i>
@@ -413,5 +504,6 @@
     </div>
   </footer>
   <script src="demo.js" defer></script>
+  <script src="playground.js" defer></script>
 </body>
 </html>

@@ -118,9 +118,297 @@
     background-color: #1f6feb;
 }
 
-.sourceglance-window .sourceglance-wallpaper-preview {
+/* Glance → Widgets: the widget area, and cards that look like the desktop's (stylesheet.css). */
+.sourceglance-window .sourceglance-canvas {
     border-radius: 12px;
-    margin-bottom: 12px;
+    background-color: #1048b8;
+}
+
+.sourceglance-window .sourceglance-canvas.sourceglance-canvas-plain {
+    background-color: alpha(currentColor, 0.05);
+    border: 1px dashed alpha(currentColor, 0.25);
+}
+
+.sourceglance-window .sourceglance-canvas-slot {
+    border: 2px dashed alpha(#ffffff, 0.75);
+    border-radius: 14px;
+}
+
+.sourceglance-window .sourceglance-canvas-empty {
+    margin: 24px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background-color: alpha(#161b22, 0.8);
+    color: #e6edf3;
+}
+
+.sourceglance-window .sourceglance-card {
+    background-color: #161b22;
+    border: 1px solid alpha(#58a6ff, 0.35);
+    border-radius: 14px;
+    color: #e6edf3;
+}
+
+.sourceglance-window .sourceglance-card-header {
+    background-color: alpha(#58a6ff, 0.3);
+    padding: 4px 8px 4px 12px;
+    font-weight: bold;
+}
+
+.sourceglance-window .sourceglance-card-title {
+    font-size: 1.05em;
+}
+
+.sourceglance-window .sourceglance-card-button {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 6px;
+    color: alpha(#e6edf3, 0.7);
+}
+
+.sourceglance-window .sourceglance-card-button:hover {
+    color: #e6edf3;
+    background-color: alpha(#ffffff, 0.12);
+}
+
+/* Under the list: On desktop and the opacity slider, on a lighter strip of the header's blue. */
+.sourceglance-window .sourceglance-card-bar {
+    background-color: alpha(#58a6ff, 0.16);
+    border-top: 1px solid alpha(#58a6ff, 0.22);
+    padding: 4px 12px 4px 6px;
+}
+
+.sourceglance-window .sourceglance-card-toggle {
+    min-height: 0;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: normal;
+    color: alpha(#e6edf3, 0.6);
+}
+
+.sourceglance-window .sourceglance-card-toggle:checked {
+    color: #58a6ff;
+    background-color: alpha(#58a6ff, 0.18);
+}
+
+.sourceglance-window .sourceglance-card-bar image {
+    color: alpha(#e6edf3, 0.6);
+}
+
+.sourceglance-window .sourceglance-card-toggle:checked image {
+    color: #58a6ff;
+}
+
+.sourceglance-window .sourceglance-card-percent {
+    font-size: 0.85em;
+    color: alpha(#e6edf3, 0.75);
+}
+
+/* A slim slider whose handle is no bigger than the icon beside it. */
+.sourceglance-window scale.sourceglance-mini-scale {
+    padding: 4px 0;
+    margin: 0;
+}
+
+.sourceglance-window scale.sourceglance-mini-scale > trough {
+    min-height: 3px;
+}
+
+.sourceglance-window scale.sourceglance-mini-scale > trough > slider {
+    min-width: 10px;
+    min-height: 10px;
+    margin: -4px;
+    box-shadow: none;
+    background-color: #1f6feb;
+}
+
+.sourceglance-window scale.sourceglance-mini-scale > trough > highlight {
+    background-color: #1f6feb;
+}
+
+.sourceglance-window .sourceglance-card scale.sourceglance-mini-scale > trough {
+    background-color: alpha(#e6edf3, 0.25);
+}
+
+.sourceglance-window .sourceglance-card scale.sourceglance-mini-scale > trough > highlight,
+.sourceglance-window .sourceglance-card scale.sourceglance-mini-scale > trough > slider {
+    background-color: #58a6ff;
+}
+
+/* All widgets: faint on the wallpaper until pointed at. */
+.sourceglance-window .sourceglance-canvas-gear > button {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    background-color: transparent;
+    color: alpha(#ffffff, 0.45);
+}
+
+.sourceglance-window .sourceglance-canvas-gear > button:hover,
+.sourceglance-window .sourceglance-canvas-gear > button:checked {
+    background-color: alpha(#161b22, 0.85);
+    color: #ffffff;
+}
+
+.sourceglance-window .sourceglance-canvas-plain .sourceglance-canvas-gear > button {
+    color: alpha(currentColor, 0.5);
+}
+
+.sourceglance-window .sourceglance-arrangement {
+    padding: 5px 2px;
+    border: 1px solid alpha(currentColor, 0.12);
+    border-radius: 8px;
+}
+
+.sourceglance-window .sourceglance-arrangement:checked {
+    border: 2px solid #1f6feb;
+    padding: 4px 1px;
+    color: #1f6feb;
+    background-color: alpha(#1f6feb, 0.08);
+}
+
+.sourceglance-window .sourceglance-card-button.suggested-action {
+    color: #ffffff;
+}
+
+.sourceglance-window .sourceglance-card-count {
+    color: #58a6ff;
+    font-weight: bold;
+}
+
+.sourceglance-window .sourceglance-card-body {
+    padding: 4px;
+}
+
+.sourceglance-window .sourceglance-card-row {
+    padding: 3px 8px;
+    min-height: 0;
+    color: #e6edf3;
+    font-weight: normal;
+}
+
+.sourceglance-window .sourceglance-card-message {
+    padding: 8px;
+    font-style: italic;
+    color: alpha(#e6edf3, 0.7);
+}
+
+.sourceglance-window .sourceglance-card-footer {
+    padding: 0 12px 5px 12px;
+    font-size: smaller;
+    color: alpha(#e6edf3, 0.55);
+}
+
+/* Add widget: the hidden cards, small, and the Custom widget tile. */
+.sourceglance-window .sourceglance-add-widget-header {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: normal;
+}
+
+.sourceglance-window .sourceglance-mini-card {
+    border-radius: 10px;
+    padding-bottom: 6px;
+}
+
+.sourceglance-window .sourceglance-mini-card .sourceglance-card-header {
+    border-radius: 9px 9px 0 0;
+    padding: 4px 4px 4px 8px;
+    font-size: smaller;
+}
+
+.sourceglance-window .sourceglance-mini-line {
+    min-height: 5px;
+    margin: 6px 8px 0 8px;
+    border-radius: 3px;
+    background-color: alpha(#ffffff, 0.18);
+}
+
+.sourceglance-window .sourceglance-custom-tile {
+    min-height: 84px;
+    border-radius: 10px;
+    border: 1px dashed alpha(currentColor, 0.4);
+    background-color: transparent;
+}
+
+.sourceglance-window .sourceglance-icon-choice {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+}
+
+.sourceglance-window .sourceglance-icon-choice:checked {
+    background-color: #1f6feb;
+    color: #ffffff;
+}
+
+/* Glance → System Tray: the layout tiles, each a small top bar and its menu. */
+.sourceglance-window .sourceglance-tray-tile {
+    padding: 12px;
+    border: 2px solid transparent;
+}
+
+.sourceglance-window .sourceglance-tray-tile.selected {
+    border-color: #1f6feb;
+}
+
+.sourceglance-window .sourceglance-tray-bar {
+    background-color: #1e1e1e;
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: #ffffff;
+}
+
+.sourceglance-window .sourceglance-tray-app {
+    padding: 3px 6px;
+    border-radius: 5px;
+    background-color: alpha(#58a6ff, 0.35);
+}
+
+.sourceglance-window .sourceglance-tray-trigger {
+    min-height: 22px;
+    min-width: 26px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    color: #ffffff;
+    background-color: alpha(#ffffff, 0.08);
+}
+
+.sourceglance-window .sourceglance-tray-trigger:checked {
+    background-color: alpha(#ffffff, 0.16);
+}
+
+.sourceglance-window .sourceglance-tray-trigger:not(:checked) > overlay > box {
+    opacity: 0.35;
+}
+
+.sourceglance-window .sourceglance-tray-badge {
+    min-width: 12px;
+    min-height: 12px;
+    margin: -6px -8px 0 0;
+    border-radius: 999px;
+    background-color: #1f6feb;
+    color: #ffffff;
+}
+
+.sourceglance-window .sourceglance-tray-trigger:not(:checked) .sourceglance-tray-badge {
+    background-color: #777777;
+}
+
+.sourceglance-window .sourceglance-tray-menu {
+    background-color: #2b2b2b;
+    border-radius: 8px;
+    padding: 8px;
+    color: #dddddd;
+}
+
+.sourceglance-window .sourceglance-tray-line {
+    min-height: 6px;
+    border-radius: 3px;
+    background-color: alpha(#ffffff, 0.18);
 }
 
 .sourceglance-window .sourceglance-chip {

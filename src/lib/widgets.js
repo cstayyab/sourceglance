@@ -1,30 +1,40 @@
 // Desktop widgets: cards with your lists, on the desktop below every window. They sit just
 // above the desktop-icons window when there is one (Desktop Icons draws the desktop as a
 // window), so they stay visible and clickable. Drag a card by its header; positions are saved.
+// Which cards, their order and opacity come from the window's Glance → Widgets.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {
-    WIDGET_WIDTH,
     clampWidgetPosition,
-    defaultWidgetPosition,
+    customWidgetItems,
+    defaultWidgetPositions,
     isDoneStatus,
     itemRef,
     listBadge,
+    normalizeWidgetLayout,
     normalizeWidgets,
+    parseCustomWidgets,
     relativeTime,
     searchPageUrl,
     truncate,
+    largestCardSize,
+    scaledCardSize,
+    widgetCardSize,
+    widgetOrder,
 } from './model.js';
 import {GITHUB_COM} from './accounts.js';
 import {openUri} from './views.js';
 
-const MAX_ROWS = 8;
+// A list row's height and the rest of a card (header, footer), to work out how many rows fit.
+const ROW_HEIGHT = 28;
+const CARD_CHROME = 64;
 
 /** The window Desktop Icons (or another desktop app) draws the desktop with. */
 function isDesktopWindow(metaWindow) {
@@ -47,10 +57,13 @@ function updatedText(state) {
 }
 
 class Card {
-    constructor({id, title, gicon, onDragEnd}) {
+    /** `def` is a custom widget's settings (parseCustomWidgets()), null for the built-in cards. */
+    constructor({id, def = null, title, gicon, onDragEnd}) {
         this.id = id;
+        this.def = def;
         this._onDragEnd = onDragEnd;
-        this.actor = new St.BoxLayout({style_class: 'sourceglance-widget', reactive: true, width: WIDGET_WIDTH});
+        this.actor = new St.BoxLayout({style_class: 'sourceglance-widget', reactive: true, clip_to_allocation: true});
+        this._maxRows = 1;
         // GNOME 48 replaced St.BoxLayout's `vertical` with `orientation`.
         if ('orientation' in this.actor)
             this.actor.orientation = Clutter.Orientation.VERTICAL;
@@ -74,6 +87,13 @@ class Card {
         this.actor.add_child(this._footer);
 
         this._header.connect('button-press-event', (_actor, event) => this._startDrag(event));
+    }
+
+    /** widgetCardSize(), scaled to the card's size (scaledCardSize()); the list shows as many rows as fit. */
+    setSize({width, height}) {
+        this.actor.set_size(width, height);
+        this._body.y_expand = true;
+        this._maxRows = Math.max(1, Math.floor((height - CARD_CHROME) / ROW_HEIGHT) - 1);
     }
 
     destroy() {
@@ -116,7 +136,10 @@ class Card {
         const box = new St.BoxLayout({style_class: 'sourceglance-widget-row-box', x_expand: true});
         // Only one of the two: an empty icon_name would clear a themed gicon.
         box.add_child(new St.Icon({...gicon ? {gicon} : {icon_name: iconName}, style_class: 'sourceglance-widget-icon'}));
-        box.add_child(new St.Label({text, x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
+        const label = new St.Label({text, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        // Cards have a fixed width; long titles end in an ellipsis.
+        label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        box.add_child(label);
         if (detail)
             box.add_child(new St.Label({text: detail, style_class: 'sourceglance-widget-detail', y_align: Clutter.ActorAlign.CENTER}));
         const row = new St.Button({child: box, style_class: 'sourceglance-widget-row', x_expand: true, can_focus: true});
@@ -135,11 +158,15 @@ class Card {
         this._body.destroy_all_children();
         this._footer.text = updatedText(state);
         const signedIn = state.status === 'ready' || state.status === 'error';
-        this._count.text = this.id === 'summary' ? '' : listBadge(this.id, state);
+        this._count.text = this.id === 'summary' || this.def ? '' : listBadge(this.id, state);
         if (!signedIn) {
             this._message(state.status === 'signed-out'
                 ? _('Sign in from the Source Glance menu.')
                 : _('Loading…'));
+            return;
+        }
+        if (this.def) {
+            this._renderCustom(state, icons);
             return;
         }
         switch (this.id) {
@@ -185,17 +212,43 @@ class Card {
             this._message(pr ? _('No open pull requests for you') : _('No open issues assigned to you'));
             return;
         }
-        for (const item of items.slice(0, MAX_ROWS)) {
-            this._row({gicon: pr ? icons.prs : icons.issue, text: `${itemRef(item)}  ${truncate(item.title, 34)}`,
+        for (const item of items.slice(0, this._maxRows)) {
+            this._row({gicon: pr ? icons.prs : icons.issue, text: `${itemRef(item)}  ${truncate(item.title, 80)}`,
                 // With several accounts, say whose it is (e.g. "GitLab · @bob").
                 detail: [several ? truncate(titles.get(item.accountId) ?? '', 24) : '', pr && item.reason === 'review' ? _('review') : '']
                     .filter(Boolean).join(' · '),
                 onClick: item.url ? () => openUri(item.url) : null});
         }
-        if (items.length > MAX_ROWS) {
+        if (items.length > this._maxRows) {
             this._row({iconName: 'view-more-horizontal-symbolic',
                 text: ngettext('%d more in the Source Glance window', '%d more in the Source Glance window',
-                    items.length - MAX_ROWS).format(items.length - MAX_ROWS)});
+                    items.length - this._maxRows).format(items.length - this._maxRows)});
+        }
+    }
+
+    _renderCustom(state, icons) {
+        const found = customWidgetItems(this.def, state);
+        this._count.text = String(found.length);
+        if (found.length === 0) {
+            this._message(_('Nothing matches this widget’s filters'));
+            return;
+        }
+        for (const entry of found.slice(0, this._maxRows)) {
+            if (this.def.kind === 'projects') {
+                const {board, draft} = entry;
+                this._row({iconName: 'document-edit-symbolic', text: truncate(draft.title || _('Untitled draft'), 80),
+                    detail: draft.status ?? _('No status'), onClick: board.url ? () => openUri(board.url) : null});
+            } else {
+                const pr = this.def.kind === 'prs';
+                this._row({gicon: pr ? icons.prs : icons.issue, text: `${itemRef(entry)}  ${truncate(entry.title, 80)}`,
+                    detail: pr && entry.reason === 'review' ? _('review') : '',
+                    onClick: entry.url ? () => openUri(entry.url) : null});
+            }
+        }
+        if (found.length > this._maxRows) {
+            this._row({iconName: 'view-more-horizontal-symbolic',
+                text: ngettext('%d more in the Source Glance window', '%d more in the Source Glance window',
+                    found.length - this._maxRows).format(found.length - this._maxRows)});
         }
     }
 
@@ -214,11 +267,11 @@ class Card {
             this._message(_('No draft items on your project boards'));
             return;
         }
-        for (const {board, draft} of drafts.slice(0, MAX_ROWS)) {
+        for (const {board, draft} of drafts.slice(0, this._maxRows)) {
             this._row({
                 gicon: isDoneStatus(draft.status) ? icons.issueClosed : null,
                 iconName: isDoneStatus(draft.status) ? null : 'document-edit-symbolic',
-                text: truncate(draft.title || _('Untitled draft'), 30),
+                text: truncate(draft.title || _('Untitled draft'), 80),
                 detail: draft.status ?? _('No status'),
                 onClick: board.url ? () => openUri(board.url) : null,
             });
@@ -235,14 +288,27 @@ export class DesktopWidgets {
         this._cards = new Map();
         this._state = null;
         this._restackedId = global.display.connect('restacked', () => this._restack());
-        this._workareasId = global.display.connect('workareas-changed', () => this._placeAll());
+        // A new screen size means a new card size too.
+        this._workareasId = global.display.connect('workareas-changed', () => this._resizeAll());
         this._settingsId = settings.connect('changed', (_settings, key) => {
-            if (key === 'widgets')
+            if (key === 'custom-widgets') {
+                // Names, icons and filters may have changed: build those cards again.
+                for (const [id, card] of this._cards) {
+                    if (card.def) {
+                        card.destroy();
+                        this._cards.delete(id);
+                    }
+                }
                 this._sync();
-            else if (key === 'widget-opacity')
+            } else if (key === 'widgets' || key === 'widgets-off-desktop' || key === 'widget-layout') {
+                this._sync();
+            } else if (key === 'widget-opacity' || key === 'widget-opacities') {
                 this._applyOpacity();
-            else if (key === 'widget-positions')
+            } else if (key === 'widget-size' || key === 'widget-sizes') {
+                this._resizeAll();
+            } else if (key === 'widget-positions' || key === 'widget-arrangement') {
                 this._placeAll();
+            }
         });
         this._sync();
     }
@@ -263,9 +329,13 @@ export class DesktopWidgets {
         this._placeAll();
     }
 
-    /** Creates and removes cards to match the `widgets` setting. */
+    /** Creates and removes cards to match the `widgets` settings, in the window's order. */
     _sync() {
-        const wanted = normalizeWidgets(this._settings.get_strv('widgets'));
+        const custom = parseCustomWidgets(this._settings.get_strv('custom-widgets'));
+        const shown = normalizeWidgets(this._settings.get_strv('widgets'), custom);
+        const off = this._settings.get_strv('widgets-off-desktop');
+        const wanted = widgetOrder(normalizeWidgetLayout(this._settings.get_value('widget-layout').deep_unpack(), shown))
+            .filter(id => !off.includes(id));
         for (const [id, card] of this._cards) {
             if (!wanted.includes(id)) {
                 card.destroy();
@@ -277,9 +347,12 @@ export class DesktopWidgets {
         for (const id of wanted) {
             if (this._cards.has(id))
                 continue;
-            const card = new Card({id, title: titles[id], gicon: icons[id], onDragEnd: c => this._savePosition(c)});
+            const def = custom.find(other => other.id === id) ?? null;
+            const card = new Card({id, def, title: def?.name ?? titles[id], gicon: def ? this._icons[`widget-${def.icon}`] : icons[id],
+                onDragEnd: c => this._savePosition(c)});
             global.window_group.add_child(card.actor);
             this._cards.set(id, card);
+            card.setSize(this._size(id));
             if (this._state)
                 card.render(this._state, this._icons, this._getRepos());
         }
@@ -291,29 +364,50 @@ export class DesktopWidgets {
     }
 
     _applyOpacity() {
-        const opacity = Math.round(255 * this._settings.get_int('widget-opacity') / 100);
+        const fallback = this._settings.get_int('widget-opacity');
+        const own = this._settings.get_value('widget-opacities').deep_unpack();
         for (const card of this._cards.values())
-            card.actor.opacity = opacity;
+            card.actor.opacity = Math.round(255 * (own[card.id] ?? fallback) / 100);
     }
 
     _savedPositions() {
         return this._settings.get_value('widget-positions').deep_unpack();
     }
 
-    /** Saved spots (kept on screen), or a column at the right edge for cards never moved. */
+    /** Card `id`'s size, or with no id the screen's medium size. */
+    _size(id = null) {
+        const monitor = Main.layoutManager.primaryMonitor;
+        const size = widgetCardSize(monitor?.height ?? 1080, monitor?.width ?? 1920);
+        if (!id)
+            return size;
+        return scaledCardSize(size, this._settings.get_value('widget-sizes').deep_unpack()[id] ??
+            this._settings.get_string('widget-size'));
+    }
+
+    _resizeAll() {
+        for (const card of this._cards.values()) {
+            card.setSize(this._size(card.id));
+            if (this._state)
+                card.render(this._state, this._icons, this._getRepos());
+        }
+        this._placeAll();
+    }
+
+    /** Saved spots (kept on screen), or the chosen arrangement for cards never moved. */
     _placeAll() {
         const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
         const saved = this._savedPositions();
-        const heights = [];
+        const unmoved = [...this._cards.values()].filter(card => !saved[card.id]);
+        // Cells fit the largest card; smaller ones keep to the arrangement's edge.
+        const sizes = unmoved.map(card => this._size(card.id));
+        const defaults = defaultWidgetPositions(area, unmoved.length, this._settings.get_string('widget-arrangement'),
+            largestCardSize(sizes, this._size()), sizes);
         for (const card of this._cards.values()) {
-            const [, height] = card.actor.get_preferred_height(WIDGET_WIDTH);
             const spot = saved[card.id]
                 ? {x: saved[card.id][0], y: saved[card.id][1]}
-                : defaultWidgetPosition(area, heights);
-            const {x, y} = clampWidgetPosition(spot, area, {width: WIDGET_WIDTH, height});
+                : defaults[unmoved.indexOf(card)];
+            const {x, y} = clampWidgetPosition(spot, area, this._size(card.id));
             card.actor.set_position(x, y);
-            if (!saved[card.id])
-                heights.push(height);
         }
     }
 

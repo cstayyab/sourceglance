@@ -6,9 +6,21 @@ import {
     LAUNCHER_ID,
     MAX_COMMENT_LENGTH,
     TOOLBAR_LISTS,
-    WIDGET_WIDTH,
     clampWidgetPosition,
-    defaultWidgetPosition,
+    defaultWidgetPositions,
+    cleanCustomWidget,
+    largestCardSize,
+    scaledCardSize,
+    customWidgetItems,
+    moveWidget,
+    newCustomWidgetId,
+    parseCustomWidgets,
+    splitFilterList,
+    widgetCardRows,
+    widgetCardSize,
+    widgetGridRows,
+    normalizeWidgetLayout,
+    widgetOrder,
     normalizeWidgets,
     draftAssigneesRequest,
     draftTarget,
@@ -556,15 +568,127 @@ test('listBadge shows counts once loaded, 0 included', () => {
     assert.equal(listBadge('issues', {sources: []}), '');
 });
 
+test('widget card size follows the screen height', () => {
+    assert.deepEqual([600, 720, 940, 1080, 1440, 2160, 2700, 5000].map(widgetCardRows), [3, 3, 3, 4, 5, 8, 10, 10]);
+    // 1080: four rows in 1080 - 32 - 48 - 3 × 16; a 1920 screen gives 22% of its width.
+    assert.deepEqual(widgetCardSize(1080, 1920), {width: 422, height: 238, rows: 4});
+    // Never narrower than 40 characters of a title, nor wider than 80.
+    assert.equal(widgetCardSize(768, 1366).width, 120 + 40 * 7);
+    assert.equal(widgetCardSize(1440, 5120).width, 120 + 80 * 7);
+    assert.equal(widgetCardSize(768, 1366).rows, 3);
+});
+
+test('widget sizes', () => {
+    const medium = {width: 400, height: 200, rows: 4};
+    assert.deepEqual(scaledCardSize(medium, 'medium'), medium);
+    assert.deepEqual(scaledCardSize(medium, 'small'), {width: 340, height: 140, rows: 4});
+    assert.deepEqual(scaledCardSize(medium, 'large'), {width: 500, height: 280, rows: 4});
+    assert.deepEqual(scaledCardSize(medium, 'huge'), medium);
+    assert.deepEqual(largestCardSize([{width: 340, height: 140}, {width: 400, height: 280}], medium),
+        {width: 400, height: 280});
+    assert.deepEqual(largestCardSize([], medium), medium);
+
+    // Smaller cards keep to the arrangement's edge within their cell.
+    const area = {x: 0, y: 32, width: 1280, height: 768};
+    const cell = {width: 300, height: 200};
+    const small = {width: 200, height: 100};
+    const right = 1280 - 24 - 300;
+    assert.deepEqual(defaultWidgetPositions(area, 2, 'right', cell, [small, cell]),
+        [{x: right + 100, y: 56}, {x: right, y: 272}]);
+    assert.deepEqual(defaultWidgetPositions(area, 1, 'left', cell, [small]), [{x: 24, y: 56}]);
+    const floor = 32 + 768 - 24 - 200;
+    assert.deepEqual(defaultWidgetPositions(area, 1, 'bottom', cell, [small]), [{x: 490 + 50, y: floor + 100}]);
+});
+
 test('desktop widget ids, default spots and clamping', () => {
     assert.deepEqual(normalizeWidgets(['projects', 'summary', 'x', 'summary']), ['summary', 'projects']);
     assert.deepEqual(normalizeWidgets(null), []);
     const area = {x: 0, y: 32, width: 1280, height: 768};
-    assert.deepEqual(defaultWidgetPosition(area, []), {x: 1280 - WIDGET_WIDTH - 24, y: 56});
-    assert.deepEqual(defaultWidgetPosition(area, [100, 200]), {x: 1280 - WIDGET_WIDTH - 24, y: 56 + 116 + 216});
-    const size = {width: WIDGET_WIDTH, height: 200};
-    assert.deepEqual(clampWidgetPosition({x: 5000, y: -40}, area, size), {x: 1280 - WIDGET_WIDTH, y: 32});
-    assert.deepEqual(clampWidgetPosition({x: 100.4, y: 300.6}, area, size), {x: 100, y: 301});
+    const size = {width: 300, height: 200};
+    const right = 1280 - 24 - 300;
+    const step = 316;
+    assert.deepEqual(defaultWidgetPositions(area, 0, 'top-right', size), []);
+    // Top right: two across, rows down; 768 - 48 fits three rows of 200.
+    assert.deepEqual(defaultWidgetPositions(area, 3, 'top-right', size), [
+        {x: right - step, y: 56}, {x: right, y: 56}, {x: right, y: 56 + 216}]);
+    // Six fill the screen; the seventh starts a block further left.
+    assert.deepEqual(defaultWidgetPositions(area, 7, 'top-right', size).at(-1), {x: right - 2 * step, y: 56});
+    // Right and left: columns of three, then another column further in.
+    assert.deepEqual(defaultWidgetPositions(area, 4, 'right', size), [
+        {x: right, y: 56}, {x: right, y: 272}, {x: right, y: 488}, {x: right - step, y: 56}]);
+    assert.deepEqual(defaultWidgetPositions(area, 2, 'left', size), [{x: 24, y: 56}, {x: 24, y: 272}]);
+    // Top: centred rows of as many as fit (three in 1280); bottom grows upwards.
+    assert.deepEqual(defaultWidgetPositions(area, 5, 'top', size), [
+        {x: 174, y: 56}, {x: 174 + step, y: 56}, {x: 174 + 2 * step, y: 56},
+        {x: 332, y: 56 + 216}, {x: 332 + step, y: 56 + 216}]);
+    const floor = 32 + 768 - 24 - 200;
+    assert.deepEqual(defaultWidgetPositions(area, 2, 'bottom', size), [{x: 332, y: floor}, {x: 332 + step, y: floor}]);
+    // Without a size, cards are sized from the area's height.
+    assert.equal(defaultWidgetPositions(area, 1)[0].x, 1280 - 24 - widgetCardSize(768).width);
+
+    const card = {width: 300, height: 200};
+    assert.deepEqual(clampWidgetPosition({x: 5000, y: -40}, area, card), {x: 1280 - 300, y: 32});
+    assert.deepEqual(clampWidgetPosition({x: 100.4, y: 300.6}, area, card), {x: 100, y: 301});
+});
+
+test('widget grid layout: packing, moving and order', () => {
+    const grid = {columns: 3, rows: 2};
+    // Saved spots are kept; missing, off-grid or shared ones take the first free spot.
+    assert.deepEqual(normalizeWidgetLayout({}, ['summary', 'issues', 'prs', 'projects'], grid),
+        {summary: [0, 0], issues: [1, 0], prs: [2, 0], projects: [0, 1]});
+    assert.deepEqual(normalizeWidgetLayout({issues: [2, 1], summary: [9, 0], prs: [2, 1]}, ['summary', 'issues', 'prs'], grid),
+        {summary: [0, 0], issues: [2, 1], prs: [1, 0]});
+    assert.deepEqual(normalizeWidgetLayout(null, [], grid), {});
+    // More cards than slots add rows.
+    assert.equal(widgetGridRows(7, grid), 3);
+    assert.equal(widgetGridRows(2, grid), 2);
+    assert.deepEqual(normalizeWidgetLayout({}, ['a', 'b', 'c', 'd', 'e', 'f', 'g'], grid).g, [0, 2]);
+
+    // Dropping on another card swaps them; dropping on free space just moves.
+    const two = {summary: [0, 0], issues: [1, 0]};
+    assert.deepEqual(moveWidget(two, 'issues', [0, 0], grid), {issues: [0, 0], summary: [1, 0]});
+    assert.deepEqual(moveWidget(two, 'issues', [1.6, 0.6], grid), {issues: [2, 1], summary: [0, 0]});
+    assert.deepEqual(moveWidget(two, 'summary', [-3, 7], grid), {summary: [0, 1], issues: [1, 0]});
+
+    assert.deepEqual(widgetOrder({prs: [0, 1], issues: [2, 0], summary: [0, 0]}), ['summary', 'issues', 'prs']);
+});
+
+test('custom widgets: settings, filters and ids', () => {
+    assert.deepEqual(normalizeWidgets(['custom-b', 'issues', 'custom-x'], [{id: 'custom-a'}, {id: 'custom-b'}]),
+        ['issues', 'custom-b']);
+    const def = {id: 'custom-a1', name: '  Reviews ', icon: 'code', kind: 'prs', relation: 'review',
+        repos: ['o/r', 'o/r', 3, ' '], labels: ['ui'], words: 'card'};
+    assert.deepEqual(cleanCustomWidget(def), {id: 'custom-a1', name: 'Reviews', icon: 'code', kind: 'prs',
+        account: '', relation: 'review', repos: ['o/r'], labels: ['ui'], words: 'card'});
+    assert.equal(cleanCustomWidget({...def, id: 'summary'}), null);
+    assert.equal(cleanCustomWidget({...def, name: ' '}), null);
+    assert.deepEqual(cleanCustomWidget({...def, icon: 'x', kind: 'y', relation: 'z'}),
+        {...cleanCustomWidget(def), icon: 'app', kind: 'issues', relation: 'any'});
+    assert.deepEqual(parseCustomWidgets([JSON.stringify(def), '{', JSON.stringify(def), '"x"']).map(d => d.id),
+        ['custom-a1']);
+    assert.equal(newCustomWidgetId(['custom-000000'], (() => {
+        const values = [0, 0.5];
+        return () => values.shift();
+    })()), `custom-${Math.floor(0.5 * 36 ** 6).toString(36)}`);
+    assert.deepEqual(splitFilterList(' a/b, c  d,,a/b '), ['a/b', 'c', 'd']);
+
+    const pr = (n, extra) => ({kind: 'pr', number: n, title: `PR ${n}`, repo: 'o/r', labels: [], reason: 'assigned', ...extra});
+    const state = {sources: [
+        {account: {id: 'gh'}, groups: [{issues: [{kind: 'issue', number: 1, title: 'Bug', repo: 'O/R', labels: [{name: 'UI'}]}]}],
+            prGroups: [{issues: [pr(2), pr(3, {reason: 'review', labels: [{name: 'ui'}]}), pr(4, {repo: 'x/y', reason: 'review'})]}],
+            boards: [{title: 'Plan', drafts: [{title: 'Write docs', status: 'Todo'}, {title: 'Ship', status: 'Done'}]}]},
+        {account: {id: 'gl'}, groups: [], prGroups: [{issues: [pr(5, {reason: 'review'})]}], boards: null},
+    ]};
+    const ids = list => list.map(item => item.number);
+    const clean = extra => cleanCustomWidget({...def, repos: [], labels: [], words: '', ...extra});
+    assert.deepEqual(ids(customWidgetItems(clean({relation: 'review'}), state)), [3, 4, 5]);
+    assert.deepEqual(ids(customWidgetItems(clean({relation: 'review', account: 'gh', repos: ['o/r']}), state)), [3]);
+    assert.deepEqual(ids(customWidgetItems(clean({labels: ['UI']}), state)), [3]);
+    assert.deepEqual(ids(customWidgetItems(clean({kind: 'issues', repos: ['o/r'], labels: ['ui']}), state)), [1]);
+    assert.deepEqual(ids(customWidgetItems(clean({words: 'pr 4'}), state)), [4]);
+    assert.deepEqual(customWidgetItems(clean({kind: 'projects', words: 'todo'}), state).map(({draft}) => draft.title),
+        ['Write docs']);
+    assert.deepEqual(customWidgetItems(clean({}), null), []);
 });
 
 test('isDoneStatus recognises finished board columns', () => {

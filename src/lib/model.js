@@ -174,25 +174,284 @@ export function menuWidth(monitorWidth, scale = 1) {
     return Math.round(Math.min(Math.max(wanted, MENU_MIN_WIDTH * factor), MENU_MAX_WIDTH * factor));
 }
 
-// Desktop widgets (lib/widgets.js): which cards, and where they go.
+// Widgets (lib/widgets.js on the desktop, pages/widgetCanvas.js in the window): which cards,
+// and where they go.
 export const WIDGET_IDS = ['summary', 'issues', 'prs', 'projects'];
-export const WIDGET_WIDTH = 320;
-const WIDGET_MARGIN = 24;
-const WIDGET_GAP = 16;
+// Around the cards at the screen's edges, and between them.
+export const WIDGET_MARGIN = 24;
+export const WIDGET_GAP = 16;
+// Room left for GNOME's top bar when sizing cards from the screen's height.
+const TOP_BAR_HEIGHT = 32;
+// About one row of cards per this many pixels of screen height (four at 1080).
+const SCREEN_PER_CARD_ROW = 270;
 
-/** Known card ids from the `widgets` setting, in display order, without duplicates. */
-export function normalizeWidgets(ids) {
-    const wanted = new Set(Array.isArray(ids) ? ids : []);
-    return WIDGET_IDS.filter(id => wanted.has(id));
+/** How many rows of cards fit down a screen this tall: 3 to 10, four at 1080 pixels. */
+export function widgetCardRows(screenHeight) {
+    return Math.min(10, Math.max(3, Math.round(screenHeight / SCREEN_PER_CARD_ROW)));
+}
+
+// A list row's room besides its title (padding, icon, #number, count or status), and a
+// title character's width, for sizing cards so 40 to 80 characters of a title show.
+const ROW_CHROME = 120;
+const CHAR_WIDTH = 7;
+const MIN_TITLE_CHARS = 40;
+const MAX_TITLE_CHARS = 80;
+// Cards are about this share of the screen's width, within those limits.
+const SCREEN_SHARE_PER_CARD = 0.22;
+
+/**
+ * The size of every card, on the desktop and in the window: as tall as fits widgetCardRows()
+ * rows down the screen, and about a fifth of the screen wide, room for 40 to 80 characters of
+ * an item's title. {width, height, rows}.
+ */
+export function widgetCardSize(screenHeight, screenWidth = screenHeight * 16 / 9) {
+    const rows = widgetCardRows(screenHeight);
+    const height = Math.floor((screenHeight - TOP_BAR_HEIGHT - 2 * WIDGET_MARGIN - (rows - 1) * WIDGET_GAP) / rows);
+    const width = Math.round(Math.min(ROW_CHROME + MAX_TITLE_CHARS * CHAR_WIDTH,
+        Math.max(ROW_CHROME + MIN_TITLE_CHARS * CHAR_WIDTH, screenWidth * SCREEN_SHARE_PER_CARD)));
+    return {width, height, rows};
+}
+
+// A card's size (widget-size, or its own in widget-sizes): a share of widgetCardSize()'s
+// [width, height]. Small still shows a few rows; Large shows about twice as many.
+export const WIDGET_SIZES = ['small', 'medium', 'large'];
+const WIDGET_SIZE_SCALES = {small: [0.85, 0.7], medium: [1, 1], large: [1.25, 1.4]};
+
+/** `size` (from widgetCardSize()) scaled to `choice` (WIDGET_SIZES; anything else is medium). */
+export function scaledCardSize(size, choice) {
+    const [width, height] = WIDGET_SIZE_SCALES[choice] ?? WIDGET_SIZE_SCALES.medium;
+    return {...size, width: Math.round(size.width * width), height: Math.round(size.height * height)};
+}
+
+/** Room for every one of `sizes`: the widest and the tallest. */
+export function largestCardSize(sizes, fallback) {
+    if (sizes.length === 0)
+        return fallback;
+    return {...sizes[0], width: Math.max(...sizes.map(size => size.width)),
+        height: Math.max(...sizes.map(size => size.height))};
 }
 
 /**
- * Default spot for the index-th card: a column at the right edge of the work area, top down.
- * `area` is {x, y, width, height}; `heights` are the heights of the cards above it.
+ * Known card ids from the `widgets` setting, in display order, without duplicates: the
+ * built-in cards first, then the custom ones (`custom`, from parseCustomWidgets()) in their order.
  */
-export function defaultWidgetPosition(area, heights) {
-    const y = area.y + WIDGET_MARGIN + heights.reduce((sum, h) => sum + h + WIDGET_GAP, 0);
-    return {x: area.x + area.width - WIDGET_WIDTH - WIDGET_MARGIN, y};
+export function normalizeWidgets(ids, custom = []) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    return [...WIDGET_IDS, ...custom.map(def => def.id)].filter(id => wanted.has(id));
+}
+
+// The icons a widget can have: key → file in icons/ (without -symbolic.svg).
+export const WIDGET_ICONS = {
+    app: 'sourceglance',
+    issue: 'issue',
+    pr: 'git-pull-request',
+    merge: 'git-merge',
+    closed: 'issue-closed',
+    projects: 'checklist',
+    label: 'label',
+    code: 'code',
+};
+export const CUSTOM_WIDGET_KINDS = ['issues', 'prs', 'projects'];
+export const CUSTOM_WIDGET_RELATIONS = ['any', 'assigned', 'review'];
+const MAX_WIDGET_NAME = 40;
+const MAX_WIDGET_FILTERS = 20;
+
+function cleanList(list, max = 100) {
+    return Array.isArray(list)
+        ? [...new Set(list.filter(text => typeof text === 'string').map(text => text.trim()).filter(Boolean)
+            .map(text => cappedString(text, max)))].slice(0, MAX_WIDGET_FILTERS)
+        : [];
+}
+
+/** A custom widget as kept in settings, with every field checked; null if it isn't one. */
+export function cleanCustomWidget(def) {
+    if (!def || typeof def !== 'object' || typeof def.id !== 'string' || !/^custom-[a-z0-9]{1,16}$/.test(def.id))
+        return null;
+    const name = cappedString(String(def.name ?? '').trim(), MAX_WIDGET_NAME);
+    if (!name)
+        return null;
+    return {
+        id: def.id,
+        name,
+        icon: Object.hasOwn(WIDGET_ICONS, def.icon) ? def.icon : 'app',
+        kind: CUSTOM_WIDGET_KINDS.includes(def.kind) ? def.kind : 'issues',
+        account: typeof def.account === 'string' ? def.account : '',
+        relation: CUSTOM_WIDGET_RELATIONS.includes(def.relation) ? def.relation : 'any',
+        repos: cleanList(def.repos),
+        labels: cleanList(def.labels),
+        words: cappedString(String(def.words ?? '').trim(), 200),
+    };
+}
+
+/** The `custom-widgets` setting (one JSON object per widget), skipping broken and repeated entries. */
+export function parseCustomWidgets(list) {
+    const widgets = [];
+    for (const text of Array.isArray(list) ? list : []) {
+        let def = null;
+        try {
+            def = cleanCustomWidget(JSON.parse(text));
+        } catch {
+            continue;
+        }
+        if (def && !widgets.some(other => other.id === def.id))
+            widgets.push(def);
+    }
+    return widgets;
+}
+
+/** A new id for a custom widget, not one of `taken`. `random` returns [0, 1). */
+export function newCustomWidgetId(taken, random = Math.random) {
+    for (;;) {
+        const id = `custom-${Math.floor(random() * 36 ** 6).toString(36).padStart(6, '0')}`;
+        if (!taken.includes(id))
+            return id;
+    }
+}
+
+/** Splits a typed list ("a, b c") into its entries. */
+export function splitFilterList(text) {
+    return cleanList(String(text ?? '').split(/[\s,]+/));
+}
+
+/**
+ * What a custom widget shows from the lists: issues or pull requests (items), or project
+ * drafts ({board, draft}), matching all of its filters. Filters it leaves empty match anything.
+ */
+export function customWidgetItems(def, state) {
+    const sources = (state?.sources ?? []).filter(src => !def.account || src.account?.id === def.account);
+    const lower = list => list.map(text => text.toLowerCase());
+    const repos = lower(def.repos);
+    const labels = lower(def.labels);
+    const terms = searchTerms(def.words);
+    if (def.kind === 'projects') {
+        return sources.flatMap(src => (src.boards ?? []).flatMap(board => board.drafts
+            .filter(draft => matchesAll([draft.title ?? '', draft.status ?? '', board.title ?? ''].join('\n'), terms))
+            .map(draft => ({board, draft}))));
+    }
+    const pr = def.kind === 'prs';
+    return sources.flatMap(src => (pr ? src.prGroups : src.groups) ?? []).flatMap(group => group.issues)
+        .filter(item => !pr || def.relation === 'any' || (item.reason ?? 'assigned') === def.relation)
+        .filter(item => repos.length === 0 || repos.includes(String(item.repo).toLowerCase()))
+        .filter(item => labels.length === 0 ||
+            (item.labels ?? []).some(label => labels.includes(String(label.name).toLowerCase())))
+        .filter(item => itemMatches(item, terms));
+}
+
+// The window's widget area (pages/widgetCanvas.js): an invisible grid of card-sized slots,
+// `grid.columns` across (as many as the window fits) and at least `grid.rows` down (the rows
+// the screen fits), with more rows when there are more cards. A spot is [column, row].
+// Saved spots past the columns a narrower window fits are packed into free ones.
+const DEFAULT_GRID = {columns: 8, rows: 3};
+
+/** How many rows the grid has for `count` cards. */
+export function widgetGridRows(count, grid = DEFAULT_GRID) {
+    return Math.max(grid.rows, Math.ceil(count / grid.columns));
+}
+
+function widgetSpots(rows, columns) {
+    const spots = [];
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++)
+            spots.push([column, row]);
+    }
+    return spots;
+}
+
+const sameSpot = (a, b) => a[0] === b[0] && a[1] === b[1];
+
+// Each id at its wanted spot if it's free, else at the first free one (rows top down,
+// `prefer` first).
+function packWidgets(ids, wanted, grid, prefer = []) {
+    const spots = widgetSpots(widgetGridRows(ids.length, grid), grid.columns);
+    const isSpot = spot => Array.isArray(spot) && spots.some(other => sameSpot(other, spot));
+    const layout = {};
+    const free = spot => Object.values(layout).every(taken => !sameSpot(taken, spot));
+    for (const id of ids) {
+        const spot = [wanted[id], ...prefer, ...spots].find(s => isSpot(s) && free(s));
+        layout[id] = [spot[0], spot[1]];
+    }
+    return layout;
+}
+
+/**
+ * A spot for each of `ids` (from the `widget-layout` setting `saved`), none shared. Saved
+ * spots are kept where they're still on the grid; the others fill the first free spots.
+ */
+export function normalizeWidgetLayout(saved, ids, grid = DEFAULT_GRID) {
+    return packWidgets(ids, saved && typeof saved === 'object' ? saved : {}, grid);
+}
+
+/**
+ * The layout after dropping `id` at `spot` (clamped onto the grid). A card already there moves
+ * to the spot `id` came from.
+ */
+export function moveWidget(layout, id, spot, grid = DEFAULT_GRID) {
+    const ids = Object.keys(layout);
+    const target = [
+        Math.min(Math.max(Math.round(spot[0]), 0), grid.columns - 1),
+        Math.min(Math.max(Math.round(spot[1]), 0), widgetGridRows(ids.length, grid) - 1),
+    ];
+    const from = layout[id] ? [layout[id]] : [];
+    const others = ids.filter(other => other !== id);
+    const kept = others.filter(other => !sameSpot(layout[other], target));
+    const moved = others.filter(other => sameSpot(layout[other], target));
+    return packWidgets([id, ...kept, ...moved], {...layout, [id]: target}, grid, from);
+}
+
+/** The ids in reading order of their spots (rows top down, then left to right). */
+export function widgetOrder(layout) {
+    return Object.keys(layout).sort((a, b) =>
+        layout[a][1] - layout[b][1] || layout[a][0] - layout[b][0]);
+}
+
+// Where cards never moved go on the desktop (the widget-arrangement setting): a grid two cards
+// wide at the top right, a column at the right or left edge, or a row along the top or bottom.
+export const WIDGET_ARRANGEMENTS = ['top-right', 'right', 'top', 'left', 'bottom'];
+
+/**
+ * Default spots for `count` cards never moved on the desktop, in `arrangement`
+ * (WIDGET_ARRANGEMENTS). `size` is a cell's {width, height}, room for the largest card; `area`
+ * is {x, y, width, height}. Columns hold as many cards as fit down the area, rows as many as fit
+ * across; more cards carry on in another column or row further in. `sizes` are the cards' own
+ * sizes, when smaller than a cell: they keep to the edge they're arranged along.
+ */
+export function defaultWidgetPositions(area, count, arrangement = 'top-right', size = widgetCardSize(area.height),
+    sizes = []) {
+    const stepX = size.width + WIDGET_GAP;
+    const stepY = size.height + WIDGET_GAP;
+    const across = Math.max(1, Math.floor((area.width - 2 * WIDGET_MARGIN + WIDGET_GAP) / stepX));
+    const down = Math.max(1, Math.floor((area.height - 2 * WIDGET_MARGIN + WIDGET_GAP) / stepY));
+    const left = area.x + WIDGET_MARGIN;
+    const right = area.x + area.width - WIDGET_MARGIN - size.width;
+    const top = area.y + WIDGET_MARGIN;
+    const bottom = area.y + area.height - WIDGET_MARGIN - size.height;
+    const positions = [];
+    // How much smaller than a cell card i is.
+    const spare = i => [size.width - (sizes[i]?.width ?? size.width), size.height - (sizes[i]?.height ?? size.height)];
+    for (let i = 0; i < count; i++) {
+        if (arrangement === 'right' || arrangement === 'left') {
+            const column = Math.floor(i / down);
+            positions.push({x: arrangement === 'right' ? right - column * stepX + spare(i)[0] : left + column * stepX,
+                y: top + (i % down) * stepY});
+        } else if (arrangement === 'top-right') {
+            // Two across; a full screen of them carries on in a block further left.
+            const wide = Math.min(2, across);
+            const block = Math.floor(i / (wide * down));
+            const index = i % (wide * down);
+            // A row that isn't full keeps to the right.
+            const inRow = Math.min(wide, count - (i - index % wide));
+            positions.push({x: right - (block * wide + (inRow - 1 - index % wide)) * stepX + spare(i)[0],
+                y: top + Math.floor(index / wide) * stepY});
+        } else {
+            // Rows along the top or bottom edge, each centred.
+            const row = Math.floor(i / across);
+            const inRow = Math.min(across, count - row * across);
+            const start = Math.round(area.x + (area.width - inRow * size.width - (inRow - 1) * WIDGET_GAP) / 2);
+            positions.push({x: start + (i % across) * stepX + Math.round(spare(i)[0] / 2),
+                y: arrangement === 'bottom' ? bottom - row * stepY + spare(i)[1] : top + row * stepY});
+        }
+    }
+    return positions;
 }
 
 /** Keeps a card fully inside the work area (a saved spot may be off a now-smaller screen). */
@@ -1094,7 +1353,7 @@ export function isGroupCollapsed(collapsed, id, terms = []) {
     return terms.length === 0 && collapsed.includes(id);
 }
 
-// The wallpaper Glance → Desktop Widgets recommends to go with the cards: GNOME's default,
+// The wallpaper Glance → Widgets recommends to go with the cards: GNOME's default,
 // Adwaita (gnome-backgrounds), with the values from its gnome-background-properties entry.
 export const RECOMMENDED_WALLPAPER = {
     'picture-uri': 'file:///usr/share/backgrounds/gnome/adwaita-l.jxl',
