@@ -61,7 +61,8 @@ set -e
 ok "damaged package is refused, nothing changed"
 
 setup --quiet --accept-license > "$WORK/install.out"
-grep -q "NO WARRANTY\|WITHOUT WARRANTY" "$WORK/install.out" || fail "license not printed"
+grep -q "Apache License" "$WORK/install.out" && grep -q "WITHOUT WARRANTIES" "$WORK/install.out" \
+    || fail "license not printed"
 [[ $(installed_version) == "$VERSION" ]] || fail "install: version"
 enabled | grep -q "$UUID" || fail "install: not enabled"
 [[ $(backups) -eq 0 ]] || fail "fresh install should not back up"

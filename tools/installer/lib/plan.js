@@ -194,7 +194,7 @@ const USAGE = `Usage: sourceglance-Setup.AppImage [options]
 With no options, opens the setup wizard.
 
   --quiet --accept-license  Install (or upgrade/repair) without the wizard.
-                            Prints the MIT License; by passing --accept-license you
+                            Prints the Apache License 2.0; by passing --accept-license you
                             accept it, including that there is NO WARRANTY.
   --repair                  Reinstall the packaged version (add --quiet --accept-license)
   --uninstall               Remove Source Glance (add --quiet for no wizard)
@@ -250,6 +250,6 @@ export function parseArgs(argv) {
     if (opts.quiet && opts.action === 'wizard')
         opts.action = 'install';
     if (opts.quiet && (opts.action === 'install' || opts.action === 'repair') && !opts.acceptLicense)
-        return {error: '--quiet installs need --accept-license (after reading the MIT License).'};
+        return {error: '--quiet installs need --accept-license (after reading the Apache License 2.0).'};
     return opts;
 }

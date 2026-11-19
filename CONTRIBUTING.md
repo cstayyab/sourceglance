@@ -102,4 +102,4 @@ see or how contributors work, update the docs in the same PR.
 ## License
 
 By contributing, you agree that your contributions are licensed under the
-[MIT License](LICENSE).
+[Apache License 2.0](LICENSE).

@@ -72,7 +72,7 @@ export function buildAboutPage({window, appIcon, version}) {
         iconName: 'folder-symbolic'}));
     project.add(linkRow(window, {title: _('Release notes'), uri: `${REPO_URL}/releases`,
         iconName: 'document-open-recent-symbolic'}));
-    project.add(linkRow(window, {title: _('License'), subtitle: _('MIT License, with no warranty'),
+    project.add(linkRow(window, {title: _('License'), subtitle: _('Apache License 2.0, with no warranty'),
         uri: `${REPO_URL}/blob/main/LICENSE`, iconName: 'emblem-documents-symbolic'}));
     page.add(project);
 

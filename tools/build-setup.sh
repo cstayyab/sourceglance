@@ -36,7 +36,7 @@ stage_payload() {
     glib-compile-schemas "$ext/schemas"
     (cd "$dest/extension" && find . -type f -print0 | sort -z | sed -z 's|^\./||' | xargs -0 sha256sum) \
         > "$dest/manifest.sha256"
-    cp "$ROOT/LICENSE" "$dest/LICENSE"
+    cp "$ROOT/LICENSE" "$ROOT/NOTICE" "$dest/"
     cp "$ROOT/tools/installer/data/sourceglance-setup.svg" "$dest/"
 }
 

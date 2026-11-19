@@ -78,7 +78,7 @@ installed: "Setup will upgrade sourceglance 0.0.9 to 0.1.0."
 
 - Banner above the text: **"sourceglance is provided AS IS, without warranty of any kind. You
   use it at your own risk."**
-- Scrollable, read-only view of the full MIT License, plus a **View online** link to
+- Scrollable, read-only view of the full Apache License 2.0, plus a **View online** link to
   <https://github.com/omer-gh/sourceglance/blob/main/LICENSE>.
 - Two radio buttons, MSI style; the second is selected by default:
   - ( ) **I accept the terms in the License Agreement**

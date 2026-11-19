@@ -31,7 +31,7 @@ Design: [installer wizard](../design/installer.md), [ADR 0005](../adr/0005-self-
 | --- | ------------- | --------------------- |
 | I1 | Double-click setup file | `sourceglance-Setup-X.Y.Z-<arch>.AppImage` (x86_64, aarch64) on each release; after the one-time *Executable as Program* toggle, double-clicking opens the wizard. Works offline. |
 | I2 | Wizard window | One window with Back / Next / Cancel: Welcome → License → Before you install → Options → System check → Ready → Installing → Completed. |
-| I3 | License agreement | Full MIT text, "AS IS / no warranty / at your own risk" banner, online link; Next enabled only after selecting "I accept" (default is "I do not accept"). |
+| I3 | License agreement | Full Apache 2.0 text, "AS IS / no warranty / at your own risk" banner, online link; Next enabled only after selecting "I accept" (default is "I do not accept"). |
 | I4 | System check | ✓/✗ list; blocks on: administrator, unsupported GNOME Shell, damaged package, user extensions off (with **Turn On** fix), low disk space. |
 | I5 | User-level install | No admin password; touches only the user's extension directory and enabled-extensions setting; Ready page lists every change. |
 | I6 | Integrity | Embedded payload checksum verified; releases publish `SHA256SUMS` and a build provenance attestation; README explains verification. |

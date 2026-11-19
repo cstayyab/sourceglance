@@ -3,7 +3,7 @@
 **Your GitHub and GitLab issues, pull requests and project boards, one glance away: in the
 Ubuntu top bar, in their own window, and right on your desktop.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Lint](https://github.com/omer-gh/sourceglance/actions/workflows/lint.yml/badge.svg)](https://github.com/omer-gh/sourceglance/actions/workflows/lint.yml)
 [![GNOME Shell](https://img.shields.io/badge/GNOME%20Shell-46--50-4a86cf)](src/metadata.json)
 [![Release](https://img.shields.io/github/v/release/omer-gh/sourceglance?include_prereleases)](https://github.com/omer-gh/sourceglance/releases)
@@ -162,7 +162,7 @@ git clone https://github.com/omer-gh/sourceglance.git
 cd sourceglance && ./tools/preview.sh
 ```
 
-The script explains the risks, asks you to accept the [MIT License](LICENSE) (the software
+The script explains the risks, asks you to accept the [Apache License 2.0](LICENSE) (the software
 comes with no warranty), and does any one-time setup. See
 [docs/development.md](docs/development.md#preview-script-recommended).
 
@@ -321,6 +321,6 @@ Everyone taking part must follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-[MIT](LICENSE) © 2026 Mohammad Omer
+[Apache License 2.0](LICENSE) © 2026 Mohammad Omer (see [NOTICE](NOTICE))
 
 Source Glance is not affiliated with or endorsed by GitHub, Inc. or GitLab Inc.
