@@ -63,7 +63,7 @@ Only maintainers with write access. Every release is cut from `main` with CI pas
    clean Ubuntu VM.
 9. **Upload to extensions.gnome.org** (from `v1.0.0` on): upload the zip from the GitHub
    Release at <https://extensions.gnome.org/upload/>.
-10. **Announce** in Discussions and close the milestone.
+10. **Close the milestone.** Don't post an announcement in Discussions.
 
 ## Release notes
 

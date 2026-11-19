@@ -7,6 +7,14 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-19
+
+### Fixed
+
+- For contributors: `make reload` now loads your latest code into a session that runs Source
+  Glance installed with Setup, without logging out. Before, it only took effect after the
+  next login. No change to the extension itself. ([7a59b0b](https://github.com/omer-gh/sourceglance/commit/7a59b0bbe6b5e44eb2a0b8b5f5743f55e871608e))
+
 ## [0.12.0] - 2026-11-19
 
 ### Added
@@ -346,7 +354,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/omer-gh/sourceglance/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/omer-gh/sourceglance/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/omer-gh/sourceglance/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/omer-gh/sourceglance/compare/v0.9.0...v0.10.0
