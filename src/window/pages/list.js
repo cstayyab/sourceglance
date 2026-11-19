@@ -150,7 +150,7 @@ export class ListPage {
             const note = new Adw.PreferencesGroup();
             note.add(new Adw.ActionRow({
                 title: src.status === 'signed-out'
-                    ? _('Not signed in. Sign in again under Settings → Accounts.')
+                    ? _('Not signed in. Sign in again under Accounts, at the top right.')
                     : src.error?.kind === 'insecure'
                         ? _('This instance uses plain http:// and isn’t on your local network now.')
                         : src.status === 'error' ? _('Couldn’t load. Retrying soon.') : _('Loading…'),

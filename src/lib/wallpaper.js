@@ -1,4 +1,4 @@
-// The wallpaper Settings → Desktop Widgets recommends (RECOMMENDED_WALLPAPER in model.js).
+// The wallpaper Glance → Desktop Widgets recommends (RECOMMENDED_WALLPAPER in model.js).
 // Apply keeps a copy of your wallpaper in saved-wallpaper, and Reset puts it back. The
 // extension drops that copy when the wallpaper changes any other way, so Reset is only
 // offered while the recommended wallpaper Apply set is still there. No Shell imports: the

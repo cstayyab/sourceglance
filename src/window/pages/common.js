@@ -100,7 +100,7 @@ export class ListBody {
 export function statusText(state) {
     if (state.status === 'signed-out') {
         return {icon: 'avatar-default-symbolic', title: _('Not signed in'),
-            description: _('Sign in under Settings → Accounts.')};
+            description: _('Sign in under Accounts, at the top right.')};
     }
     if (state.updatedAt === null && state.status !== 'error')
         return {icon: 'content-loading-symbolic', title: _('Loading…'), description: ''};

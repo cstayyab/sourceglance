@@ -96,7 +96,7 @@
     <key name="saved-wallpaper" type="a{ss}">
       <default>{}</default>
       <summary>Wallpaper to put back</summary>
-      <description>Internal. The org.gnome.desktop.background values the recommended wallpaper replaced, kept by Settings → Desktop Widgets → Apply so Reset can put them back. Cleared when the wallpaper changes any other way.</description>
+      <description>Internal. The org.gnome.desktop.background values the recommended wallpaper replaced, kept by Glance → Desktop Widgets → Apply so Reset can put them back. Cleared when the wallpaper changes any other way.</description>
     </key>
     <key name="install-update" type="b">
       <default>false</default>
@@ -114,9 +114,9 @@
       <description>Internal. Bumped by Settings when an account is added or removed, so the extension refreshes right away.</description>
     </key>
     <key name="sidebar-narrow" type="b">
-      <default>false</default>
+      <default>true</default>
       <summary>Sidebar shows icons only</summary>
-      <description>Whether the window's sidebar shows only icons (with counts on them) instead of icons, names and counts. Switched with the sidebar's menu button.</description>
+      <description>Whether the window's sidebar shows icons with short names under them (and counts on them) instead of icons, names and counts. On by default. Switched with the sidebar's menu button.</description>
     </key>
   </schema>
 </schemalist>

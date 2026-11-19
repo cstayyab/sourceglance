@@ -23,7 +23,7 @@ import {
     previewRequests,
     reopenRequests,
 } from '../lib/requests.js';
-import {addChip, chip, chipLine, labelClass} from './pages/common.js';
+import {actionButton, addChip, chip, chipLine, labelClass} from './pages/common.js';
 
 /** Text from GitHub or GitLab, shown as is (never as markup), selectable. */
 function plainText(text, dim = false) {
@@ -37,7 +37,9 @@ function plainText(text, dim = false) {
  * as plain text. Links open through `open(url)`, which checks them.
  */
 function markdownView(text, open) {
-    return blocksView(markdownBlocks(text), open);
+    const view = blocksView(markdownBlocks(text), open);
+    view.add_css_class('sourceglance-md');
+    return view;
 }
 
 function blocksView(blocks, open) {
@@ -99,7 +101,7 @@ function blocksView(blocks, open) {
             block.rows.forEach((cells, row) => cells.forEach((cell, column) =>
                 grid.attach(label(cell, row === 0 ? ['heading'] : []), column, row, 1, 1)));
             box.append(new Gtk.ScrolledWindow({child: grid, vscrollbar_policy: Gtk.PolicyType.NEVER,
-                propagate_natural_height: true}));
+                propagate_natural_height: true, css_classes: ['sourceglance-md-table-frame']}));
             break;
         }
         }
@@ -156,7 +158,7 @@ function errorText(error, item = null) {
         return _('Something went wrong: %s').format(error.message);
     switch (error.kind) {
     case 'auth':
-        return _('Your sign-in was rejected. Sign in again under Settings → Accounts.');
+        return _('Your sign-in was rejected. Sign in again under Accounts, at the top right.');
     case 'signed-out':
         return _('The account this came from is no longer signed in.');
     case 'insecure':
@@ -362,7 +364,11 @@ export class WindowActions {
     preview(item) {
         const draft = item.kind === 'draft';
         const owner = itemKey(item);
-        const show = child => this._panel.show({title: itemText(item), subtitle: draft ? '' : item.repo, child, owner});
+        const {gicon, iconName, kindClass, kindName} = this._kind(item);
+        const icon = new Gtk.Image({...gicon ? {gicon} : {icon_name: iconName}, pixel_size: 20,
+            css_classes: [kindClass], tooltip_text: kindName});
+        const subtitle = draft ? kindName : `${kindName} · ${item.repo}`;
+        const show = child => this._panel.show({title: itemText(item), subtitle, icon, child, owner});
         const load = async () => {
             show(new Gtk.Spinner({spinning: true, width_request: 32, height_request: 32,
                 halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
@@ -393,6 +399,17 @@ export class WindowActions {
         load();
     }
 
+    /** What kind of item this is: its icon and colour (as in the lists) and its name. */
+    _kind(item) {
+        if (item.kind === 'draft')
+            return {iconName: 'document-edit-symbolic', kindClass: 'sourceglance-kind-draft', kindName: _('Draft')};
+        if (item.kind === 'pr') {
+            return {gicon: this._icons.pr, kindClass: 'sourceglance-kind-pr',
+                kindName: item.platform === 'gitlab' ? _('Merge request') : _('Pull request')};
+        }
+        return {gicon: this._icons.issue, kindClass: 'sourceglance-kind-issue', kindName: _('Issue')};
+    }
+
     /** The preview's scrolling part ({content}) and, except for drafts, the box to add a comment ({composer}). */
     _previewContent(item, details, reload) {
         const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 14,
@@ -401,9 +418,8 @@ export class WindowActions {
         // Description: shown, or the editor while editing.
         const heading = new Gtk.Box({spacing: 6});
         const by = details.author ? _('Description · opened by %s').format(details.author) : _('Description');
-        heading.append(new Gtk.Label({label: by, xalign: 0, hexpand: true, css_classes: ['heading']}));
-        const edit = new Gtk.Button({child: new Adw.ButtonContent({icon_name: 'document-edit-symbolic', label: _('Edit')}),
-            css_classes: ['flat']});
+        heading.append(new Gtk.Label({label: by, xalign: 0, hexpand: true, css_classes: ['sourceglance-section-title']}));
+        const edit = actionButton({iconName: 'document-edit-symbolic', label: _('Edit'), onClick: () => startEditing()});
         heading.append(edit);
         box.append(heading);
         const description = new Gtk.Stack({vhomogeneous: false, transition_type: Gtk.StackTransitionType.CROSSFADE});
@@ -424,12 +440,12 @@ export class WindowActions {
         editButtons.append(saveButton);
         editing.append(editButtons);
         description.add_named(editing, 'editing');
-        edit.connect('clicked', () => {
+        const startEditing = () => {
             editor.buffer.text = details.body;
             description.visible_child_name = 'editing';
             edit.visible = false;
             editor.view.grab_focus();
-        });
+        };
         cancel.connect('clicked', () => {
             description.visible_child_name = 'shown';
             edit.visible = true;
@@ -452,21 +468,27 @@ export class WindowActions {
 
         // Comments, oldest first, then the box to add one.
         const count = details.comments.length + details.more;
+        box.append(new Gtk.Separator({margin_top: 6}));
         box.append(new Gtk.Label({label: ngettext('%d comment', '%d comments', count).format(count), xalign: 0,
-            css_classes: ['heading']}));
+            css_classes: ['sourceglance-section-title']}));
+        // An activity feed: the author's avatar beside their name, the time and what they wrote.
         for (const comment of details.comments) {
-            const card = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, css_classes: ['card'],
-                margin_bottom: 2});
-            const inner = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6,
-                margin_top: 10, margin_bottom: 10, margin_start: 12, margin_end: 12});
-            const when = comment.createdAt ? formatAgo(new Date(comment.createdAt)) : '';
-            inner.append(new Gtk.Label({label: [comment.author ?? _('Someone'), when].filter(Boolean).join(' · '),
-                xalign: 0, css_classes: ['dim-label', 'caption']}));
+            const author = comment.author ?? _('Someone');
+            const row = new Gtk.Box({spacing: 12, css_classes: ['sourceglance-comment']});
+            row.append(new Adw.Avatar({text: author, show_initials: true, size: 32, valign: Gtk.Align.START}));
+            const inner = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 4, hexpand: true});
+            const meta = new Gtk.Box({spacing: 8});
+            meta.append(new Gtk.Label({label: author, xalign: 0, css_classes: ['sourceglance-comment-author']}));
+            if (comment.createdAt) {
+                meta.append(new Gtk.Label({label: formatAgo(new Date(comment.createdAt)), xalign: 0,
+                    css_classes: ['dim-label', 'caption']}));
+            }
+            inner.append(meta);
             inner.append(markdownView(comment.body ?? '', url => this.open(url)));
             if (comment.reactions.length)
                 inner.append(reactionLine(comment.reactions));
-            card.append(inner);
-            box.append(card);
+            row.append(inner);
+            box.append(row);
         }
         if (details.more > 0 && item.url) {
             const more = new Gtk.Button({label: ngettext('%d more comment in the browser', '%d more comments in the browser',
@@ -478,7 +500,12 @@ export class WindowActions {
         const composer = this._editor({minHeight: 48, maxHeight: 160, grow: false, onSubmit: () => post()});
         const footer = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6,
             margin_top: 8, margin_bottom: 8, margin_start: 10, margin_end: 10});
-        footer.append(new Gtk.Frame({child: composer.widget}));
+        // Your avatar beside the box, like a comment of your own.
+        const compose = new Gtk.Box({spacing: 12});
+        const me = this._data.account(accountForItem(item))?.login ?? '';
+        compose.append(new Adw.Avatar({text: me, show_initials: me !== '', size: 32, valign: Gtk.Align.START}));
+        compose.append(new Gtk.Frame({child: composer.widget, hexpand: true, css_classes: ['sourceglance-composer']}));
+        footer.append(compose);
         const postButton = new Gtk.Button({label: _('Comment'), css_classes: ['suggested-action'], halign: Gtk.Align.END,
             sensitive: false, tooltip_text: _('Ctrl+Enter')});
         composer.buffer.connect('changed', () => {

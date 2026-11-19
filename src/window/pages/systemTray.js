@@ -1,4 +1,4 @@
-// Settings → System Tray: how sourceglance looks in the top bar.
+// Glance → System Tray: how sourceglance looks in the top bar.
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
@@ -7,9 +7,8 @@ import {gettext as _} from '../i18n.js';
 
 import {normalizeButtons} from '../../lib/model.js';
 
-/** `ctx` is {settings}. */
-export function buildSystemTrayPage({settings}) {
-    const page = new Adw.PreferencesPage();
+/** `ctx` is {settings}. Adds its groups to `page` (a new one by default) and returns it. */
+export function buildSystemTrayPage({settings}, page = new Adw.PreferencesPage()) {
 
     const group = new Adw.PreferencesGroup({
         title: _('Top bar'),

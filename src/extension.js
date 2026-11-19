@@ -104,7 +104,7 @@ export default class SourceglanceExtension extends Extension {
         });
 
         this._syncLauncher();
-        // Reset (Settings → Desktop Widgets) is only offered until the wallpaper changes some
+        // Reset (Glance → Desktop Widgets) is only offered until the wallpaper changes some
         // other way, even while the window is closed.
         this._background = backgroundSettings();
         this._backgroundChangedId = this._background.connect('changed',

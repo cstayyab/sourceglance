@@ -1,4 +1,4 @@
-// Settings → Accounts: every signed-in account, adding one (github.com, gitlab.com, or a
+// Accounts (from the title bar): every signed-in account, adding one (github.com, gitlab.com, or a
 // self-hosted instance through the wizard in addAccount.js), and the GitHub repository filter.
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';

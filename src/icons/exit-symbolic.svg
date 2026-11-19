@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Exit: a door swung open on its hinge (its knob a hole), and an arrow leaving through the
+       frame's gap. Fills only: GTK draws symbolic icons from filled shapes, not strokes. -->
+  <path fill="#000" d="M1 1h9.2v4.5H8.8V2.4H2.4v11.2h6.4v-3.1h1.4V15H1Z"/>
+  <path fill="#000" fill-rule="evenodd" d="M2.4 2.4 7 3.6v11.4l-4.6-1.4ZM5.8 8.1a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4Z"/>
+  <path fill="#000" d="M8 7.3h4.6V4.8L15.4 8l-2.8 3.2V8.7H8Z"/>
+</svg>
