@@ -181,6 +181,9 @@ imports each build from its new folder, so GNOME Shell runs the new code. To set
 2. Changes to `metadata.json` still need a login.
 3. `make install` puts the normal extension back. Old builds stay in the extension's `dev/`
    folder; delete it when you like.
+4. Installed with Setup? Each build also goes into the extension's `versions/` folder (as
+   X.Y.900001, X.Y.900002, …), so it runs right away even while your session still has
+   Setup's loader from login, without logging out. Running Setup again puts a release back.
 
 Each GObject class gets a type name that includes a hash of its module's URL
 (`gtypeName()` in `model.js`), because a type name can't be registered twice in one

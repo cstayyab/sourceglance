@@ -5,6 +5,10 @@
 # and on. A small loader (tools/dev-loader/) imports the build from that new folder, which
 # sidesteps GNOME Shell's module cache. Changes to metadata.json still need a new login.
 # `make install` puts the normal extension back.
+#
+# When Setup installed Source Glance, the session may still be running Setup's loader
+# (tools/installer/loader/), cached at login: it imports versions/<versions/current>/. So each
+# build also goes into a new versions/ folder, and whichever loader the Shell has runs it.
 set -euo pipefail
 
 UUID=sourceglance@omer-gh.github.io
@@ -30,6 +34,19 @@ mkdir -p "$DIR/schemas"
 cp "$ROOT"/src/schemas/*.gschema.xml "$DIR/schemas/"
 glib-compile-schemas "$DIR/schemas"
 printf '%s\n' "$stamp" > "$DIR/dev/current"
+
+# Setup's loader takes only an X.Y.Z folder name: the source's X.Y with a patch number from
+# 900001 up, new for every build. Its metadata.json still says the source's version.
+if [[ -d $DIR/versions ]]; then
+    minor=$(sed -n 's/.*"version-name": *"\([0-9]*\.[0-9]*\)\..*/\1/p' "$ROOT/src/metadata.json")
+    count=$(cat "$DIR/versions/dev-build" 2>/dev/null || echo 900000)
+    while [[ -e $DIR/versions/$minor.$((count + 1)) ]]; do count=$((count + 1)); done
+    version="$minor.$((count + 1))"
+    printf '%s\n' "$((count + 1))" > "$DIR/versions/dev-build"
+    cp -r "$build" "$DIR/versions/$version"
+    printf '%s\n' "$version" > "$DIR/versions/current"
+    stamp="$stamp, versions/$version"
+fi
 
 state_of() { gnome-extensions info "$UUID" | sed -n 's/^ *State: //p'; }
 
