@@ -4,7 +4,7 @@
 #   ./tools/preview.sh            # nested GNOME Shell in a window (default, safest)
 #   ./tools/preview.sh --session  # load into your real desktop session
 #
-# Run with --help for details. You must accept the MIT License before it does anything.
+# Run with --help for details. You must accept the Apache License 2.0 before it does anything.
 set -euo pipefail
 
 UUID=sourceglance@omer-gh.github.io
@@ -12,7 +12,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$UUID"
 PREVIEW_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sourceglance-preview"
 LICENSE_URL="https://github.com/omer-gh/sourceglance/blob/main/LICENSE"
-MIT_URL="https://opensource.org/license/mit"
+APACHE_URL="https://www.apache.org/licenses/LICENSE-2.0"
 
 MODE=nested
 ACCEPTED=0
@@ -30,7 +30,7 @@ Usage: $(basename "$0") [--nested | --session] [--accept-license] [--help]
                     your keyring.
   --session         Install and enable Source Glance in your real desktop session. Use
                     this to test signing in. A bug here can affect your desktop.
-  --accept-license  Accept the MIT License non-interactively (for scripts). Only use
+  --accept-license  Accept the Apache License 2.0 non-interactively (for scripts). Only use
                     this if you have read the license at $LICENSE_URL
   --help            Show this help.
 EOF
@@ -95,13 +95,13 @@ cat <<EOF
     only to api.github.com. Use a fine-grained, read-only token.
 
 ${bold}License and warranty${reset}
-Source Glance is licensed under the MIT License:
+Source Glance is licensed under the Apache License 2.0:
   ${LICENSE_URL}
-  (also in ${ROOT}/LICENSE; about the MIT License: ${MIT_URL})
+  (also in ${ROOT}/LICENSE; about the Apache License 2.0: ${APACHE_URL})
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY arising from the software or its use.
+THE SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+OF ANY KIND, EXPRESS OR IMPLIED. See sections 7 (Disclaimer of Warranty) and 8
+(Limitation of Liability) of the license.
 
 ${bold}You run this script and the software entirely at your own risk.${reset} There is
 no warranty and no obligation to provide support.

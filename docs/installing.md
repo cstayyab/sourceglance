@@ -41,7 +41,7 @@ allow it:
 ## 4. Double-click and follow the wizard
 
 1. **Welcome** — click **Next**.
-2. **License Agreement** — read the MIT License. sourceglance is provided *as is*, without
+2. **License Agreement** — read the Apache License 2.0. sourceglance is provided *as is*, without
    warranty. Choose **I accept** to continue.
 
 3. **Before You Install** — what Setup will change, and the risks.

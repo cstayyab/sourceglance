@@ -7,6 +7,12 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **License:** sourceglance is now licensed under the Apache License 2.0 instead of MIT.
+  Releases up to and including 0.10.0 stay available under MIT. The extension zip and the
+  setup wizard now ship the `LICENSE` and `NOTICE` files.
+
 ## [0.10.0] - 2026-11-19
 
 ### Added

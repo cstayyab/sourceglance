@@ -99,7 +99,7 @@ export function buildSystemStartPage({settings, toast, about}) {
 
     // The status bar: the copyright notice.
     const status = new Gtk.Box({spacing: 8, css_classes: ['sourceglance-status-bar']});
-    status.append(new Gtk.Label({label: _('© %s %s · MIT License').format(COPYRIGHT_YEAR, AUTHOR_NAME), xalign: 0,
+    status.append(new Gtk.Label({label: _('© %s %s · Apache License 2.0').format(COPYRIGHT_YEAR, AUTHOR_NAME), xalign: 0,
         hexpand: true, margin_top: 6, margin_bottom: 6, css_classes: ['dim-label', 'caption']}));
 
     const widget = new Adw.ToolbarView({content: overlay});

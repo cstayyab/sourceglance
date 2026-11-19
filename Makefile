@@ -15,10 +15,12 @@ install:
 reload:
 	./tools/dev-reload.sh
 
-# GNOME Shell 45+ compiles schemas itself, so the zip ships only the XML.
+# GNOME Shell 45+ compiles schemas itself, so the zip ships only the XML. The Apache
+# License asks for LICENSE and NOTICE to travel with every copy.
 pack:
 	mkdir -p dist
 	cd src && zip -FS -r ../$(ZIP) . -x 'schemas/gschemas.compiled'
+	zip -j $(ZIP) LICENSE NOTICE
 	@echo "Built $(ZIP)"
 
 lint:
