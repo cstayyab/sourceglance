@@ -31,7 +31,8 @@ export class ProjectsPage {
         this._terms = [];
         this._statusPage = new Adw.StatusPage();
         this._page = new ListBody();
-        // Drafts have no labels, so only Assignee.
+        // Drafts have no labels, so only Assignee. It starts as you; Unassigned and the rest of
+        // the team are a check away.
         this._bar = new FilterBar({types: ['assignee'], onChange: () => this._state && this.update(this._state)});
         const list = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
         list.append(this._bar.widget);
@@ -102,8 +103,16 @@ export class ProjectsPage {
             boards: searchBoards(src.boards ?? [], this._terms)
                 .map(board => filterDraftsBy(board, this._bar.filters))
                 .filter(board => board.drafts.length > 0)}));
-        if (matching.every(({boards}) => boards.length === 0)) {
+        if (matching.every(({boards}) => boards.length === 0) && this._terms.length) {
             this._add(noMatchesGroup(this._query, () => this._onClearSearch()));
+            return;
+        }
+        if (matching.every(({boards}) => boards.length === 0)) {
+            // Only the Assignee filter left nothing (it starts as you).
+            const empty = new Adw.PreferencesGroup();
+            empty.add(new Adw.ActionRow({title: this._bar.isDefault ? _('No drafts assigned to you') : _('Nothing matches these filters'),
+                use_markup: false, css_classes: ['dim-label']}));
+            this._add(empty);
             return;
         }
         for (const {src, boards} of matching) {

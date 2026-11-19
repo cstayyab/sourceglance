@@ -276,6 +276,24 @@ export function parseLogins(list) {
     return list.map(user => user?.login).filter(isValidLogin);
 }
 
+/** One issue or PR from the REST API in the lists' shape, with `reason` for why it's listed. */
+function parseApiItem(item, kind, reason, isSafeUrl) {
+    return {
+        kind,
+        reason,
+        number: item.number,
+        title: cappedString(item.title, 300),
+        url: isSafeUrl(item.html_url) ? item.html_url : null,
+        repo: repoFromApiUrl(item.repository_url),
+        nodeId: cappedString(item.node_id, 100) || null,
+        state: item.state === 'closed' ? 'closed' : 'open',
+        labels: parseLabels(item.labels),
+        assignees: parseLogins(item.assignees),
+        comments: Number.isInteger(item.comments) && item.comments >= 0 ? item.comments : 0,
+        updatedAt: item.updated_at,
+    };
+}
+
 /**
  * Items from a search response. `search` is the search that produced it ('issue',
  * 'pr-assigned' or 'pr-review'); items of the other kind are dropped. `isSafeUrl` checks
@@ -286,21 +304,35 @@ export function parseSearchResponse(json, search = 'issue', isSafeUrl = isSafeGi
     const raw = Array.isArray(json?.items) ? json.items : [];
     const items = raw
         .filter(item => Boolean(item?.pull_request) === wantPr && Number.isInteger(item.number))
-        .map(item => ({
-            kind: wantPr ? 'pr' : 'issue',
-            reason: search === 'pr-review' ? 'review' : 'assigned',
-            number: item.number,
-            title: cappedString(item.title, 300),
-            url: isSafeUrl(item.html_url) ? item.html_url : null,
-            repo: repoFromApiUrl(item.repository_url),
-            nodeId: cappedString(item.node_id, 100) || null,
-            state: item.state === 'closed' ? 'closed' : 'open',
-            labels: parseLabels(item.labels),
-            assignees: parseLogins(item.assignees),
-            comments: Number.isInteger(item.comments) && item.comments >= 0 ? item.comments : 0,
-            updatedAt: item.updated_at,
-        }));
+        .map(item => parseApiItem(item, wantPr ? 'pr' : 'issue', search === 'pr-review' ? 'review' : 'assigned', isSafeUrl));
     return {total: json?.total_count ?? items.length, items};
+}
+
+// The team's items: everything open in the repositories you own, collaborate on or reach
+// through your organizations, whoever it's assigned to (or no one). Only the window loads
+// them, for its Assignee filter; the top bar and the counts stay what's yours.
+export const MAX_TEAM_ITEMS = 100;
+
+export function teamItemsPath() {
+    return `/issues?filter=all&state=open&sort=updated&direction=desc&per_page=${MAX_TEAM_ITEMS}`;
+}
+
+/**
+ * {issues, prs} from teamItemsPath(), with reason 'team'. Archived repositories are left
+ * out, and with `repos` (the repository filter) only those repositories are kept.
+ */
+export function parseTeamItems(json, repos = [], isSafeUrl = isSafeGitHubUrl) {
+    const wanted = repos.filter(isValidRepo);
+    const items = (Array.isArray(json) ? json : [])
+        .filter(item => Number.isInteger(item?.number) && !item.repository?.archived)
+        .map(item => parseApiItem(item, item.pull_request ? 'pr' : 'issue', 'team', isSafeUrl))
+        .filter(item => item.repo && (wanted.length === 0 || wanted.includes(item.repo)));
+    return {issues: items.filter(item => item.kind === 'issue'), prs: items.filter(item => item.kind === 'pr')};
+}
+
+/** Whether an item is yours (assigned to you, or awaiting your review) rather than only the team's. */
+export function isMine(item) {
+    return item?.reason !== 'team';
 }
 
 /**
@@ -950,7 +982,7 @@ export function listBadge(id, state) {
     case 'prs':
         return sum('prTotal', 'prShown');
     case 'tasks':
-        return String(allTasks(loaded).length);
+        return String(allTasks(loaded).filter(task => !task.item || isMine(task.item)).length);
     case 'projects': {
         // Project boards are GitHub's; accounts that can't read them don't count.
         const boards = loaded.filter(source => source.platform === 'github' && !source.boardsError);
@@ -1023,7 +1055,9 @@ export function searchBoards(boards, terms) {
 
 /** How many loaded items in list `id` ('issues', 'prs', 'projects') match, across all accounts. */
 export function searchCount(id, state, terms) {
-    const count = groups => searchGroups(groups ?? [], terms).reduce((sum, group) => sum + group.issues.length, 0);
+    // Like the badges, only what's yours: the team's items are there for the Assignee filter.
+    const count = groups => searchGroups(groups ?? [], terms)
+        .reduce((sum, group) => sum + group.issues.filter(isMine).length, 0);
     const sources = (state.sources ?? []).filter(source => source.status !== 'signed-out');
     switch (id) {
     case 'issues':
@@ -1031,7 +1065,7 @@ export function searchCount(id, state, terms) {
     case 'prs':
         return sources.reduce((sum, source) => sum + count(source.prGroups), 0);
     case 'tasks':
-        return filterTasks(allTasks(sources), [], terms).length;
+        return filterTasks(allTasks(sources), [], terms).filter(task => !task.item || isMine(task.item)).length;
     case 'projects':
         return sources.reduce((sum, source) =>
             sum + searchBoards(source.boards ?? [], terms).reduce((n, board) => n + board.drafts.length, 0), 0);
@@ -1102,9 +1136,10 @@ export function keepSavedWallpaper(current, saved) {
     return hasSavedWallpaper(saved) && isRecommendedWallpaper(current);
 }
 
-// Lists → Tasks: everything assigned to you in one list, from every account: issues, pull or
-// merge requests, and project board drafts. No sections; an icon tells the kinds apart, and
-// filters (kinds and accounts, added like tags) narrow it down.
+// Lists → Tasks: everything from every account in one list: issues, pull or merge requests,
+// and project board drafts. No sections; an icon tells the kinds apart, and filters (kinds,
+// accounts, labels and assignees, added like tags) narrow it down. The Assignee filter starts
+// as you; the window also loads the team's items (isMine()) for picking others or Unassigned.
 export const TASK_KINDS = ['issue', 'pr', 'draft'];
 
 /**
@@ -1179,8 +1214,8 @@ export function filterDraftsBy(board, filters) {
 
 /**
  * The tasks that pass `filters` and match `terms`. `filters` is a list of {type, value}:
- * type 'kind' (value 'issue', 'pr' or 'draft') or 'account' (a section key: the assignee,
- * since every task is assigned to the account it came from). Filters of one
+ * type 'kind' (value 'issue', 'pr' or 'draft'), 'account' (a section key: the account that
+ * loaded it), 'label' or 'assignee' (a login, or UNASSIGNED). Filters of one
  * type add up (Issues + Pull requests shows both); filters of different types narrow
  * (Pull requests + an account shows that account's pull requests). [] shows everything.
  */
@@ -1208,9 +1243,32 @@ export function taskFilterOptions(tasks, sources, active = []) {
     return options.filter(option => !isActive(option.type, option.value));
 }
 
-/** The logins assigned to a task: an issue's or PR's assignees, or a draft's. */
+// The Assignee filter's value for items assigned to no one. Not a valid login, so no one's.
+export const UNASSIGNED = '(unassigned)';
+
+/**
+ * Who a task is for, as the Assignee filter sees it: its assignees, or UNASSIGNED, plus you
+ * when a pull request awaits your review (so the filter's default, you, keeps those too).
+ */
 function taskAssignees(task) {
-    return task.item ? task.item.assignees ?? [] : (task.draft?.assignees ?? []).map(user => user.login);
+    const logins = task.item ? task.item.assignees ?? [] : (task.draft?.assignees ?? []).map(user => user.login);
+    const people = logins.length ? logins : [UNASSIGNED];
+    return task.item?.reviewer ? [...new Set([...people, task.item.reviewer])] : people;
+}
+
+/** Your logins, one per signed-in account (accounts sharing a login count once). */
+function yourLogins(sources) {
+    return [...new Set((sources ?? [])
+        .filter(source => source.status !== 'signed-out' && source.login)
+        .map(source => source.login))];
+}
+
+/**
+ * The filters a list starts with: Assignee, set to your accounts, so it shows what's yours
+ * until you pick someone else, Unassigned, or clear it to see the whole team.
+ */
+export function defaultTaskFilters(sources) {
+    return yourLogins(sources).map(login => ({type: 'assignee', value: login}));
 }
 
 function taskLabels(task) {
@@ -1221,7 +1279,8 @@ export const TASK_FILTER_TYPES = ['kind', 'account', 'label', 'assignee'];
 
 /**
  * The Tasks filter menus: {kind, account, label, assignee}, each a list of {type, value,
- * title, count, active} with how many of `tasks` each has; labels and assignees sorted by name.
+ * title, count, active} with how many of `tasks` each has; labels sorted by name. Assignees
+ * are your logins first (always, with `mine`), then Unassigned, then everyone else by name.
  * `active` is the chosen filters ({type, value}).
  */
 export function taskFilterGroups(tasks, sources, active = []) {
@@ -1241,8 +1300,18 @@ export function taskFilterGroups(tasks, sources, active = []) {
             .map(source => option('account', source.key, source.assignee ?? source.title,
                 tasks.filter(task => task.account === source.key).length)),
         label: tally(tasks.map(taskLabels)).map(([name, count]) => option('label', name, name, count)),
-        assignee: tally(tasks.map(taskAssignees)).map(([login, count]) => option('assignee', login, login, count)),
+        assignee: assigneeOptions(tally(tasks.map(taskAssignees)), yourLogins(sources), option),
     };
+}
+
+function assigneeOptions(counts, mine, option) {
+    const count = login => counts.find(([name]) => name === login)?.[1] ?? 0;
+    const others = counts.filter(([login]) => login !== UNASSIGNED && !mine.includes(login));
+    return [
+        ...mine.map(login => ({...option('assignee', login, login, count(login)), mine: true})),
+        ...(count(UNASSIGNED) ? [option('assignee', UNASSIGNED, null, count(UNASSIGNED))] : []),
+        ...others.map(([login, n]) => option('assignee', login, login, n)),
+    ];
 }
 
 /** Adds the filter, or takes it off if it's there (a check in a filter menu). */
@@ -1259,4 +1328,255 @@ export function taskCounts(tasks) {
     for (const task of tasks)
         counts[task.kind]++;
     return counts;
+}
+
+// Custom fields (in the ⋮ menu): GitHub's issue fields (set up by an organization, on issues)
+// and the fields of every Projects (v2) board an issue, PR or draft is on. Each source is a
+// section {kind, title, ..., fields}; each field is {id, name, type, options, value, selected}:
+// `type` is one of FIELD_TYPES, `value` the text, number or date as typed ('' when empty),
+// `selected` the chosen option (or iteration) ids. Status keeps its own Move button, and
+// built-in fields (title, assignees, labels…) have their own actions, so neither is listed.
+
+export const FIELD_TYPES = ['text', 'number', 'date', 'single', 'multi', 'iteration'];
+const MAX_FIELD_TEXT = 1024;
+const MAX_FIELDS = 30;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const ISSUE_FIELD_DEFINITION = `
+    ... on IssueFieldText { id name dataType }
+    ... on IssueFieldNumber { id name dataType }
+    ... on IssueFieldDate { id name dataType }
+    ... on IssueFieldSingleSelect { id name dataType options { id name } }
+    ... on IssueFieldMultiSelect { id name dataType options { id name } }`;
+
+// Text, number and date values share the name `value` with different types, hence the aliases.
+export const ISSUE_FIELDS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+        issueFields(first: ${MAX_FIELDS}) { nodes { ${ISSUE_FIELD_DEFINITION} } }
+        issue(number: $number) {
+            id
+            issueFieldValues(first: ${MAX_FIELDS}) {
+                nodes {
+                    ... on IssueFieldTextValue { text: value field { ... on IssueFieldText { id } } }
+                    ... on IssueFieldNumberValue { number: value field { ... on IssueFieldNumber { id } } }
+                    ... on IssueFieldDateValue { date: value field { ... on IssueFieldDate { id } } }
+                    ... on IssueFieldSingleSelectValue { optionId field { ... on IssueFieldSingleSelect { id } } }
+                    ... on IssueFieldMultiSelectValue { options { id } field { ... on IssueFieldMultiSelect { id } } }
+                }
+            }
+        }
+    }
+}`;
+
+const SET_ISSUE_FIELDS_MUTATION = `mutation($issue: ID!, $fields: [IssueFieldCreateOrUpdateInput!]!) {
+    setIssueFieldValue(input: {issueId: $issue, issueFields: $fields}) { issue { id } }
+}`;
+
+const BOARD_ITEM_FIELDS = `
+    id
+    project {
+        id
+        title
+        closed
+        fields(first: ${MAX_FIELDS}) {
+            nodes {
+                ... on ProjectV2Field { id name dataType }
+                ... on ProjectV2SingleSelectField { id name dataType options { id name } }
+                ... on ProjectV2MultiSelectField { id name dataType isIssueField multiSelectOptions { id name } }
+                ... on ProjectV2IterationField { id name dataType configuration { iterations { id title } } }
+            }
+        }
+    }
+    fieldValues(first: ${MAX_FIELDS}) {
+        nodes {
+            ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { id } } }
+            ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { id } } }
+            ... on ProjectV2ItemFieldDateValue { date field { ... on ProjectV2FieldCommon { id } } }
+            ... on ProjectV2ItemFieldSingleSelectValue { optionId field { ... on ProjectV2FieldCommon { id } } }
+            ... on ProjectV2ItemFieldMultiSelectValue { options { id } field { ... on ProjectV2FieldCommon { id } } }
+            ... on ProjectV2ItemFieldIterationValue { iterationId field { ... on ProjectV2FieldCommon { id } } }
+        }
+    }`;
+
+export const BOARD_FIELDS_QUERY = `query($id: ID!) {
+    node(id: $id) {
+        ... on Issue { projectItems(first: 10) { nodes { ${BOARD_ITEM_FIELDS} } } }
+        ... on PullRequest { projectItems(first: 10) { nodes { ${BOARD_ITEM_FIELDS} } } }
+        ... on ProjectV2Item { ${BOARD_ITEM_FIELDS} }
+    }
+}`;
+
+const UPDATE_BOARD_FIELD_MUTATION = `mutation($project: ID!, $item: ID!, $field: ID!, $value: ProjectV2FieldValue!) {
+    updateProjectV2ItemFieldValue(input: {projectId: $project, itemId: $item, fieldId: $field, value: $value}) {
+        projectV2Item { id }
+    }
+}`;
+
+const CLEAR_BOARD_FIELD_MUTATION = `mutation($project: ID!, $item: ID!, $field: ID!) {
+    clearProjectV2ItemFieldValue(input: {projectId: $project, itemId: $item, fieldId: $field}) { projectV2Item { id } }
+}`;
+
+const FIELD_TYPE_BY_DATA_TYPE = {
+    TEXT: 'text', NUMBER: 'number', DATE: 'date', SINGLE_SELECT: 'single', MULTI_SELECT: 'multi', ITERATION: 'iteration',
+};
+
+function parseFieldOptions(list, nameKey = 'name') {
+    return (Array.isArray(list) ? list : [])
+        .filter(option => isNodeId(option?.id) && typeof option[nameKey] === 'string')
+        .map(option => ({id: option.id, name: cappedString(option[nameKey], 100)}));
+}
+
+/** A field definition, or null for one that isn't editable here (or malformed). */
+function parseFieldDefinition(node) {
+    const type = FIELD_TYPE_BY_DATA_TYPE[node?.dataType];
+    if (!type || !isNodeId(node.id) || typeof node.name !== 'string' || !node.name)
+        return null;
+    const options = type === 'iteration'
+        ? parseFieldOptions(node.configuration?.iterations, 'title')
+        : parseFieldOptions(node.options ?? node.multiSelectOptions);
+    return {id: node.id, name: cappedString(node.name, 100), type, options, value: '', selected: []};
+}
+
+/** Fills in a field's current value from an API value node. */
+function applyFieldValue(field, node) {
+    const known = ids => ids.filter(id => field.options.some(option => option.id === id));
+    if (field.type === 'text' && typeof node.text === 'string')
+        field.value = cappedString(node.text, MAX_FIELD_TEXT);
+    else if (field.type === 'number' && Number.isFinite(node.number))
+        field.value = String(node.number);
+    else if (field.type === 'date' && typeof node.date === 'string' && DATE_RE.test(node.date.slice(0, 10)))
+        field.value = node.date.slice(0, 10);
+    else if (field.type === 'single' && typeof node.optionId === 'string')
+        field.selected = known([node.optionId]);
+    else if (field.type === 'iteration' && typeof node.iterationId === 'string')
+        field.selected = known([node.iterationId]);
+    else if (field.type === 'multi' && Array.isArray(node.options))
+        field.selected = known(node.options.map(option => option?.id));
+}
+
+function withValues(fields, values) {
+    for (const node of Array.isArray(values) ? values : []) {
+        const field = fields.find(other => other.id === node?.field?.id);
+        if (field)
+            applyFieldValue(field, node);
+    }
+    return fields;
+}
+
+/** "owner/name" and number as the variables of ISSUE_FIELDS_QUERY; null if not a GitHub issue. */
+export function issueFieldsRequest(item) {
+    if (item?.kind !== 'issue' || item.platform === 'gitlab' || !isValidRepo(item.repo) || !Number.isInteger(item.number))
+        return null;
+    const [owner, name] = item.repo.split('/');
+    // Issue fields need a preview header; a repository without them simply has none.
+    return {method: 'POST', path: '/graphql', graphql: true, partial: true, features: 'issue_fields',
+        body: {query: ISSUE_FIELDS_QUERY, variables: {owner, name, number: item.number}}};
+}
+
+/** The issue-fields section from ISSUE_FIELDS_QUERY, or null when there are none. */
+export function parseIssueFields(json) {
+    const repo = json?.data?.repository;
+    const issueId = repo?.issue?.id;
+    if (!isNodeId(issueId))
+        return null;
+    const fields = (repo.issueFields?.nodes ?? []).map(parseFieldDefinition).filter(Boolean);
+    if (fields.length === 0)
+        return null;
+    return {kind: 'issue', title: null, issueId, fields: withValues(fields, repo.issue.issueFieldValues?.nodes)};
+}
+
+/** The boards' fields of an issue or PR (by node id) or a draft (by its board item id). */
+export function boardFieldsRequest(item) {
+    const id = item?.kind === 'draft' ? item.number : item?.nodeId;
+    if (item?.platform === 'gitlab' || !isNodeId(id))
+        return null;
+    return {method: 'POST', path: '/graphql', graphql: true, partial: true, body: {query: BOARD_FIELDS_QUERY, variables: {id}}};
+}
+
+/** One section per open board, from BOARD_FIELDS_QUERY; boards with no custom fields are left out. */
+export function parseBoardFields(json) {
+    const node = json?.data?.node;
+    const items = node?.projectItems ? node.projectItems.nodes ?? [] : node?.project ? [node] : [];
+    const sections = [];
+    for (const boardItem of items) {
+        const project = boardItem?.project;
+        if (!isNodeId(boardItem?.id) || !isNodeId(project?.id) || project.closed)
+            continue;
+        const fields = (project.fields?.nodes ?? [])
+            // Status has its own Move button; issue fields shown on a board are edited as issue fields.
+            .filter(def => def?.name !== 'Status' && !def?.isIssueField)
+            .map(parseFieldDefinition).filter(Boolean);
+        if (fields.length > 0) {
+            sections.push({kind: 'board', title: cappedString(project.title, 100), projectId: project.id,
+                itemId: boardItem.id, fields: withValues(fields, boardItem.fieldValues?.nodes)});
+        }
+    }
+    return sections;
+}
+
+/** Why an edit can't be sent ('number' or 'date'), or null when it's fine. */
+export function fieldEditProblem(field, edit) {
+    const value = (edit?.value ?? '').trim();
+    if (field.type === 'number' && value && !Number.isFinite(Number(value)))
+        return 'number';
+    if (field.type === 'date' && value && !(DATE_RE.test(value) && !Number.isNaN(Date.parse(value))))
+        return 'date';
+    return null;
+}
+
+/** The edit as {clear} or {value} in the field's own type, or null when nothing changed. */
+export function fieldChange(field, edit) {
+    if (!edit)
+        return null;
+    if (['text', 'number', 'date'].includes(field.type)) {
+        const value = field.type === 'text' ? edit.value ?? '' : (edit.value ?? '').trim();
+        if (value === field.value)
+            return null;
+        if (fieldEditProblem(field, edit) || [...value].length > MAX_FIELD_TEXT)
+            throw new TypeError(`sourceglance: not a valid value for ${field.name}`);
+        if (value === '')
+            return {clear: true};
+        return {value: field.type === 'number' ? Number(value) : value};
+    }
+    const selected = [...new Set(edit.selected ?? [])];
+    if (selected.some(id => !field.options.some(option => option.id === id)) || (field.type !== 'multi' && selected.length > 1))
+        throw new TypeError(`sourceglance: not an option of ${field.name}`);
+    const same = selected.length === field.selected.length && selected.every(id => field.selected.includes(id));
+    if (same)
+        return null;
+    return selected.length === 0 ? {clear: true} : {value: field.type === 'multi' ? selected : selected[0]};
+}
+
+const BOARD_VALUE_KEY = {text: 'text', number: 'number', date: 'date', single: 'singleSelectOptionId',
+    multi: 'multiSelectOptionIds', iteration: 'iterationId'};
+const ISSUE_VALUE_KEY = {text: 'textValue', number: 'numberValue', date: 'dateValue', single: 'singleSelectOptionId',
+    multi: 'multiSelectOptionIds'};
+
+/**
+ * GitHub requests for `edits` ({section, field, value} or {section, field, selected}) made in
+ * the Fields dialog: one per changed board field, and one for all of an issue's issue fields.
+ */
+export function githubFieldRequests(edits) {
+    const requests = [];
+    const issueFields = new Map();
+    for (const {section, field, ...edit} of edits) {
+        const change = fieldChange(field, edit);
+        if (!change)
+            continue;
+        if (section.kind === 'issue') {
+            const list = issueFields.get(section.issueId) ?? [];
+            list.push(change.clear ? {fieldId: field.id, delete: true} : {fieldId: field.id, [ISSUE_VALUE_KEY[field.type]]: change.value});
+            issueFields.set(section.issueId, list);
+            continue;
+        }
+        const variables = {project: section.projectId, item: section.itemId, field: field.id};
+        requests.push({method: 'POST', path: '/graphql', graphql: true, body: change.clear
+            ? {query: CLEAR_BOARD_FIELD_MUTATION, variables}
+            : {query: UPDATE_BOARD_FIELD_MUTATION, variables: {...variables, value: {[BOARD_VALUE_KEY[field.type]]: change.value}}}});
+    }
+    for (const [issue, fields] of issueFields) {
+        requests.unshift({method: 'POST', path: '/graphql', graphql: true, features: 'issue_fields',
+            body: {query: SET_ISSUE_FIELDS_MUTATION, variables: {issue, fields}}});
+    }
+    return requests;
 }

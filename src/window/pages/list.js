@@ -1,6 +1,7 @@
 // Lists → Issues / Pull requests: one section per account, items grouped by repository, the
-// Labels and Assignee filters, actions per item, and the closed-but-assigned count. Text
-// from GitHub and GitLab is always shown as plain text.
+// Labels and Assignee filters (Assignee starts as you; it offers the team and Unassigned),
+// actions per item, and the closed-but-assigned count. Text from GitHub and GitLab is always
+// shown as plain text.
 import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
@@ -118,10 +119,11 @@ export class ListPage {
             // Titles are platform, host and login only: no markup characters (accounts.js checks them).
             const header = new Adw.PreferencesGroup({title: src.title});
             const suffix = new Gtk.Box({spacing: 8});
-            // While searching, the section counts its matches instead of its total.
+            // While searching or filtered to others, the section counts what it shows instead of your total.
             const groups = this._key === 'issues' ? src.groups : src.prGroups;
-            const count = this._terms.length
-                ? String(searchGroups(groups, this._terms).reduce((sum, group) => sum + group.issues.length, 0))
+            const count = this._terms.length || !this._bar.isDefault
+                ? String(filterGroupsBy(searchGroups(groups ?? [], this._terms), this._bar.filters)
+                    .reduce((sum, group) => sum + group.issues.length, 0))
                 : sourceBadge(this._key, src);
             if (count)
                 suffix.append(new Gtk.Label({label: count, css_classes: ['sourceglance-count-pill'], valign: Gtk.Align.CENTER}));
@@ -164,7 +166,8 @@ export class ListPage {
             add(noMatchesGroup(this._query, () => this._onClearSearch()));
         } else if (shown.length === 0) {
             const empty = new Adw.PreferencesGroup();
-            empty.add(new Adw.ActionRow({title: gitlab ? copy.emptyGitLab : copy.empty, use_markup: false, css_classes: ['dim-label']}));
+            const title = !this._bar.isDefault ? _('Nothing matches these filters') : gitlab ? copy.emptyGitLab : copy.empty;
+            empty.add(new Adw.ActionRow({title, use_markup: false, css_classes: ['dim-label']}));
             add(empty);
         }
         const collapsedGroups = this._settings.get_strv('collapsed-groups');

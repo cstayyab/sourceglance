@@ -192,6 +192,11 @@ test('sourceFrom builds one account’s section; items carry their account', () 
     assert.deepEqual(source.groups.map(group => group.repo), ['a/b']);
     assert.equal(sourceFrom({...account, platform: 'gitlab'}, result).boards, null);
     assert.equal(sourceFrom(account).status, 'loading');
+    // The team's items (window only) are listed but don't change your counts.
+    const team = sourceFrom(account, {...result, issues: [issue(1), {...issue(3), reason: 'team'}]});
+    assert.equal(team.issueShown, 1);
+    assert.equal(team.issueTotal, 30);
+    assert.equal(team.groups[0].issues.length, 2);
 
     assert.equal(aggregateStatus([]), 'signed-out');
     assert.equal(aggregateStatus([{status: 'signed-out'}]), 'signed-out');

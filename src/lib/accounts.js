@@ -1,7 +1,7 @@
 // Accounts: the GitHub and GitLab sign-ins Source Glance uses, on github.com, gitlab.com or a
 // self-hosted instance (ADR 0007). Pure: no gi:// or resource:// imports, unit-tested with
 // Node like model.js (ADR 0004).
-import {groupIssues, isValidLogin} from './model.js';
+import {groupIssues, isMine, isValidLogin} from './model.js';
 
 export const PLATFORMS = ['github', 'gitlab'];
 export const GITHUB_COM = 'https://github.com';
@@ -382,6 +382,8 @@ export function sourceFrom(account, result = {}, hidden = () => false) {
     const prs = result.prs ?? [];
     const shownIssues = issues.filter(item => !hidden(item));
     const shownPrs = prs.filter(item => !hidden(item));
+    // The counts are yours; the team's items (window only) are extra.
+    const mine = list => list.filter(isMine);
     const login = result.login ?? account.login;
     const withLoginAccount = {...account, login};
     return {
@@ -396,10 +398,10 @@ export function sourceFrom(account, result = {}, hidden = () => false) {
         error: result.error ?? null,
         groups: groupIssues(shownIssues),
         prGroups: groupIssues(shownPrs),
-        issueTotal: Math.max(0, (result.issueTotal ?? 0) - (issues.length - shownIssues.length)),
-        issueShown: shownIssues.length,
-        prTotal: Math.max(0, (result.prTotal ?? 0) - (prs.length - shownPrs.length)),
-        prShown: shownPrs.length,
+        issueTotal: Math.max(0, (result.issueTotal ?? 0) - (mine(issues).length - mine(shownIssues).length)),
+        issueShown: mine(shownIssues).length,
+        prTotal: Math.max(0, (result.prTotal ?? 0) - (mine(prs).length - mine(shownPrs).length)),
+        prShown: mine(shownPrs).length,
         closedCounts: result.closedCounts ?? {issues: null, prs: null},
         boards: account.platform === 'github' ? result.boards ?? null : null,
         boardsError: result.boardsError ?? null,
