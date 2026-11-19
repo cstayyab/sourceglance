@@ -14,12 +14,13 @@ import {allowLinkBases} from './lib/requests.js';
 import {UpdateNotice} from './lib/updateNotice.js';
 import {backgroundSettings, forgetStaleSavedWallpaper} from './lib/wallpaper.js';
 import {DesktopWidgets} from './lib/widgets.js';
-import {itemKey, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets} from './lib/model.js';
+import {WIDGET_ICONS, itemKey, nextRefreshDelaySeconds, normalizeButtons, normalizeWidgets, parseCustomWidgets} from './lib/model.js';
 
 // Settings that change which top-bar buttons exist.
 const TOOLBAR_KEYS = ['layout', 'toolbar-buttons'];
 // Settings that don't need a refresh when they change.
 const UI_ONLY_KEYS = ['start-automatically', 'start-request', 'quit-request', 'app-launcher', 'widget-positions', 'widget-opacity',
+    'widget-opacities', 'widget-size', 'widget-sizes', 'widgets-off-desktop', 'widget-layout', 'widget-backdrop', 'widget-arrangement',
     'collapsed-sections', 'collapsed-groups', 'open-page', 'install-update', 'saved-wallpaper', 'tasks-expanded'];
 
 // Whether sourceglance runs in this session: null until the first enable() after login.
@@ -81,6 +82,8 @@ export default class SourceglanceExtension extends Extension {
             prMerged: icon('git-merge'),
             prClosed: icon('pr-closed'),
             label: icon('label'),
+            // Custom widgets' icons (WIDGET_ICONS in model.js).
+            ...Object.fromEntries(Object.entries(WIDGET_ICONS).map(([key, name]) => [`widget-${key}`, icon(name)])),
         };
         this._buttons = [];
         this._running = false;
@@ -104,7 +107,7 @@ export default class SourceglanceExtension extends Extension {
         });
 
         this._syncLauncher();
-        // Reset (Glance → Desktop Widgets) is only offered until the wallpaper changes some
+        // Reset (Glance → Widgets) is only offered until the wallpaper changes some
         // other way, even while the window is closed.
         this._background = backgroundSettings();
         this._backgroundChangedId = this._background.connect('changed',
@@ -408,10 +411,12 @@ export default class SourceglanceExtension extends Extension {
             }
             this._publish();
             // Boards feed the Projects list and the projects and summary widgets.
-            const widgets = normalizeWidgets(this._settings.get_strv('widgets'));
+            const custom = parseCustomWidgets(this._settings.get_strv('custom-widgets'));
+            const widgets = normalizeWidgets(this._settings.get_strv('widgets'), custom);
             const options = {
                 repos: this._settings.get_strv('repositories'),
-                projects: this._lists().includes('projects') || widgets.includes('projects') || widgets.includes('summary'),
+                projects: this._lists().includes('projects') || widgets.includes('projects') || widgets.includes('summary') ||
+                    custom.some(def => def.kind === 'projects' && widgets.includes(def.id)),
             };
             errors = (await Promise.all(this._accounts.map(account =>
                 this._loadAccount(account, options, cancellable)))).filter(Boolean);

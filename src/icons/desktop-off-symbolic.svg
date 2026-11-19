@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Not on the desktop: the monitor, struck through -->
+  <path fill-rule="evenodd" d="M2.5 2h8.4l-1.5 1.5H2.5v7h1.4L2.4 12A1.5 1.5 0 0 1 1 10.5v-7A1.5 1.5 0 0 1 2.5 2Zm11 10H6.1l1.5-1.5h5.9V4.6L15 3.1v7.4a1.5 1.5 0 0 1-1.5 1.5Z"/>
+  <path d="M6.5 13.5h-2V15h7v-1.5h-2V12h-3Z"/>
+  <path d="m13.7 1 1.1 1.1L2.3 14.6l-1.1-1.1Z"/>
+</svg>
