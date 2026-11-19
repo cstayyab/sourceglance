@@ -1,7 +1,7 @@
 // Glance → Widgets' widget area: the cards drawn in the window, on your wallpaper, the size they
 // are on the desktop (widgetCardSize() in model.js). It fills the page's width, as many cards
-// across as fit and as many rows down as your screen fits; drag a card by its header to another
-// slot. Empty slots show as dashed outlines.
+// across as fit, and two rows down (more when the cards need them); drag a card by its header
+// to another slot. Empty slots show as dashed outlines.
 import Gdk from 'gi://Gdk';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
@@ -15,6 +15,8 @@ import {WIDGET_GAP, WIDGET_SIZES, customWidgetItems, isDoneStatus, itemRef, larg
     normalizeWidgetLayout, normalizeWidgets, parseCustomWidgets, relativeTime, scaledCardSize, searchPageUrl, truncate,
     widgetCardSize, widgetGridRows} from '../../lib/model.js';
 
+// Rows of slots in the area, at least; more when there are more cards than fit in them.
+const GRID_ROWS = 2;
 // Below the cards: room for the All widgets button.
 const STRIP_HEIGHT = 56;
 // A list row's height and the rest of a card (header, footer, the On desktop row), to work
@@ -478,7 +480,7 @@ export class WidgetCanvas {
     }
 
     _grid() {
-        return {columns: this._columns, rows: this._size.rows};
+        return {columns: this._columns, rows: GRID_ROWS};
     }
 
     _layout(ids = this.shown()) {
