@@ -12,7 +12,7 @@ jobs:
   lint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -29,7 +29,7 @@ jobs:
     # Normally about a minute; a stuck mirror shouldn't hold a PR for half an hour.
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install GNOME Shell, GJS and build tools
         # The download is about 130 MB, under a minute from a healthy mirror. Some mirrors
         # crawl (about 70 kB/s on 2026-11-18, 31 minutes): give up after 4 minutes and try
