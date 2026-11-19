@@ -383,7 +383,56 @@ pre code { background: none; padding: 0; }
 .footer-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
 .footer-row span:last-child { display: flex; gap: 18px; }
 
+/* Try it: a top bar and a Tasks window to click through (playground.js). */
+.try { padding: 88px 0 0; }
+.try h2 { text-align: center; }
+.try-block { display: grid; grid-template-columns: 1fr 1.4fr; gap: 48px; align-items: start; margin-top: 48px; }
+.try-copy p { color: var(--muted); }
+.try button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.try-controls { display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; align-items: center; margin-top: 20px; }
+.try-label { font-weight: 600; font-size: .9rem; }
+.segmented, .toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.try .segmented button, .try .toggles button {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--card); font-weight: 600; font-size: .92rem;
+}
+.try .segmented button[aria-checked="true"], .try .toggles button[aria-pressed="true"] {
+  border: 2px solid var(--blue); padding: 0 13px; background: rgb(31 111 235 / 10%); color: var(--blue);
+}
+@media (prefers-color-scheme: dark) {
+  .try .segmented button[aria-checked="true"], .try .toggles button[aria-pressed="true"] { color: var(--blue-soft); }
+}
+.try .toggles button[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.try-topbar .mock-bar { border-radius: 12px; }
+.try-topbar .mock-group { border-radius: 8px; overflow: hidden; }
+.try-topbar .seg { height: 28px; color: #fff; }
+.try-topbar .seg:hover { background: rgb(255 255 255 / 12%); }
+.try-topbar .seg:focus-visible { outline: 2px solid var(--blue-soft); outline-offset: -2px; }
+.try-topbar .mock-group.tabs { gap: 4px; background: none; }
+.try-topbar .mock-group.tabs .seg { border-radius: 8px; background: rgb(255 255 255 / 8%); font-weight: 600; }
+.try-topbar .mock-group.tabs .seg.app { background: rgb(31 111 235 / 35%); }
+.try-topbar .mock-group.tabs .seg.on { background: rgb(255 255 255 / 22%); }
+.try-topbar .mock-menu[hidden] { display: none; }
+.try-topbar .mock-menu { min-height: 120px; }
+.try-tasks { height: auto; min-height: 360px; color: #f6f5f4; }
+.try-tasks .sub-i { width: 100%; text-align: left; }
+.try-tasks .sub-i:hover:not(.on) { background: rgb(255 255 255 / 8%); }
+.try-tasks .win-head { align-items: center; }
+.try-search { margin-left: auto; }
+.try-search input {
+  width: 160px; min-height: 32px; padding: 0 10px; border: 1px solid #444; border-radius: 8px;
+  background: #1b1b1f; color: #f6f5f4; font: inherit; font-size: .85rem;
+}
+.try-labels { max-height: none; flex-wrap: wrap; gap: 6px; padding: 10px 12px 4px; }
+.try-labels .fchip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; }
+.try-labels .fchip[aria-pressed="true"] { background: #1f6feb; color: #fff; }
+.try-tasks .rows { overflow: auto; }
+.try-tag { margin-left: auto; color: #58a6ff; font-size: .8rem; font-weight: 700; }
+.try-empty { padding: 16px; opacity: .7; margin: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 @media (max-width: 900px) {
+  .try-block { grid-template-columns: 1fr; gap: 24px; }
   .hero-grid, .install-grid, .scene { grid-template-columns: 1fr; }
   .scene { gap: 20px; }
   .grid { grid-template-columns: repeat(2, 1fr); }
@@ -403,4 +452,11 @@ pre code { background: none; padding: 0; }
   .widget { width: 220px; }
   .w-issues { display: none; }
   .toast { font-size: .8rem; }
+  .try-tasks { flex-direction: column; height: auto; }
+  .try-tasks .win-sub { display: flex; flex-direction: row; flex-wrap: wrap; width: auto; }
+  .try-tasks .sub-h { display: none; }
+  .try-tasks .sub-i { width: auto; }
+  .try-search input { width: 120px; }
+  .try-topbar .mock-bar { height: auto; min-height: 36px; padding: 4px; justify-content: flex-end; }
+  .try-topbar .mock-group.tabs { flex-wrap: wrap; height: auto; }
 }

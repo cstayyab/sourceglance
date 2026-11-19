@@ -18,6 +18,7 @@
       <nav>
         <a class="wide-only" href="#new">What's new</a>
           <a class="wide-only" href="#in-action">In action</a>
+          <a class="wide-only" href="#try">Try it</a>
         <a class="wide-only" href="#features">Features</a>
         <a href="#install">Install</a>
         <a href="#contribute">Contribute</a>
@@ -287,6 +288,61 @@
       </div>
     </section>
 
+    <section id="try" class="try">
+      <div class="wrap">
+        <h2>Try it here</h2>
+        <p class="section-lede">Two parts of Source Glance you can click through right on this page.</p>
+
+        <div class="try-block">
+          <div class="try-copy">
+            <h3>The top bar, your way</h3>
+            <p>Show Issues, Pull requests and Projects as one tinted group or as tabs, each with its
+              live count. Turn off the lists you don't need. Click a button to open its menu, grouped
+              by account and repository.</p>
+            <div class="try-controls">
+              <span class="try-label" id="tb-layout-label">Layout</span>
+              <div class="segmented" role="radiogroup" aria-labelledby="tb-layout-label">
+                <button type="button" role="radio" aria-checked="true" data-layout="group">Group</button>
+                <button type="button" role="radio" aria-checked="false" data-layout="tabs">Tabs</button>
+              </div>
+              <span class="try-label" id="tb-lists-label">Lists</span>
+              <div class="toggles" role="group" aria-labelledby="tb-lists-label">
+                <button type="button" aria-pressed="true" data-list="issues"><i class="ic ic-check"></i>Issues</button>
+                <button type="button" aria-pressed="true" data-list="prs"><i class="ic ic-pr"></i>Pull requests</button>
+                <button type="button" aria-pressed="true" data-list="projects"><i class="ic ic-checklist"></i>Projects</button>
+              </div>
+            </div>
+          </div>
+          <div class="mock try-topbar" data-try="topbar">
+            <div class="mock-bar">
+              <span class="mock-clock">Mon 16 · 09:02</span>
+              <span class="mock-group" data-el="buttons"></span>
+            </div>
+            <div class="mock-menu show" data-el="menu" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="try-block">
+          <div class="try-copy">
+            <h3>Tasks: every list in one window</h3>
+            <p>All Tasks gathers your issues, pull requests and project cards from every account. Pick
+              a list in the sidebar, narrow it by label, or search by title, repository or number.</p>
+          </div>
+          <div class="win try-tasks" data-try="tasks">
+            <div class="win-sub" role="tablist" aria-label="Lists" aria-orientation="vertical" data-el="lists"></div>
+            <div class="win-main">
+              <div class="win-head"><b data-el="title">All Tasks</b>
+                <label class="try-search"><span class="visually-hidden">Search the list</span>
+                  <input type="search" placeholder="Search" data-el="search"></label>
+              </div>
+              <div class="chips try-labels" role="group" aria-label="Labels" data-el="labels"></div>
+              <div class="rows" data-el="rows" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="features" class="features">
       <div class="wrap">
         <h2>Everything assigned to you, without the tab hunt</h2>
@@ -448,5 +504,6 @@
     </div>
   </footer>
   <script src="demo.js" defer></script>
+  <script src="playground.js" defer></script>
 </body>
 </html>
