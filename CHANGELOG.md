@@ -12,16 +12,16 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **Glance**: Desktop Widgets and System Tray on one page, each under its own heading. It's
-  the first thing in the sidebar and opens when the window starts. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  the first thing in the sidebar and opens when the window starts. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 - **Accounts** in the window's title bar, after Refresh. With no account yet, a note pinned
-  under it shows how to get started; its **×** dismisses it. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  under it shows how to get started; its **×** dismisses it. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 - A red **!** on Refresh when an account's lists didn't load. Point at it to see why (sign-in
   rejected, no connection, request limit…) and a button that fixes it: **Open Accounts** or
-  **Try again**. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  **Try again**. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 - The preview's header shows what you're looking at: an issue, pull or merge request, or
-  draft, as a coloured icon and in its subtitle. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  draft, as a coloured icon and in its subtitle. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 - Settings has an **About** section: **About Source Glance** slides About in from the right,
-  over the settings. A status bar at the foot shows the copyright notice. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  over the settings. A status bar at the foot shows the copyright notice. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 
 ### Changed
 
@@ -29,50 +29,50 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   group's menu docked right beside it with full names and counts. **Glance** holds Desktop
   Widgets and System Tray; **Tasks** holds All Tasks, Issues, Pull requests and Projects;
   **Settings** and **Exit** sit at the foot. The slim column is the default; ☰ shows full
-  names instead. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  names instead. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 - **System Start** is now **Settings**. Accounts moved to the title bar and About into
-  Settings. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
-- **Quit** in the window is now **Exit**, with an exit-door icon, lined up with Settings. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
-- List counts show from the start, 0 until the lists load. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  Settings. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
+- **Quit** in the window is now **Exit**, with an exit-door icon, lined up with Settings. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
+- List counts show from the start, 0 until the lists load. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 - The preview reads like a web page: the description flat under its heading, comments as a
   feed with each author's avatar, and code, quotes and tables framed. Its **Edit** button and
-  the comment box match the window's style. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
-- The preview and About panels open at half the window or more. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  the comment box match the window's style. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
+- The preview and About panels open at half the window or more. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 
 ### Fixed
 
 - The editor toolbar's **Inline code** icon showed as two triangles; it's a clear `</>`
-  again. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+  again. ([7e02680](https://github.com/omer-gh/sourceglance/commit/7e026805a0661b64fe9f423339bd8d91a096d281))
 
 ## [0.9.0] - 2026-11-19
 
 ### Added
 
 - **Comment from the list**: an item's Comment button opens a comment box right under it,
-  instead of a dialog. It closes on Cancel and once the comment is posted. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  instead of a dialog. It closes on Cancel and once the comment is posted. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 - A **⋮ menu** at the end of each item: Labels…, Assignees…, Copy reference and Copy link
-  (drafts: Copy title and Copy board link). ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  (drafts: Copy title and Copy board link). ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 - The window's sidebar can show **icons only**: ☰ at its top right switches between that (with
-  each list's count on its icon) and icons with names and counts. The choice is remembered. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
-- A **Quit** button at the foot of the sidebar. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
-- **Open All Tasks** at the top of the Source Glance top-bar menu. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  each list's count on its icon) and icons with names and counts. The choice is remembered. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
+- A **Quit** button at the foot of the sidebar. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
+- **Open All Tasks** at the top of the Source Glance top-bar menu. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 
 ### Changed
 
 - The preview **renders Markdown** in descriptions and comments (headings, emphasis, code,
-  lists, task lists, quotes, tables and web links) instead of showing it raw. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
-- Clicking an item's title opens its preview. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
-- Items' icons are coloured by kind: issues green, pull requests blue, drafts amber, done purple. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  lists, task lists, quotes, tables and web links) instead of showing it raw. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
+- Clicking an item's title opens its preview. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
+- Items' icons are coloured by kind: issues green, pull requests blue, drafts amber, done purple. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 - The arrow that shows labels and assignees leads the item and points right (closed) or down
-  (open). The action buttons are smaller and closer together, leaving more room for the title. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
-- Lists and their filters start from the left and use the window's width. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
-- The preview panel opens at half the window, grows with it, and its comment box is shorter. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  (open). The action buttons are smaller and closer together, leaving more room for the title. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
+- Lists and their filters start from the left and use the window's width. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
+- The preview panel opens at half the window, grows with it, and its comment box is shorter. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 - **Quit**, in the top bar or the window, now stops everything: the top-bar buttons, the
-  desktop widgets and the window. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  desktop widgets and the window. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 - **Settings** in the top-bar menu (and **Sign in…**) opens the window on Accounts, the first
-  settings page. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  settings page. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 - The sidebar groups Desktop Widgets and System Tray under **Glance Tools**; **Settings** now
-  heads Accounts, System Start and About. ([#78](https://github.com/omer-gh/sourceglance/pull/78))
+  heads Accounts, System Start and About. ([ed6e00c](https://github.com/omer-gh/sourceglance/commit/ed6e00cd98cc672010a97a3dfebaf76b00475a2b))
 
 ## [0.8.0] - 2026-11-18
 
@@ -81,7 +81,7 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The **top-bar menus keep one width**: about a quarter of your screen (28 %), at least 360
   and at most 560 pixels at 100 % scaling, so they no longer grow or shrink as lists load,
   refresh or switch tabs. The width changes only when you change the screen resolution or
-  display scaling. ([#74](https://github.com/omer-gh/sourceglance/pull/74))
+  display scaling. ([7bdc4df](https://github.com/omer-gh/sourceglance/commit/7bdc4df85525f6459a36a551cf969940ee9e4bbc))
 
 ## [0.7.0] - 2026-11-18
 
@@ -179,7 +179,7 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An item's actions in the top-bar lists (Open, Comment, Close, Assignees, Labels, status) no
   longer get clipped to a sliver when the list is taller than the screen. Clicking an issue,
   pull request or draft now opens its actions in a menu beside the list, and long lists
-  scroll ([#57](https://github.com/omer-gh/sourceglance/pull/57)).
+  scroll ([ac52b0b](https://github.com/omer-gh/sourceglance/commit/ac52b0b218bc5b55e81aee21e03e178edd730d56)).
 
 ## [0.4.1] - 2026-11-16
 
