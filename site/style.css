@@ -99,6 +99,9 @@ h3 { font-size: 1.1rem; }
 .ic-list { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3.5a1 1 0 1 1 0 2a1 1 0 0 1 0-2Zm3 .25h9v1.5H5Zm-3 3.25a1 1 0 1 1 0 2a1 1 0 0 1 0-2Zm3 .25h9v1.5H5Zm-3 3.25a1 1 0 1 1 0 2a1 1 0 0 1 0-2Zm3 .25h9v1.5H5Z'/%3E%3C/svg%3E"); }
 .ic-draft { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M11.1 1.6a1.5 1.5 0 0 1 2.1 0l1.2 1.2a1.5 1.5 0 0 1 0 2.1l-7.6 7.6-3.5.9.9-3.5ZM2 14h12v1.5H2Z'/%3E%3C/svg%3E"); }
 .ic-done { --icon: url("images/issue-closed-symbolic.svg"); }
+.ic-exit { --icon: url("images/exit-symbolic.svg"); }
+.ic-gear { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M6.6 1h2.8l.4 1.9 1.3.7 1.8-.7 1.4 2.4-1.4 1.3v1.5l1.4 1.3-1.4 2.4-1.8-.7-1.3.7L9.4 15H6.6l-.4-1.9-1.3-.7-1.8.7-1.4-2.4 1.4-1.3V7.9L1.7 6.6l1.4-2.4 1.8.7 1.3-.7ZM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z'/%3E%3C/svg%3E"); }
+.ic-user { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.5a3.25 3.25 0 1 1 0 6.5 3.25 3.25 0 0 1 0-6.5ZM2 14c0-3 2.7-4.75 6-4.75S14 11 14 14v.5H2Z'/%3E%3C/svg%3E"); }
 .ic-external { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M9 1.5h5.5V7H13V4.06L7.53 9.53 6.47 8.47 11.94 3H9ZM2 3.5h5V5H3.5v7.5H11V9h1.5v5H2Z'/%3E%3C/svg%3E"); }
 .ic-eye { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 3c3.5 0 6 3 7 5c-1 2-3.5 5-7 5S2 10 1 8c1-2 3.5-5 7-5Zm0 2.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 0 0 0-5Z'/%3E%3C/svg%3E"); }
 .ic-chat { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7l-4 3v-3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z'/%3E%3C/svg%3E"); }
@@ -202,11 +205,20 @@ h3 { font-size: 1.1rem; }
 
 .win-wrap { padding: 0; }
 .win { display: flex; height: 340px; overflow: hidden; border-radius: 14px; background: #242424; box-shadow: 0 20px 50px rgb(0 0 0 / 35%); }
-.win-side { display: flex; flex-direction: column; gap: 2px; width: 170px; flex: none; padding: 12px 8px; background: #1d2633; }
-.side-h { font-size: .75rem; font-weight: 700; opacity: .6; padding: 4px 8px; }
-.side-i { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; }
-.side-i.on { background: rgb(88 166 255 / 32%); }
-.side-i em, .fbtn em, .chat em { font-style: normal; font-size: .75rem; font-weight: 700; margin-left: auto; padding: 0 7px; border-radius: 999px; background: rgb(88 166 255 / 28%); }
+/* The sidebar: a slim primary column, and the open group's menu docked beside it. The selected
+   primary entry runs edge to edge in the menu's colour, so the two read as one. */
+.win-rail { display: flex; flex-direction: column; width: 58px; flex: none; padding: 10px 0; background: #1b2028; }
+.rail-i { display: grid; justify-items: center; gap: 3px; padding: 8px 0; font-size: .62rem; opacity: .8; }
+.rail-i.on { background: #1f2c40; opacity: 1; }
+.rail-i.foot { margin-top: auto; border-top: 1px solid #2c3440; }
+.win-sub { display: flex; flex-direction: column; gap: 2px; width: 150px; flex: none; padding: 0 6px 10px; background: #1f2c40; }
+.sub-h { text-align: center; font-size: .85rem; padding: 12px 0 8px; }
+.sub-i { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; font-size: .85rem; white-space: nowrap; }
+.sub-i.on { background: #1f6feb; color: #fff; }
+.sub-i.on em { background: rgb(255 255 255 / 25%); }
+.head-btn { display: flex; align-items: center; gap: 6px; margin-left: auto; align-self: center; padding: 3px 10px;
+  border-radius: 6px; background: rgb(255 255 255 / 10%); font-size: .8rem; font-weight: 700; }
+.sub-i em, .fbtn em, .chat em { font-style: normal; font-size: .75rem; font-weight: 700; margin-left: auto; padding: 0 7px; border-radius: 999px; background: rgb(88 166 255 / 28%); }
 .win-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .win-head { display: flex; gap: 10px; align-items: baseline; padding: 12px 16px; border-bottom: 1px solid #333; }
 .win-head small { opacity: .6; }
@@ -257,8 +269,10 @@ h3 { font-size: 1.1rem; }
 .btn.blue { background: #1f6feb; }
 .win-panel { width: 0; flex: none; overflow: hidden; background: #2b2b2f; border-left: 1px solid #3a3a3a; transition: width .5s cubic-bezier(.3, .7, .3, 1); }
 .win-panel.show { width: 55%; }
-.panel-head { display: grid; text-align: center; padding: 10px 14px; border-bottom: 1px solid #3a3a3a; white-space: nowrap; }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #3a3a3a; white-space: nowrap; }
+.panel-head span { display: grid; }
 .panel-head small { opacity: .6; }
+.md-h { display: block; margin: 0 0 4px; font-size: .95rem; }
 .md { padding: 10px 16px; min-width: 260px; font-size: .9rem; }
 .md h4 { margin: 8px 0 4px; font-size: 1rem; }
 .md p { margin: 0 0 6px; }
@@ -266,9 +280,12 @@ h3 { font-size: 1.1rem; }
 .tasks { list-style: none; padding: 0; margin: 0 0 8px; }
 .tasks li { display: flex; gap: 8px; align-items: center; }
 .tasks i { font-style: normal; opacity: .7; }
-.comments-h { display: block; margin: 4px 0 6px; }
+.comments-h { margin: 10px 0 6px; padding-top: 8px; border-top: 1px solid #3a3a3a; }
 .md pre { margin: 0 0 8px; padding: 6px 10px; font-size: .8rem; background: rgb(255 255 255 / 6%); color: inherit; }
-.comment { padding: 8px 10px; border-radius: 8px; background: rgb(255 255 255 / 6%); transition: opacity .4s, translate .4s; }
+.comment { display: flex; gap: 10px; padding: 6px 0; transition: opacity .4s, translate .4s; }
+.comment p { margin: 2px 0 0; }
+.avatar { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 50%;
+  background: #8250df; color: #fff; font-style: normal; font-weight: 700; font-size: .8rem; }
 .comment:not(.show) { opacity: 0; translate: 0 8px; }
 .link { cursor: pointer; }
 .link.hover { text-decoration: underline; }
@@ -367,7 +384,7 @@ pre code { background: none; padding: 0; }
   .wide-only { display: none; }
   .mock-clock { display: none; }
   .seg { padding: 0 8px; }
-  .win-side { display: none; }
+  .win-rail, .win-sub { display: none; }
   .win, .desk { height: 360px; }
   .win-panel.show { width: 70%; }
   .widget { width: 220px; }

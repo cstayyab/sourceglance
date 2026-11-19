@@ -10,7 +10,7 @@ It runs in two processes that share code under `src/lib/`:
   icon and the top bar open it in Source Glance's own app (`launcher.js`, app ID
   `io.github.omer_gh.sourceglance`, matching the app icon's `.desktop` file), so the dock shows
   it as Source Glance. GNOME's Extensions app can still open the same window through `prefs.js`.
-  Settings → Accounts adds and removes accounts, checking each sign-in before storing it.
+  The Accounts page (title bar → Accounts) adds and removes accounts, checking each sign-in before storing it.
 
 ```
  ┌──────────────────────── gnome-shell process ────────────────────────┐
@@ -31,7 +31,7 @@ It runs in two processes that share code under `src/lib/`:
                       ▲                      ▲
  ┌────────────────────┼──────────────────────┼─── gjs window process ──┐
  │  window/app.js ──▶ accountStore      the same clients (lists,       │
- │  (Settings → Accounts, add-account dialog)  actions, sign-in)       │
+ │  (Accounts page, add-account dialog)        actions, sign-in)       │
  └─────────────────────────────────────────────────────────────────────┘
           both read/write non-secret settings (incl. the account list) via GSettings
 ```
@@ -48,7 +48,7 @@ It runs in two processes that share code under `src/lib/`:
 | `lib/gitlab.js` | `GitLabClient`: the same for gitlab.com or a self-managed instance, with token renewal | `gitlabModel`, `accounts`, `transport` |
 | `lib/transport.js` | Sends requests for one instance; plain http:// only to checked LAN addresses, pinned per connection; no redirects for self-hosted instances ([ADR 0007](adr/0007-multiple-accounts-and-self-hosted-instances.md)) | `accounts` |
 | `lib/updateNotice.js` | Once per login, a notification when a newer release is out, with short release notes; Install opens the window and starts its update | `updates`, `github` |
-| `lib/wallpaper.js` | The recommended wallpaper (Settings → Desktop Widgets): Apply keeps yours in `saved-wallpaper`, Reset puts it back; the extension forgets the copy when the wallpaper changes any other way | `model` |
+| `lib/wallpaper.js` | The recommended wallpaper (Glance → Desktop Widgets): Apply keeps yours in `saved-wallpaper`, Reset puts it back; the extension forgets the copy when the wallpaper changes any other way | `model` |
 | `lib/accountStore.js` | The account list (GSettings `accounts`) and each account's keyring entry, migration of the first sign-ins, a client per account, loading one account's lists | clients, `tokenStore` |
 | `lib/accounts.js` | Pure: instance URLs, LAN addresses, account records and ids, section titles, one account's part of the state (`sourceFrom`) | `model` |
 | `lib/tokenStore.js` | Read/write/clear an account's sign-in in the keyring via libsecret | — |

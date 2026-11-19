@@ -7,6 +7,41 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Glance**: Desktop Widgets and System Tray on one page, each under its own heading. It's
+  the first thing in the sidebar and opens when the window starts. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- **Accounts** in the window's title bar, after Refresh. With no account yet, a note pinned
+  under it shows how to get started; its **×** dismisses it. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- A red **!** on Refresh when an account's lists didn't load. Point at it to see why (sign-in
+  rejected, no connection, request limit…) and a button that fixes it: **Open Accounts** or
+  **Try again**. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- The preview's header shows what you're looking at: an issue, pull or merge request, or
+  draft, as a coloured icon and in its subtitle. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- Settings has an **About** section: **About Source Glance** slides About in from the right,
+  over the settings. A status bar at the foot shows the copyright notice. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+
+### Changed
+
+- **A new sidebar**: a slim column of icons, each with its name under it, and the open
+  group's menu docked right beside it with full names and counts. **Glance** holds Desktop
+  Widgets and System Tray; **Tasks** holds All Tasks, Issues, Pull requests and Projects;
+  **Settings** and **Exit** sit at the foot. The slim column is the default; ☰ shows full
+  names instead. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- **System Start** is now **Settings**. Accounts moved to the title bar and About into
+  Settings. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- **Quit** in the window is now **Exit**, with an exit-door icon, lined up with Settings. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- List counts show from the start, 0 until the lists load. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- The preview reads like a web page: the description flat under its heading, comments as a
+  feed with each author's avatar, and code, quotes and tables framed. Its **Edit** button and
+  the comment box match the window's style. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+- The preview and About panels open at half the window or more. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+
+### Fixed
+
+- The editor toolbar's **Inline code** icon showed as two triangles; it's a clear `</>`
+  again. ([#81](https://github.com/omer-gh/sourceglance/pull/81))
+
 ## [0.9.0] - 2026-11-19
 
 ### Added

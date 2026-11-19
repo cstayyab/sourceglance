@@ -103,15 +103,21 @@
           </div>
           <figure class="demo win-wrap" data-scene="triage" aria-label="Animation: the Labels filter is set to bug and the All Tasks list narrows to three items">
             <div class="win">
-              <div class="win-side">
-                <span class="side-h">Lists</span>
-                <span class="side-i on"><i class="ic ic-list"></i>All Tasks<em data-el="count">7</em></span>
-                <span class="side-i"><i class="ic ic-check"></i>Issues<em>4</em></span>
-                <span class="side-i"><i class="ic ic-pr"></i>Pull requests<em>2</em></span>
-                <span class="side-i"><i class="ic ic-checklist"></i>Projects<em>1</em></span>
+              <div class="win-rail">
+                <span class="rail-i"><i class="ic ic-sourceglance"></i>Glance</span>
+                <span class="rail-i on"><i class="ic ic-list"></i>Tasks</span>
+                <span class="rail-i foot"><i class="ic ic-gear"></i>Settings</span>
+                <span class="rail-i"><i class="ic ic-exit"></i>Exit</span>
+              </div>
+              <div class="win-sub">
+                <b class="sub-h">Tasks</b>
+                <span class="sub-i on"><i class="ic ic-list"></i>All Tasks<em data-el="count">7</em></span>
+                <span class="sub-i"><i class="ic ic-check"></i>Issues<em>4</em></span>
+                <span class="sub-i"><i class="ic ic-pr"></i>Pull requests<em>2</em></span>
+                <span class="sub-i"><i class="ic ic-checklist"></i>Projects<em>1</em></span>
               </div>
               <div class="win-main">
-                <div class="win-head"><b>All Tasks</b><small data-el="sub"></small></div>
+                <div class="win-head"><b>All Tasks</b><small data-el="sub"></small><span class="head-btn"><i class="ic ic-user"></i>Accounts</span></div>
                 <div class="filters">
                   <span class="fbtn">Kind ▾</span><span class="fbtn">Accounts ▾</span>
                   <span class="fbtn" data-el="labels">Labels <em data-el="lcount">1</em> ▾</span><span class="fbtn">Assignee ▾</span>
@@ -184,15 +190,15 @@
                 </div>
               </div>
               <div class="win-panel" data-el="panel">
-                <div class="panel-head"><b>#88 New onboarding screens</b><small>example/web-app</small></div>
+                <div class="panel-head"><i class="ic ic-pr k-pr"></i><span><b>#88 New onboarding screens</b><small>Pull request · example/web-app</small></span></div>
                 <div class="md">
-                  <small class="dim">Description · opened by sam</small>
+                  <b class="md-h">Description · opened by sam</b>
                   <h4>What changed</h4>
                   <p>Three screens replace the old wizard. <b>No new settings.</b></p>
                   <ul class="tasks"><li><i>☑</i>Welcome screen</li><li><i>☑</i>Sign-in screen</li><li><i>☐</i>Done screen</li></ul>
                   <pre>npm run screenshots</pre>
-                  <b class="comments-h">1 comment</b>
-                  <div class="comment" data-el="comment"><small class="dim">alex · 2 hours ago</small><p>Looks great. Ship it 🚀</p></div>
+                  <b class="comments-h md-h">1 comment</b>
+                  <div class="comment" data-el="comment"><i class="avatar">A</i><div><span><b>alex</b> <small class="dim">2 hours ago</small></span><p>Looks great. Ship it 🚀</p></div></div>
                 </div>
               </div>
             </div>
@@ -275,10 +281,10 @@
           <article>
             <i class="feat ic-checklist"></i>
             <h3>Main window</h3>
-            <p>All Tasks puts everything assigned to you in one list, coloured by kind and
-              filtered by kind, account, label or assignee. Click a title to preview it with its
-              Markdown rendered. The sidebar folds down to icons with counts, and Quit stops
-              everything at once.</p>
+            <p>A slim sidebar: Glance for your widgets and top bar, Tasks for All Tasks, Issues,
+              Pull requests and Projects, each opening its menu right beside it. Click a title
+              to preview it, Markdown rendered and comments as a feed. A red ! on Refresh says
+              what failed and how to fix it.</p>
           </article>
           <article>
             <i class="feat ic-label"></i>
@@ -363,7 +369,7 @@
             window also shows <b>Update available</b> in its title bar. Click it and Source Glance downloads
             the new Setup, checks it against the release's SHA-256 checksums and opens it; when
             Setup finishes, the window reopens on the new version. Turn the check off in
-            Settings → System Start. (Coming from v0.2.0 or earlier, log out once after updating.)</p>
+            Settings. (Coming from v0.2.0 or earlier, log out once after updating.)</p>
         </div>
         <a class="button primary" href="@SETUP_X64@">
           <span class="button-icon" aria-hidden="true"></span>
