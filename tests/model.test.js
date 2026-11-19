@@ -56,6 +56,8 @@ import {
     parseLogins,
     parseRepoList,
     parseSearchResponse,
+    parseTeamItems,
+    teamItemsPath,
     removeLabelRequest,
     reopenRequest,
     relativeTime,
@@ -570,4 +572,23 @@ test('isDoneStatus recognises finished board columns', () => {
         assert.ok(isDoneStatus(name), name);
     for (const name of ['Todo', 'In progress', 'Not done', null, undefined])
         assert.ok(!isDoneStatus(name), String(name));
+});
+
+test('parseTeamItems splits the team\'s open items into issues and PRs, skipping archived repos', () => {
+    assert.ok(teamItemsPath().startsWith('/issues?filter=all&state=open&sort=updated'));
+    const repo = name => ({repository_url: `https://api.github.com/repos/${name}`, repository: {archived: false}});
+    const json = [
+        {number: 10, title: 'Unassigned', html_url: 'https://github.com/a/b/issues/10', ...repo('a/b'), assignees: []},
+        {number: 11, title: 'PR', html_url: 'https://github.com/a/b/pull/11', ...repo('a/b'), pull_request: {}},
+        {number: 12, title: 'Old', ...repo('a/old'), repository: {archived: true}},
+        {number: 13, title: 'Elsewhere', html_url: 'https://github.com/c/d/issues/13', ...repo('c/d'), assignees: [{login: 'zed'}]},
+        {title: 'no number', ...repo('a/b')},
+    ];
+    const all = parseTeamItems(json);
+    assert.deepEqual(all.issues.map(item => [item.number, item.kind, item.reason, item.assignees]),
+        [[10, 'issue', 'team', []], [13, 'issue', 'team', ['zed']]]);
+    assert.deepEqual(all.prs.map(item => [item.number, item.kind, item.reason]), [[11, 'pr', 'team']]);
+    // The repository filter keeps only its repositories.
+    assert.deepEqual(parseTeamItems(json, ['c/d']).issues.map(item => item.number), [13]);
+    assert.deepEqual(parseTeamItems(null), {issues: [], prs: []});
 });

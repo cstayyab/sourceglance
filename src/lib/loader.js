@@ -16,23 +16,30 @@ async function optional(promise, fallback) {
 
 /**
  * @returns {Promise<object>} {login, issues, issueTotal, prs, prTotal, closedCounts,
- *   boards, boardsError}; items carry `boards` (their project boards).
+ *   boards, boardsError}; items carry `boards` (their project boards). With `team`, the lists
+ *   also hold the team's open items (reason 'team'); the totals stay yours.
  */
-export async function loadLists(client, token, {repos = [], projects = true} = {}, cancellable = null) {
+export async function loadLists(client, token, {repos = [], projects = true, team = false} = {}, cancellable = null) {
     const login = await client.getViewer(token, cancellable);
-    const [issues, assigned, review, closedIssues, closedPrs] = await Promise.all([
+    const [issues, assigned, review, closedIssues, closedPrs, teamItems] = await Promise.all([
         client.search(token, repos, 'issue', cancellable),
         client.search(token, repos, 'pr-assigned', cancellable),
         client.search(token, repos, 'pr-review', cancellable),
         optional(client.countSearch(token, repos, 'issue-closed', cancellable), null),
         optional(client.countSearch(token, repos, 'pr-closed', cancellable), null),
+        team ? optional(client.listTeam(token, repos, cancellable), null) : null,
     ]);
-    const prs = mergeItems(assigned.items, review.items);
+    for (const item of review.items)
+        item.reviewer = login;
+    const myPrs = mergeItems(assigned.items, review.items);
     // Results past the first page of either PR search aren't in `prs`.
-    const prTotal = prs.length + Math.max(0, assigned.total - assigned.items.length) +
+    const prTotal = myPrs.length + Math.max(0, assigned.total - assigned.items.length) +
         Math.max(0, review.total - review.items.length);
 
-    const all = [...issues.items, ...prs];
+    // Yours first: a copy the team list also has keeps why it's yours.
+    const issueItems = mergeItems(issues.items, teamItems?.issues ?? []);
+    const prs = mergeItems(myPrs, teamItems?.prs ?? []);
+    const all = [...issueItems, ...prs];
     const itemBoards = await optional(client.getProjectBoards(token, all.map(item => item.nodeId), cancellable), new Map());
     for (const item of all)
         item.boards = itemBoards.get(item.nodeId) ?? [];
@@ -48,7 +55,7 @@ export async function loadLists(client, token, {repos = [], projects = true} = {
 
     return {
         login,
-        issues: issues.items,
+        issues: issueItems,
         issueTotal: issues.total,
         prs,
         prTotal,

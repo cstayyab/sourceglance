@@ -3,6 +3,7 @@
 // same shape as GitHub's (see parseSearchResponse in model.js) with platform: 'gitlab'; merge
 // requests use kind 'pr'. `base` is the instance, https://gitlab.com unless self-managed.
 import {isSafeAccountUrl} from './accounts.js';
+import {fieldChange} from './model.js';
 
 export const GITLAB_HOST = 'https://gitlab.com';
 export const GITLAB_API = `${GITLAB_HOST}/api/v4`;
@@ -96,6 +97,28 @@ export function listPath(search, username = null) {
     }
 }
 
+// The team's items (the window's Assignee filter): what's open in the projects you're a
+// member of, whoever it's assigned to. GitLab has no one list for that across projects, so
+// it's your most recently active projects, one issues and one MR list each.
+export const GITLAB_TEAM_PROJECTS = 10;
+
+export function teamProjectsPath() {
+    return `/projects?membership=true&archived=false&simple=true&order_by=last_activity_at&sort=desc&per_page=${GITLAB_TEAM_PROJECTS}`;
+}
+
+/** Project ids from teamProjectsPath(). */
+export function parseProjectIds(json) {
+    return (Array.isArray(json) ? json : []).map(project => project?.id).filter(positiveInt).slice(0, GITLAB_TEAM_PROJECTS);
+}
+
+/** One project's open issues ('team-issue') or merge requests ('team-mr'). */
+export function teamListPath(projectId, search) {
+    if (!positiveInt(projectId) || !['team-issue', 'team-mr'].includes(search))
+        throw new TypeError('sourceglance: not a valid GitLab team list');
+    const kind = search === 'team-issue' ? 'issues' : 'merge_requests';
+    return `/projects/${projectId}/${kind}?state=opened&order_by=updated_at&sort=desc&per_page=${GITLAB_MAX_ITEMS}`;
+}
+
 /** Count-only paths for closed issues, and closed plus merged MRs, still assigned to you. */
 export function closedCountPaths() {
     return {
@@ -112,15 +135,15 @@ function projectPath(item) {
     return match && PROJECT_PATH_RE.test(match[1]) ? match[1] : null;
 }
 
-/** Items from a GitLab issues or merge_requests list. */
+/** Items from a GitLab issues or merge_requests list (listPath() or teamListPath()). */
 export function parseGitLabItems(json, search, base = GITLAB_HOST) {
-    const mr = search !== 'issue';
+    const mr = !search.endsWith('issue');
     return (Array.isArray(json) ? json : [])
         .filter(item => positiveInt(item?.iid) && positiveInt(item.project_id) && projectPath(item))
         .map(item => ({
             platform: 'gitlab',
             kind: mr ? 'pr' : 'issue',
-            reason: search === 'mr-review' ? 'review' : 'assigned',
+            reason: search === 'mr-review' ? 'review' : search.startsWith('team') ? 'team' : 'assigned',
             number: item.iid,
             title: capped(item.title, 300),
             url: isSafeGitLabUrl(item.web_url, base) ? item.web_url : null,
@@ -256,4 +279,98 @@ export function gitlabClosedPageUrl(kind, username, base = GITLAB_HOST) {
     return kind === 'pr'
         ? `${base}/dashboard/merge_requests?assignee_username=${user}&state=merged`
         : `${base}/dashboard/issues?assignee_username=${user}&state=closed`;
+}
+
+// Custom fields (in the ⋮ menu): GitLab's custom fields on issues (Premium, 17.11 and later,
+// GraphQL only), in the same section and field shapes as GitHub's (see FIELD_TYPES in
+// model.js). Merge requests have none. Text, number and date values share the name `value`
+// with different types, hence the aliases.
+
+const GID_RE = /^gid:\/\/gitlab\/[A-Za-z:]{1,60}\/\d{1,20}$/;
+const GITLAB_FIELD_TYPES = {TEXT: 'text', NUMBER: 'number', DATE: 'date', SINGLE_SELECT: 'single', MULTI_SELECT: 'multi'};
+
+export const GITLAB_FIELDS_QUERY = `query($path: ID!, $iid: String!) {
+    namespace(fullPath: $path) {
+        workItem(iid: $iid) {
+            id
+            widgets {
+                ... on WorkItemWidgetCustomFields {
+                    customFieldValues {
+                        customField { id name fieldType selectOptions { id value } }
+                        ... on WorkItemTextFieldValue { text: value }
+                        ... on WorkItemNumberFieldValue { number: value }
+                        ... on WorkItemDateFieldValue { date: value }
+                        ... on WorkItemSelectFieldValue { selectedOptions { id } }
+                    }
+                }
+            }
+        }
+    }
+}`;
+
+const GITLAB_SET_FIELDS_MUTATION = `mutation($id: WorkItemID!, $fields: [WorkItemWidgetCustomFieldValueInputType!]) {
+    workItemUpdate(input: {id: $id, customFieldsWidget: $fields}) { errors }
+}`;
+
+function isGid(id) {
+    return typeof id === 'string' && GID_RE.test(id);
+}
+
+/** The custom fields of a GitLab issue (by project path and iid); null for anything else. */
+export function gitlabFieldsRequest(item) {
+    const path = item?.repo ?? '';
+    if (item?.platform !== 'gitlab' || item.kind !== 'issue' || !PROJECT_PATH_RE.test(path) ||
+        path.split('/').some(part => /^\.+$/.test(part)) || !positiveInt(item.number))
+        return null;
+    return {method: 'POST', path: '/graphql', graphql: true, body: {query: GITLAB_FIELDS_QUERY,
+        variables: {path, iid: String(item.number)}}};
+}
+
+/** [the custom-fields section] from GITLAB_FIELDS_QUERY, or [] without any (or without the feature). */
+export function parseGitLabFields(json) {
+    const workItem = json?.data?.namespace?.workItem;
+    if (!isGid(workItem?.id))
+        return [];
+    const values = (workItem.widgets ?? []).flatMap(widget => widget?.customFieldValues ?? []);
+    const fields = [];
+    for (const node of values) {
+        const def = node?.customField;
+        const type = GITLAB_FIELD_TYPES[def?.fieldType];
+        if (!type || !isGid(def.id) || typeof def.name !== 'string' || !def.name || fields.some(field => field.id === def.id))
+            continue;
+        const options = (def.selectOptions ?? [])
+            .filter(option => isGid(option?.id) && typeof option.value === 'string')
+            .map(option => ({id: option.id, name: capped(option.value, 100)}));
+        const field = {id: def.id, name: capped(def.name, 100), type, options, value: '', selected: []};
+        if (type === 'text' && typeof node.text === 'string')
+            field.value = capped(node.text, 1024);
+        else if (type === 'number' && Number.isFinite(node.number))
+            field.value = String(node.number);
+        else if (type === 'date' && typeof node.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(node.date))
+            field.value = node.date;
+        else if (type === 'single' || type === 'multi')
+            field.selected = (node.selectedOptions ?? []).map(option => option?.id).filter(id => options.some(option => option.id === id));
+        fields.push(field);
+    }
+    return fields.length ? [{kind: 'gitlab', title: null, workItemId: workItem.id, fields}] : [];
+}
+
+const GITLAB_VALUE_KEY = {text: 'textValue', number: 'numberValue', date: 'dateValue'};
+
+/** One workItemUpdate per work item for `edits` ({section, field, value|selected}); [] when nothing changed. */
+export function gitlabFieldRequests(edits) {
+    const byItem = new Map();
+    for (const {section, field, ...edit} of edits) {
+        const change = fieldChange(field, edit);
+        if (!change)
+            continue;
+        const value = field.type === 'single' || field.type === 'multi'
+            ? {selectedOptionIds: change.clear ? [] : [change.value].flat()}
+            : {[GITLAB_VALUE_KEY[field.type]]: change.clear ? null : change.value};
+        const list = byItem.get(section.workItemId) ?? [];
+        list.push({customFieldId: field.id, ...value});
+        byItem.set(section.workItemId, list);
+    }
+    return [...byItem].map(([id, fields]) => ({method: 'POST', path: '/graphql', graphql: true,
+        body: {query: GITLAB_SET_FIELDS_MUTATION, variables: {id, fields}}}));
 }

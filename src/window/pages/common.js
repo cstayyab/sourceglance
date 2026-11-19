@@ -51,9 +51,10 @@ export function iconButton(params) {
 
 /**
  * The (⋮) button at the end of an item's title line: a menu of `items`, each
- * {label, iconName or gicon, onClick}.
+ * {label, iconName or gicon, onClick}. `extra()`, if given, builds a widget for the end of the
+ * menu each time it opens (the item's custom fields, loaded then).
  */
-export function moreButton(items) {
+export function moreButton(items, extra = null) {
     const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 2});
     const popover = new Gtk.Popover({child: box, css_classes: ['menu']});
     for (const item of items) {
@@ -67,8 +68,17 @@ export function moreButton(items) {
         });
         box.append(button);
     }
+    if (extra) {
+        let section = null;
+        popover.connect('show', () => {
+            if (section)
+                box.remove(section);
+            section = extra();
+            box.append(section);
+        });
+    }
     const menu = new Gtk.MenuButton({icon_name: 'view-more-symbolic', tooltip_text: _('More actions'), popover,
-        valign: Gtk.Align.CENTER, css_classes: ['flat', 'sourceglance-icon-action'], sensitive: items.length > 0});
+        valign: Gtk.Align.CENTER, css_classes: ['flat', 'sourceglance-icon-action'], sensitive: items.length > 0 || Boolean(extra)});
     menu.update_property([Gtk.AccessibleProperty.LABEL], [_('More actions')]);
     return menu;
 }
@@ -238,12 +248,13 @@ export function chipLine({gicon = null, iconName = null, name, chips}) {
 }
 
 /**
- * A list row: an arrow, icon, title, `buttons` and a (⋮) menu of `menu` items on the first line,
+ * A list row: an arrow, icon, title, `buttons` and a (⋮) menu of `menu` items (then `menuExtra()`,
+ * see moreButton()) on the first line,
  * then `lines` (chip lines) under the title, shown or hidden by the arrow. `expanded` is whether
  * they show; `onExpand(bool)` keeps it. `footer` (e.g. a comment box) goes last. Clicking the
  * title runs `onTitleClick`. `busy` dims the controls and says so.
  */
-export function itemRow({prefix, title, subtitle = '', buttons, menu = [], lines = [], footer = null, busy,
+export function itemRow({prefix, title, subtitle = '', buttons, menu = [], menuExtra = null, lines = [], footer = null, busy,
     expanded = false, onExpand = null, onTitleClick = null}) {
     const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6,
         margin_top: 6, margin_bottom: 6, margin_start: 6, margin_end: 6});
@@ -268,7 +279,7 @@ export function itemRow({prefix, title, subtitle = '', buttons, menu = [], lines
     const actions = new Gtk.Box({spacing: 0, sensitive: !busy, valign: Gtk.Align.CENTER});
     for (const button of buttons)
         actions.append(button);
-    actions.append(moreButton(menu));
+    actions.append(moreButton(menu, menuExtra));
 
     // The arrow leads the row; without chips, a gap of its size keeps the icons in line.
     const arrow = new Gtk.Button({valign: Gtk.Align.CENTER, css_classes: ['flat', 'sourceglance-expander']});
@@ -317,7 +328,7 @@ function copy(actions, text, done) {
 
 /**
  * An issue or pull request: Preview, Comment (with its count), Close, a button per board it's
- * on, Open in the browser and a (⋮) menu on the title line, then its labels and assignees as
+ * on, Open in the browser and a (⋮) menu (with its custom fields) on the title line, then its labels and assignees as
  * chips. Comment shows a comment box under the item, which goes again on Cancel or once posted.
  * `context` leads the subtitle, e.g. the repository where the list doesn't group by it.
  */
@@ -377,6 +388,7 @@ export function issueRow({item, busy, icons, actions, context = ''}) {
         subtitle: parts.join('  ·  '),
         buttons,
         menu,
+        menuExtra: () => actions.fieldsSection(item),
         lines: [actions.labelLine(item), actions.assigneeLine(item)],
         footer: composer,
         busy,
@@ -418,6 +430,7 @@ export function draftRow({board, draft, busyKeys, icons, actions, context = ''})
         subtitle: context ? `${context}  ·  ${status}` : status,
         buttons,
         menu,
+        menuExtra: () => actions.fieldsSection(item),
         lines: item.draftId ? [actions.assigneeLine(item)] : [],
         busy: busyKeys.includes(itemKey(item)),
         expanded: actions.isExpanded(item),

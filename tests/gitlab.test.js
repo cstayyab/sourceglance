@@ -18,7 +18,10 @@ import {
     parseGitLabLabels,
     parseGitLabMembers,
     parseGitLabToken,
+    parseProjectIds,
     parseStoredAuth,
+    teamListPath,
+    teamProjectsPath,
     tokenNeedsRefresh,
 } from '../src/lib/gitlabModel.js';
 
@@ -139,4 +142,17 @@ test('listBadge adds up every account', async () => {
     assert.equal(listBadge('projects', {sources: [{...github, status: 'signed-out'}, gitlab]}), '');
     // A second GitHub account still loading its boards.
     assert.equal(listBadge('projects', {sources: [github, {...github, boards: null}]}), '…');
+});
+
+test('team lists: your most active projects, then each one\'s open issues and merge requests', () => {
+    assert.ok(teamProjectsPath().startsWith('/projects?membership=true&archived=false'));
+    assert.deepEqual(parseProjectIds([{id: 4}, {id: 'x'}, null, {id: 9}]), [4, 9]);
+    assert.ok(teamListPath(4, 'team-issue').startsWith('/projects/4/issues?state=opened'));
+    assert.ok(teamListPath(4, 'team-mr').startsWith('/projects/4/merge_requests?state=opened'));
+    assert.throws(() => teamListPath('4/../x', 'team-issue'), TypeError);
+    assert.throws(() => teamListPath(4, 'issue'), TypeError);
+    const json = [{iid: 2, project_id: 4, title: 'T', references: {full: 'g/p!2'}, state: 'opened'}];
+    const [mr] = parseGitLabItems(json, 'team-mr');
+    assert.deepEqual([mr.kind, mr.reason], ['pr', 'team']);
+    assert.deepEqual(parseGitLabItems(json, 'team-issue').map(item => [item.kind, item.reason]), [['issue', 'team']]);
 });

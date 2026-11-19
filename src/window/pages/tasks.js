@@ -1,7 +1,8 @@
-// Lists → All Tasks: everything assigned to you in one list, from every account: issues, pull
-// or merge requests and project drafts, newest first. No sections: an icon tells the kinds
-// apart. Filters by Kind, Accounts, Labels and Assignee (filterBar.js). Rows are the lists'
-// own (common.js). Text from GitHub and GitLab is shown as plain text.
+// Lists → All Tasks: everything from every account in one list: issues, pull or merge requests
+// and project drafts, newest first. No sections: an icon tells the kinds apart. Filters by
+// Kind, Accounts, Labels and Assignee (filterBar.js); Assignee starts as you, and offers the
+// team and Unassigned. Rows are the lists' own (common.js). Text from GitHub and GitLab is
+// shown as plain text.
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 
@@ -67,7 +68,7 @@ export class TasksPage {
             return;
         }
         if (shown.length === 0) {
-            group.add(new Adw.ActionRow({title: tasks.length ? _('Nothing matches these filters') : _('Nothing assigned to you'),
+            group.add(new Adw.ActionRow({title: tasks.length && !this._bar.isDefault ? _('Nothing matches these filters') : _('Nothing assigned to you'),
                 use_markup: false, css_classes: ['dim-label']}));
         }
         for (const task of shown)

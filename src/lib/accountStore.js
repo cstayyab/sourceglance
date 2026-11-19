@@ -150,12 +150,13 @@ export class AccountClients {
  * Loads one account's lists. Resolves to {status: 'signed-out'} or {status: 'ready', login,
  * issues, prs, issueTotal, prTotal, closedCounts, boards, boardsError}, with every item and
  * board tagged with the account id, so actions run as that account. Throws on API errors.
- * `repos` (the repository filter) applies to github.com accounts only.
+ * `repos` (the repository filter) applies to github.com accounts only. `team` adds the team's
+ * open items (the window's Assignee filter; see loadLists()).
  */
-export async function loadAccount(clients, account, {repos = [], projects = true} = {}, cancellable = null) {
+export async function loadAccount(clients, account, {repos = [], projects = true, team = false} = {}, cancellable = null) {
     let result;
     if (account.platform === 'gitlab') {
-        result = await loadGitLab(clients.clientFor(account), cancellable);
+        result = await loadGitLab(clients.clientFor(account), {team}, cancellable);
         if (result.status === 'signed-out')
             return result;
         result = {...result, boards: null, boardsError: null};
@@ -166,6 +167,7 @@ export async function loadAccount(clients, account, {repos = [], projects = true
         const lists = await loadLists(clients.clientFor(account), token, {
             repos: account.base === GITHUB_COM ? repos : [],
             projects,
+            team,
         }, cancellable);
         result = {...lists, status: 'ready'};
     }
