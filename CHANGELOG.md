@@ -7,6 +7,18 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Browser sign-ins sync with the server.** With the encrypted backup of account tokens on (Settings → Sync server), an
+  account you signed in to with the browser now travels like a token: the server keeps it, renews it, and hands this
+  computer the renewed token each sync, so the two never renew it against each other. The list of these accounts is sent
+  even with the backup off, so the web app can tell you to turn it on.
+
+### Changed
+
+- If you turn the backup off later, a browser sign-in the server has taken over can't be renewed here: sign in to that
+  account again when its token runs out.
+
 ## [0.15.0] - 2026-11-21
 
 ### Added

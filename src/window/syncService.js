@@ -15,6 +15,7 @@ import {
     SYNCED_SETTINGS,
     accountKey,
     agreedAfterSync,
+    authFromSecret,
     canonicalJson,
     classifyTokenResponse,
     decideSettings,
@@ -37,7 +38,6 @@ import {
     signOutRequest,
     stateRequest,
     syncedAccountId,
-    tokenFromSecret,
 } from '../lib/sync.js';
 import {clearSecret, lookupSecret, storeSecret} from '../lib/tokenStore.js';
 
@@ -393,8 +393,8 @@ export class SyncService {
         const result = [];
         for (const account of readAccounts(this._settings).filter(isSyncable)) {
             // A token that can't be read (keyring locked or cleared) is null, and the account stays: see planAccountSync().
-            const token = tokenFromSecret(account.platform, await this._secrets.lookup(account.id).catch(() => null));
-            result.push({...account, token});
+            const auth = authFromSecret(account.platform, await this._secrets.lookup(account.id).catch(() => null));
+            result.push({...account, token: auth?.token ?? null, refresh: auth?.refresh ?? null, expiresAt: auth?.expiresAt ?? null});
         }
         return result;
     }
@@ -429,8 +429,7 @@ export class SyncService {
             const summary = this.featureTokens
                 ? await this._syncAccounts(base, token, state)
                 : {pulled: 0, pushed: 0, removed: 0, kept: 0, problems: []};
-            if (this.featureTokens)
-                await this._sendHints(base, token);
+            await this._sendHints(base, token);
             await this._syncSettings(base, token, state);
             if (this.featureAi)
                 await this._loadPrompts(base, token);
@@ -451,7 +450,7 @@ export class SyncService {
         }
     }
 
-    /** Tells the server which browser sign-ins are on this computer (never their tokens), so it can offer to sign in to them too. */
+    /** Tells the server which browser sign-ins are on this computer (never their tokens), so it can say that turning token backup on brings them over. */
     async _sendHints(base, token) {
         try {
             await this._send(putHintsRequest(base, token, hintsFor(readAccounts(this._settings))));
@@ -470,6 +469,19 @@ export class SyncService {
         notifyAccountsChanged(this._settings);
     }
 
+    /** Keeps only the access token of a browser sign-in the server has taken over: this computer gets renewed ones from the server. */
+    async _handOver(account) {
+        this._applying = true;
+        try {
+            await this._saveAccount({id: account.id, platform: account.platform, base: account.base, login: account.login,
+                method: 'device', clientId: account.clientId ?? null}, secretFor(account.platform, account.token, {expiresAt: account.expiresAt}));
+        } catch (e) {
+            console.warn(`Sync: could not hand over ${account.login}: ${e.message}`);
+        } finally {
+            this._applying = false;
+        }
+    }
+
     async _syncAccounts(base, token, state) {
         const local = await this._localAccounts();
         const agreed = this._settings.get_value('sync-fingerprints').deepUnpack();
@@ -481,8 +493,11 @@ export class SyncService {
         try {
             for (const account of plan.pull) {
                 try {
+                    // A browser sign-in comes back as its access token only: the server renews it, so there is no refresh token here to use twice.
+                    const mine = readAccounts(this._settings).find(other => sameAccount(other, {platform: account.platform, base: account.base, login: account.login}));
                     await this._saveAccount({id: syncedAccountId(account), platform: account.platform, base: account.base,
-                        login: account.login, method: 'pat', clientId: null}, secretFor(account.platform, account.token));
+                        login: account.login, method: account.method, clientId: mine?.clientId ?? null},
+                    secretFor(account.platform, account.token, {expiresAt: account.expiresAt}));
                     summary.pulled++;
                 } catch (e) {
                     // Most likely the keyring is locked: this account isn't saved, and nothing is removed on its account.
@@ -497,6 +512,9 @@ export class SyncService {
             if (reply.status === 200 || reply.status === 201) {
                 final.set(accountKey(account), account);
                 summary.pushed++;
+                // The server renews it from now on. Dropping the refresh token here is what keeps the two from using it twice.
+                if (account.method === 'device' && account.refresh)
+                    await this._handOver(account);
             } else {
                 summary.problems.push(`${account.login}: ${reply.json?.message ?? reply.status}`);
             }
