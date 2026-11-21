@@ -129,8 +129,8 @@ your desktop isn't with you.
 | Plan | Price | For |
 | --- | --- | --- |
 | Individual | Free | One person |
-| Startup | Free for 6 months, then $5 a month | Up to 5 accounts on your company domain |
-| Enterprise | $0.99 per user a month | 6 or more accounts on your company domain |
+| Startup | Free for 6 months, then $5 a month | Up to 5 accounts; requires company email e.g. @your-company.com |
+| Enterprise | $0.99 per user a month | 6 or more accounts; requires company email e.g. @your-company.com |
 
 Pick the server: **Source Glance Cloud** (`https://sourceglance.mohammadomer.com`, free for individuals), or a
 **custom server address** for another Source Glance server, such as one your organization runs (`https://`; plain

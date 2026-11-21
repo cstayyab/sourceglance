@@ -34,8 +34,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the server; browser sign-ins stay on the computer that made them), and so do the settings that follow you (group by,
   organization and project names, hidden boards, watched repositories, your AI additions). An account removed on one
   computer is removed on the server; one removed on the server is kept on a computer that still has it. Signing out keeps
-  every account already on this computer. Plans: Individual is free; Startup is free for 6 months, then $5 a month, for up to 5 accounts on your
-  company domain; Enterprise is $0.99 per user a month for 6 or more. Limits are shown now; payment comes later.
+  every account already on this computer. Plans: Individual is free; Startup is free for 6 months, then $5 a month, for up to 5 accounts, requiring
+  company email (e.g. @your-company.com); Enterprise is $0.99 per user a month for 6 or more. Limits are shown now; payment comes later.
 
 ## [0.13.0] - 2026-11-20
 

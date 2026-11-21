@@ -11,8 +11,8 @@ import {CLOUD_SERVER, SERVER_CHOICES} from '../../lib/sync.js';
 
 const PLANS = [
     {name: _('Individual'), text: _('Free, for one person')},
-    {name: _('Startup'), text: _('Free for 6 months, then $5 a month, for up to 5 accounts on your company domain')},
-    {name: _('Enterprise'), text: _('$0.99 per user a month, for 6 or more accounts on your company domain')},
+    {name: _('Startup'), text: _('Free for 6 months, then $5 a month, for up to 5 accounts; requires company email e.g. @your-company.com')},
+    {name: _('Enterprise'), text: _('$0.99 per user a month, for 6 or more accounts; requires company email e.g. @your-company.com')},
 ];
 
 /**
@@ -76,7 +76,7 @@ export function buildSyncPage({window, settings, sync}) {
     page.add(features);
 
     const plans = new Adw.PreferencesGroup({title: _('Plans'),
-        description: _('Everyone starts on Individual. Startup and Enterprise are for teams whose accounts share one company domain; payment opens later.')});
+        description: _('Everyone starts on Individual. Startup and Enterprise are for teams and require company email, e.g. @your-company.com; payment opens later.')});
     for (const plan of PLANS)
         plans.add(new Adw.ActionRow({title: plan.name, subtitle: plan.text, css_classes: ['property']}));
     const manage = new Adw.ActionRow({title: _('Devices and plan on the web'), activatable: true,
