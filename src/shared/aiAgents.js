@@ -67,6 +67,9 @@ export const AI_PROVIDERS = [
         login: ['login'],
         headlessLogin: true,
         status: {args: ['login', 'status'], parse: parseTextStatus},
+        // The Codex app's deep link for a new thread in a folder, with the prompt typed in.
+        desktop: {scheme: 'codex', uri: (folder, prompt) =>
+            `codex://new?path=${encodeURIComponent(folder)}&prompt=${encodeURIComponent(prompt)}`},
     },
     {
         id: 'gemini', name: 'Gemini CLI', command: 'gemini', iconName: 'ai-gemini-symbolic',
