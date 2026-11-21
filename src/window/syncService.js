@@ -22,6 +22,7 @@ import {
     deviceCodeRequest,
     deviceLabel,
     deviceTokenRequest,
+    hintsFor,
     isSyncable,
     parseDeviceCode,
     parsePrompts,
@@ -30,6 +31,7 @@ import {
     planAccountSync,
     promptsRequest,
     putAccountRequest,
+    putHintsRequest,
     putSettingsRequest,
     secretFor,
     signOutRequest,
@@ -427,6 +429,8 @@ export class SyncService {
             const summary = this.featureTokens
                 ? await this._syncAccounts(base, token, state)
                 : {pulled: 0, pushed: 0, removed: 0, kept: 0, problems: []};
+            if (this.featureTokens)
+                await this._sendHints(base, token);
             await this._syncSettings(base, token, state);
             if (this.featureAi)
                 await this._loadPrompts(base, token);
@@ -444,6 +448,16 @@ export class SyncService {
         } finally {
             this._busy = false;
             this._changed();
+        }
+    }
+
+    /** Tells the server which browser sign-ins are on this computer (never their tokens), so it can offer to sign in to them too. */
+    async _sendHints(base, token) {
+        try {
+            await this._send(putHintsRequest(base, token, hintsFor(readAccounts(this._settings))));
+        } catch (e) {
+            // Only a convenience: an older server doesn't know the call, and the rest of the sync goes on.
+            console.warn(`Sync: could not send sign-in hints: ${e.message}`);
         }
     }
 

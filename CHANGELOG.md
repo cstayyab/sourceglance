@@ -7,6 +7,12 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Browser sign-ins show up on the sync server.** An account you signed in to with the browser can't travel (its token is
+  renewed by this computer), but the app now tells the server which accounts they are, never their tokens. The web app lists
+  them under Accounts and offers to sign in to the same accounts there, with its own sign-in. Only sent while token backup is on.
+
 ## [0.14.1] - 2026-11-21
 
 ### Fixed

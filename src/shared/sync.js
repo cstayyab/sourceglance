@@ -70,6 +70,8 @@ export const deleteAccountRequest = (base, token, id) =>
     json('DELETE', base, `/api/sync/accounts/${encodeURIComponent(id)}`, null, token);
 export const putSettingsRequest = (base, token, revision, data) =>
     json('PUT', base, '/api/sync/settings', {revision, data}, token);
+/** `hints` are what hintsFor() returns: the accounts that can't travel, so the server can offer to sign in to them too. */
+export const putHintsRequest = (base, token, hints) => json('PUT', base, '/api/sync/hints', {hints}, token);
 
 // Answers.
 
@@ -165,6 +167,13 @@ export const accountKey = ({platform, base, login}) => `${platform}|${base}|${St
  * the device that holds it, and two devices renewing one would sign each other out.
  */
 export const isSyncable = account => account.method === 'pat' && Boolean(account.login);
+
+/**
+ * The accounts that stay on this computer (a browser sign-in), as hints and never with a token: which account, and
+ * which OAuth application signed in (null: Source Glance's own), so the server can offer the same sign-in for itself.
+ */
+export const hintsFor = accounts => accounts.filter(account => !isSyncable(account) && account.method === 'device' && Boolean(account.login))
+    .map(({platform, base, login, clientId}) => ({platform, base, login, clientId: clientId ?? null}));
 
 /**
  * Compares this device with the server. `local` are {id, platform, base, login, method} with `token` (null when the
