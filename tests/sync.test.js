@@ -12,6 +12,7 @@ import {
     deleteAccountRequest,
     deviceCodeRequest,
     deviceLabel,
+    hintsFor,
     isValidAccessToken,
     parseDeviceCode,
     parsePrompts,
@@ -19,6 +20,7 @@ import {
     parseState,
     planAccountSync,
     putAccountRequest,
+    putHintsRequest,
     putSettingsRequest,
     secretFor,
     stateRequest,
@@ -213,4 +215,21 @@ test('settings: apply when the server moved, push when only we changed, nothing 
 test('deviceLabel uses a safe host name', () => {
     assert.equal(deviceLabel('work-laptop'), 'Source Glance on work-laptop');
     assert.equal(deviceLabel('bad name; rm'), 'Source Glance on Computer');
+});
+
+test('hintsFor lists the browser sign-ins, which stay here, and never carries a token', () => {
+    const accounts = [
+        {id: 'a', platform: 'github', base: 'https://github.com', login: 'me', method: 'device', clientId: null, token: 'secret'},
+        {id: 'b', platform: 'gitlab', base: 'https://git.example.com', login: 'me', method: 'device', clientId: 'cid'},
+        {id: 'c', platform: 'github', base: 'https://github.com', login: 'tok', method: 'pat', clientId: null},
+        {id: 'd', platform: 'github', base: 'https://github.com', login: null, method: 'device', clientId: null},
+    ];
+    assert.deepEqual(hintsFor(accounts), [
+        {platform: 'github', base: 'https://github.com', login: 'me', clientId: null},
+        {platform: 'gitlab', base: 'https://git.example.com', login: 'me', clientId: 'cid'},
+    ]);
+    const request = putHintsRequest('https://s.example.com', TOKEN, hintsFor(accounts));
+    assert.equal(request.method, 'PUT');
+    assert.equal(request.url, 'https://s.example.com/api/sync/hints');
+    assert.doesNotMatch(request.body, /secret/);
 });
