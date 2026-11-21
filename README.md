@@ -144,7 +144,7 @@ you sign in.
 The desktop app is open source and does everything above on its own except the sync and the AI assistant. The hosted
 service it connects to is a separate, privately developed product: its code isn't part of this repository, and the app
 only speaks to it through the public sign-in, sync and instruction requests described in
-[the sync library](src/lib/sync.js).
+[the sync library](src/shared/sync.js).
 
 ## Desktop widgets
 
