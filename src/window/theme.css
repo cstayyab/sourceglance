@@ -811,3 +811,11 @@
 .sourceglance-main-tabs button image {
     -gtk-icon-size: 20px;
 }
+
+/* The note on Settings → AI assistant that Source Glance only keeps folder paths. */
+.sourceglance-privacy-note {
+    background-color: alpha(@accent_bg_color, 0.12);
+}
+.sourceglance-privacy-note image {
+    color: @accent_color;
+}

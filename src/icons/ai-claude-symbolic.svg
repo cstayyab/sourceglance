@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Eight thin rays from one point (the Claude option in Settings → AI assistant). Fills
+       only: GTK draws symbolic icons from filled shapes, not strokes. -->
+  <g fill="#000">
+    <path d="M8 .6 9.1 8 8 15.4 6.9 8Z"/>
+    <path d="M8 .6 9.1 8 8 15.4 6.9 8Z" transform="rotate(45 8 8)"/>
+    <path d="M8 .6 9.1 8 8 15.4 6.9 8Z" transform="rotate(90 8 8)"/>
+    <path d="M8 .6 9.1 8 8 15.4 6.9 8Z" transform="rotate(135 8 8)"/>
+  </g>
+</svg>

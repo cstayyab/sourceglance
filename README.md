@@ -95,7 +95,7 @@ Group by **Project**, **Platform** or **Organization**: one flat list across all
 - **Closed items**: see how many closed or merged items are still assigned to you.
 - **Main window** with a slim sidebar: **Glance** (Widgets and System Tray) and
   **Tasks** (All Tasks, Issues, Pull requests, Project Boards), each opening its menu right
-  beside it, then **Settings** (Accounts, Preferences, Startup, About) and **Exit** at the
+  beside it, then **Settings** (Accounts, Preferences, Sync server, AI assistant, Startup, About) and **Exit** at the
   foot. The title bar's **Accounts** button opens your accounts. A splash screen and an app grid icon, all in the top bar's blue. It's an app of its own, so
   the dock and Alt+Tab show it as Source Glance.
 - **Problems say how to fix them**: if an account's lists don't load, a red **!** on
@@ -119,6 +119,32 @@ Group by **Project**, **Platform** or **Organization**: one flat list across all
   author, and links to report an issue or contribute.
 
 Planned: desktop notifications for new assignments.
+
+## Source Glance Cloud and sync
+
+Optional. Sign in to a sync server (Settings → Sync server) and your accounts, the settings that follow you and the AI
+assistant come with you to every computer, and a web version covers the basics (lists, comments, closing, labels) when
+your desktop isn't with you.
+
+| Plan | Price | For |
+| --- | --- | --- |
+| Individual | Free | One person |
+| Startup | $10 a month | Up to 5 accounts on your company domain |
+| Enterprise | $0.99 per user a month | 6 or more accounts on your company domain |
+
+Pick the server: **Source Glance Cloud** (`https://sourceglance.mohammadomer.com`, free for individuals), or a
+**custom server address** for another Source Glance server, such as one your organization runs (`https://`; plain
+`http://` only for this computer). Signing in is a short
+code the app shows: you sign in on the server's page in your browser and paste it there. Only accounts signed in with a personal access token are synced (the token is
+encrypted on the server); browser sign-ins stay on the computer that made them. When you connect you choose what to turn on: the AI button, an encrypted backup of your account tokens (off unless
+you ask for it) and saving settings (always on). Everything works without a server except the AI assistant, whose
+instructions the server provides: its buttons show a padlock with a button to connect. Nothing is sent anywhere until
+you sign in.
+
+The desktop app is open source and does everything above on its own except the sync and the AI assistant. The hosted
+service it connects to is a separate, privately developed product: its code isn't part of this repository, and the app
+only speaks to it through the public sign-in, sync and instruction requests described in
+[the sync library](src/lib/sync.js).
 
 ## Desktop widgets
 
