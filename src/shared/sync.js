@@ -64,8 +64,14 @@ export const stateRequest = (base, token, {tokens = true} = {}) =>
     json('GET', base, `/api/sync/state${tokens ? '' : '?tokens=0'}`, null, token);
 export const promptsRequest = (base, token) => json('GET', base, '/api/ai/prompts', null, token);
 export const signOutRequest = (base, token) => json('POST', base, '/api/sync/signout', {}, token);
-export const putAccountRequest = (base, token, {platform, base: instance, token: secret}) =>
-    json('PUT', base, '/api/sync/accounts', {platform, base: instance, token: secret}, token);
+/**
+ * A browser sign-in (`method: 'device'`) goes with the OAuth application that made it and, for GitLab, its refresh token and
+ * expiry: the server renews it from then on, and this computer only receives the access token back.
+ */
+export const putAccountRequest = (base, token, {platform, base: instance, token: secret, method = 'pat', refresh = null, expiresAt = null, clientId = null}) =>
+    json('PUT', base, '/api/sync/accounts', method === 'device'
+        ? {platform, base: instance, token: secret, method, refresh, expiresAt, clientId}
+        : {platform, base: instance, token: secret}, token);
 export const deleteAccountRequest = (base, token, id) =>
     json('DELETE', base, `/api/sync/accounts/${encodeURIComponent(id)}`, null, token);
 export const putSettingsRequest = (base, token, revision, data) =>
@@ -133,7 +139,9 @@ export function parseState(json) {
         const parsed = parseInstanceUrl(raw.base);
         if (parsed.error || parsed.base !== raw.base)
             return null;
-        accounts.push({id: raw.id, platform: raw.platform, base: raw.base, login: raw.login, token: raw.token});
+        const method = raw.method === 'device' ? 'device' : 'pat';
+        const expiresAt = Number.isInteger(raw.expiresAt) && raw.expiresAt > 0 ? raw.expiresAt : null;
+        accounts.push({id: raw.id, platform: raw.platform, base: raw.base, login: raw.login, token: raw.token, method, expiresAt});
     }
     const {revision, data} = json.settings;
     if (!Number.isInteger(revision) || revision < 0 || !isObject(data))
@@ -163,16 +171,17 @@ export function parsePrompts(json) {
 export const accountKey = ({platform, base, login}) => `${platform}|${base}|${String(login).toLowerCase()}`;
 
 /**
- * Only accounts signed in with a personal access token travel: a browser sign-in's token is renewed by
- * the device that holds it, and two devices renewing one would sign each other out.
+ * Accounts signed in with a personal access token travel, and so do browser sign-ins: a browser sign-in's token is renewed by one
+ * place only (the server, once it is handed over), because a renewed GitLab token can't be used twice and two places renewing it
+ * would sign each other out. Only runs with token backup on.
  */
-export const isSyncable = account => account.method === 'pat' && Boolean(account.login);
+export const isSyncable = account => (account.method === 'pat' || account.method === 'device') && Boolean(account.login);
 
 /**
- * The accounts that stay on this computer (a browser sign-in), as hints and never with a token: which account, and
- * which OAuth application signed in (null: Source Glance's own), so the server can offer the same sign-in for itself.
+ * The browser sign-ins on this computer, as hints and never with a token: which account, and which OAuth application signed
+ * in (null: Source Glance's own). Sent whether or not token backup is on, so the server can say that turning it on brings them over.
  */
-export const hintsFor = accounts => accounts.filter(account => !isSyncable(account) && account.method === 'device' && Boolean(account.login))
+export const hintsFor = accounts => accounts.filter(account => account.method === 'device' && Boolean(account.login))
     .map(({platform, base, login, clientId}) => ({platform, base, login, clientId: clientId ?? null}));
 
 /**
@@ -238,8 +247,20 @@ export function agreedAfterSync(accounts, fingerprint) {
  * The secret to keep in the keyring for a synced account: GitHub keeps the token itself, GitLab a small
  * JSON that says it never needs renewing.
  */
-export function secretFor(platform, token) {
-    return platform === 'gitlab' ? JSON.stringify({access: token, refresh: null, expiresAt: null}) : token;
+export function secretFor(platform, token, {expiresAt = null} = {}) {
+    return platform === 'gitlab' ? JSON.stringify({access: token, refresh: null, expiresAt}) : token;
+}
+
+/** {token, refresh, expiresAt} out of what the keyring holds, or null: the full form of tokenFromSecret(), for handing a sign-in over. */
+export function authFromSecret(platform, secret) {
+    const token = tokenFromSecret(platform, secret);
+    if (!token)
+        return null;
+    if (platform !== 'gitlab')
+        return {token, refresh: null, expiresAt: null};
+    const auth = JSON.parse(secret);
+    return {token, refresh: typeof auth.refresh === 'string' && auth.refresh ? auth.refresh : null,
+        expiresAt: Number.isInteger(auth.expiresAt) ? auth.expiresAt : null};
 }
 
 /** The token out of what the keyring holds (the inverse of secretFor()). */

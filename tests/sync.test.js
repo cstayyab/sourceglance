@@ -5,6 +5,7 @@ import {
     SYNCED_SETTINGS,
     accountKey,
     agreedAfterSync,
+    authFromSecret,
     canonicalJson,
     classifyTokenResponse,
     cleanSyncedSettings,
@@ -101,7 +102,9 @@ test('parseState checks every field', () => {
     const state = parseState(stateJson());
     assert.equal(state.email, 'a@b.c');
     assert.equal(state.plan.name, 'Individual');
-    assert.deepEqual(state.accounts[0], {id: 'acc-1', platform: 'github', base: 'https://github.com', login: 'alice', token: 'tok'});
+    assert.deepEqual(state.accounts[0], {id: 'acc-1', platform: 'github', base: 'https://github.com', login: 'alice', token: 'tok', method: 'pat', expiresAt: null});
+    const device = parseState(stateJson({accounts: [{id: 'g', platform: 'gitlab', base: 'https://gitlab.com', login: 'a', token: 't', method: 'device', expiresAt: 1700000000000, refresh: 'never-read'}]}));
+    assert.deepEqual(device.accounts[0], {id: 'g', platform: 'gitlab', base: 'https://gitlab.com', login: 'a', token: 't', method: 'device', expiresAt: 1700000000000});
     assert.equal(state.settings.revision, 2);
     assert.equal(parseState(stateJson({accounts: [{id: 'x', platform: 'github', base: 'http://evil', login: 'a', token: 't'}]})) === null, false);
     assert.equal(parseState(stateJson({accounts: [{id: 'x', platform: 'bitbucket', base: 'https://x.io', login: 'a', token: 't'}]})), null);
@@ -130,9 +133,33 @@ test('accounts only on the server are pulled, only here are pushed', () => {
     assert.deepEqual(plan.push.map(a => a.login), ['mine']);
 });
 
-test('browser sign-ins and accounts without a login never travel', () => {
+test('browser sign-ins travel like tokens, and accounts without a login never do', () => {
     const plan = planAccountSync([local('device', 't', 'device'), local('', 't')], [], {}, fp);
-    assert.deepEqual(plan, {pull: [], push: [], removeRemote: [], kept: []});
+    assert.deepEqual(plan.push.map(a => a.login), ['device']);
+    assert.deepEqual([plan.pull, plan.removeRemote, plan.kept], [[], [], []]);
+});
+
+test('a renewed browser sign-in comes back from the server, which is the only one renewing it', () => {
+    const key = accountKey(remote('a', ''));
+    const plan = planAccountSync([local('a', 'old', 'device')], [remote('a', 'renewed')], {[key]: fp('old')}, fp);
+    assert.deepEqual(plan.pull.map(a => a.token), ['renewed']);
+    assert.deepEqual(plan.push, []);
+});
+
+test('putAccountRequest hands a browser sign-in over with its refresh token, and a personal token without', () => {
+    const device = JSON.parse(putAccountRequest('https://s.example.com', TOKEN, {platform: 'gitlab', base: 'https://gitlab.com', token: 'acc',
+        method: 'device', refresh: 'ref', expiresAt: 5, clientId: null}).body);
+    assert.deepEqual(device, {platform: 'gitlab', base: 'https://gitlab.com', token: 'acc', method: 'device', refresh: 'ref', expiresAt: 5, clientId: null});
+    const pat = JSON.parse(putAccountRequest('https://s.example.com', TOKEN, {platform: 'github', base: 'https://github.com', token: 'pat', method: 'pat', refresh: 'x'}).body);
+    assert.deepEqual(pat, {platform: 'github', base: 'https://github.com', token: 'pat'});
+});
+
+test('authFromSecret reads the whole sign-in out of the keyring form', () => {
+    assert.deepEqual(authFromSecret('github', 'ghu'), {token: 'ghu', refresh: null, expiresAt: null});
+    assert.deepEqual(authFromSecret('gitlab', JSON.stringify({access: 'a', refresh: 'r', expiresAt: 9})), {token: 'a', refresh: 'r', expiresAt: 9});
+    assert.deepEqual(authFromSecret('gitlab', secretFor('gitlab', 'a', {expiresAt: 7})), {token: 'a', refresh: null, expiresAt: 7});
+    assert.equal(authFromSecret('gitlab', 'not json'), null);
+    assert.equal(authFromSecret('github', null), null);
 });
 
 test('the key ignores the login case', () => {
@@ -217,7 +244,7 @@ test('deviceLabel uses a safe host name', () => {
     assert.equal(deviceLabel('bad name; rm'), 'Source Glance on Computer');
 });
 
-test('hintsFor lists the browser sign-ins, which stay here, and never carries a token', () => {
+test('hintsFor lists every browser sign-in, travelling or not, and never carries a token', () => {
     const accounts = [
         {id: 'a', platform: 'github', base: 'https://github.com', login: 'me', method: 'device', clientId: null, token: 'secret'},
         {id: 'b', platform: 'gitlab', base: 'https://git.example.com', login: 'me', method: 'device', clientId: 'cid'},
