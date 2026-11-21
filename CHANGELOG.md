@@ -7,6 +7,17 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Accounts remember which computer provides them.** On a sync server, the accounts other computers provide always come down
+  and show as "Provided by <computer>", with no sign-out here: only that computer can sign them out, and they leave when it
+  signs them out or stops providing them. Connecting to a server that already holds accounts turns the backup on by itself.
+
+### Changed
+
+- **Turning the backup off takes only this computer's accounts off the server.** The accounts other computers provide stay and
+  keep coming down. The switch now decides whether this computer sends its own accounts, not whether it receives.
+
 ## [0.16.0] - 2026-11-21
 
 ### Added

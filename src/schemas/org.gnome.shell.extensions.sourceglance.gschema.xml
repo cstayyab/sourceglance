@@ -61,7 +61,7 @@
     <key name="sync-feature-tokens" type="b">
       <default>false</default>
       <summary>Back up account tokens, encrypted, on the sync server</summary>
-      <description>Whether personal access tokens of signed-in accounts are kept (encrypted) on the sync server so another computer needs no re-entering. Chosen when connecting; off by default. Browser sign-ins are never backed up.</description>
+      <description>Whether this computer provides its signed-in accounts to the sync server (encrypted), so other computers and the web app can use them. Accounts other computers provide always come down, whatever this is. Turned on by itself when connecting to a server that already holds accounts. Turning it off takes only the accounts this computer provided off the server; browser sign-ins the server renews can't be renewed here afterwards, so sign in to them again when they run out.</description>
     </key>
     <key name="sync-revision" type="i">
       <default>0</default>
@@ -77,6 +77,11 @@
       <default>{}</default>
       <summary>Synced accounts' fingerprints</summary>
       <description>Internal. For each account that is synced, a fingerprint of its token as of the last sync (never the token), to tell which side changed it.</description>
+    </key>
+    <key name="sync-managed" type="a{ss}">
+      <default>{}</default>
+      <summary>Accounts another computer provides</summary>
+      <description>Internal. For each account that arrived from the sync server and is provided by another computer, the name of that computer. These are not signed out here: they go when that computer signs them out or stops providing them.</description>
     </key>
     <key name="ai-provider" type="s">
       <default>'claude'</default>

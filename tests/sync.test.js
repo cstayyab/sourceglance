@@ -26,6 +26,7 @@ import {
     secretFor,
     stateRequest,
     tokenFromSecret,
+    withdrawRequest,
 } from '../src/lib/sync.js';
 
 const fp = text => `fp(${text})`;
@@ -102,9 +103,9 @@ test('parseState checks every field', () => {
     const state = parseState(stateJson());
     assert.equal(state.email, 'a@b.c');
     assert.equal(state.plan.name, 'Individual');
-    assert.deepEqual(state.accounts[0], {id: 'acc-1', platform: 'github', base: 'https://github.com', login: 'alice', token: 'tok', method: 'pat', expiresAt: null});
+    assert.deepEqual(state.accounts[0], {id: 'acc-1', platform: 'github', base: 'https://github.com', login: 'alice', token: 'tok', method: 'pat', expiresAt: null, mine: true, provider: null});
     const device = parseState(stateJson({accounts: [{id: 'g', platform: 'gitlab', base: 'https://gitlab.com', login: 'a', token: 't', method: 'device', expiresAt: 1700000000000, refresh: 'never-read'}]}));
-    assert.deepEqual(device.accounts[0], {id: 'g', platform: 'gitlab', base: 'https://gitlab.com', login: 'a', token: 't', method: 'device', expiresAt: 1700000000000});
+    assert.deepEqual(device.accounts[0], {id: 'g', platform: 'gitlab', base: 'https://gitlab.com', login: 'a', token: 't', method: 'device', expiresAt: 1700000000000, mine: true, provider: null});
     assert.equal(state.settings.revision, 2);
     assert.equal(parseState(stateJson({accounts: [{id: 'x', platform: 'github', base: 'http://evil', login: 'a', token: 't'}]})) === null, false);
     assert.equal(parseState(stateJson({accounts: [{id: 'x', platform: 'bitbucket', base: 'https://x.io', login: 'a', token: 't'}]})), null);
@@ -136,7 +137,7 @@ test('accounts only on the server are pulled, only here are pushed', () => {
 test('browser sign-ins travel like tokens, and accounts without a login never do', () => {
     const plan = planAccountSync([local('device', 't', 'device'), local('', 't')], [], {}, fp);
     assert.deepEqual(plan.push.map(a => a.login), ['device']);
-    assert.deepEqual([plan.pull, plan.removeRemote, plan.kept], [[], [], []]);
+    assert.deepEqual([plan.pull, plan.removeRemote, plan.removeLocal, plan.kept], [[], [], [], []]);
 });
 
 test('a renewed browser sign-in comes back from the server, which is the only one renewing it', () => {
@@ -164,7 +165,7 @@ test('authFromSecret reads the whole sign-in out of the keyring form', () => {
 
 test('the key ignores the login case', () => {
     assert.equal(accountKey(local('Alice', 't')), accountKey(remote('alice', 't')));
-    assert.deepEqual(planAccountSync([local('Alice', 't')], [remote('alice', 't')], {}, fp), {pull: [], push: [], removeRemote: [], kept: []});
+    assert.deepEqual(planAccountSync([local('Alice', 't')], [remote('alice', 't')], {}, fp), {pull: [], push: [], removeRemote: [], removeLocal: [], kept: []});
 });
 
 test('a token changed only here is pushed; changed on the server or on both, the server wins', () => {
@@ -194,7 +195,7 @@ test('an account whose token can\'t be read is still here: never removed on the 
     assert.deepEqual([plan.removeRemote, plan.push, plan.kept], [[], [], []]);
     assert.deepEqual(plan.pull.map(a => a.login), ['locked']);
     // Only here, with no token: nothing to send, nothing to keep.
-    assert.deepEqual(planAccountSync([unreadable], [], {}, fp), {pull: [], push: [], removeRemote: [], kept: []});
+    assert.deepEqual(planAccountSync([unreadable], [], {}, fp), {pull: [], push: [], removeRemote: [], removeLocal: [], kept: []});
 });
 
 test('agreedAfterSync fingerprints each account', () => {
@@ -259,4 +260,39 @@ test('hintsFor lists every browser sign-in, travelling or not, and never carries
     assert.equal(request.method, 'PUT');
     assert.equal(request.url, 'https://s.example.com/api/sync/hints');
     assert.doesNotMatch(request.body, /secret/);
+});
+
+const theirs = (login, token, provider = 'Laptop') => ({...remote(login, token), mine: false, provider});
+
+test('accounts another computer provides come down, stay here, and are not sent back', () => {
+    const key = accountKey(remote('a', ''));
+    // New here: pulled, even with the backup off.
+    assert.deepEqual(planAccountSync([], [theirs('a', 't')], {}, fp, {providing: false}).pull.map(a => a.login), ['a']);
+    // Changed there: the server's wins, whatever changed here.
+    const changed = planAccountSync([local('a', 'mine')], [theirs('a', 'theirs')], {[key]: fp('old')}, fp, {managed: {[key]: 'Laptop'}});
+    assert.deepEqual([changed.pull.map(a => a.token), changed.push], [['theirs'], []]);
+    // Lost from the keyring here: fetched again, never reported as removed by this computer.
+    const lost = planAccountSync([], [theirs('a', 't')], {[key]: fp('t')}, fp, {managed: {[key]: 'Laptop'}});
+    assert.deepEqual([lost.pull.map(a => a.login), lost.removeRemote], [['a'], []]);
+});
+
+test('an account another computer provided goes when it stops providing it, and a plain one here stays', () => {
+    const key = accountKey(remote('a', ''));
+    const gone = planAccountSync([local('a', 't'), local('own', 'x')], [], {[key]: fp('t')}, fp, {managed: {[key]: 'Laptop'}, providing: false});
+    assert.deepEqual(gone.removeLocal.map(a => a.login), ['a']);
+    assert.deepEqual(gone.push, []);
+});
+
+test('with the backup off nothing is sent, and a removal here is not repeated on the server', () => {
+    const key = accountKey(remote('a', ''));
+    assert.deepEqual(planAccountSync([local('mine', 't')], [], {}, fp, {providing: false}).push, []);
+    const removed = planAccountSync([], [remote('a', 't')], {[key]: fp('t')}, fp, {providing: false});
+    assert.deepEqual([removed.removeRemote, removed.pull], [[], []]);
+    assert.deepEqual(planAccountSync([], [remote('a', 't')], {[key]: fp('t')}, fp).removeRemote.map(a => a.login), ['a']);
+});
+
+test('withdrawRequest is a plain authenticated post', () => {
+    const request = withdrawRequest('https://s.example.com', TOKEN);
+    assert.deepEqual([request.method, request.url], ['POST', 'https://s.example.com/api/sync/withdraw']);
+    assert.equal(request.headers.authorization, `Bearer ${TOKEN}`);
 });
