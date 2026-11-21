@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-21
+
 ### Added
 
 - **AI assistant.** Choose a command-line AI agent from the drop-down (or None) under Settings → AI assistant. Each issue and
@@ -443,7 +445,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/omer-gh/sourceglance/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/omer-gh/sourceglance/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/omer-gh/sourceglance/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/omer-gh/sourceglance/compare/v0.11.0...v0.12.0
