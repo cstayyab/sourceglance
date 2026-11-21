@@ -36,11 +36,6 @@ with the item as its first message. The first time it asks where the repository 
 
 The instructions come from the server, so the buttons stay off until you are signed in to one.
 
-## Plans
-
-Individual is free. Startup is free for 6 months, then $5 a month, for up to 5 accounts, and requires company email
-(e.g. @your-company.com). Enterprise is $0.99 per user a month for 6 or more. The limits are shown; payment comes later.
-
 ## The requests a server must answer
 
 For anyone running a compatible server. The builders and parsers are in [src/shared/sync.js](../../src/shared/sync.js).

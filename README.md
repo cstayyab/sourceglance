@@ -126,13 +126,7 @@ Optional. Sign in to a sync server (Settings → Sync server) and your accounts,
 assistant come with you to every computer, and a web version covers the basics (lists, comments, closing, labels) when
 your desktop isn't with you.
 
-| Plan | Price | For |
-| --- | --- | --- |
-| Individual | Free | One person |
-| Startup | Free for 6 months, then $5 a month | Up to 5 accounts; requires company email e.g. @your-company.com |
-| Enterprise | $0.99 per user a month | 6 or more accounts; requires company email e.g. @your-company.com |
-
-Pick the server: **Source Glance Cloud** (`https://sourceglance.mohammadomer.com`, free for individuals), or a
+Pick the server: **Source Glance Cloud** (`https://sourceglance.mohammadomer.com`), or a
 **custom server address** for another Source Glance server, such as one your organization runs (`https://`; plain
 `http://` only for this computer). Signing in is a short
 code the app shows: you sign in on the server's page in your browser and paste it there. Only accounts signed in with a personal access token are synced (the token is
