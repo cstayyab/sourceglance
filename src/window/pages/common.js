@@ -44,6 +44,46 @@ function iconButtonParts({iconName = null, gicon = null, tooltip, badge = 0, tog
     return {widget: overlay, button};
 }
 
+/** The icon of a locked feature: the theme's padlock. */
+export const LOCK_ICON = 'changes-prevent-symbolic';
+
+/**
+ * What a locked feature's popover says: `lock` is {title, text, buttonLabel, connect()} (WindowActions.lock()).
+ * The button takes you to Settings → Sync server.
+ */
+export function lockPopover(lock) {
+    const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8, margin_top: 12, margin_bottom: 12,
+        margin_start: 12, margin_end: 12});
+    const heading = new Gtk.Box({spacing: 6});
+    heading.append(new Gtk.Image({icon_name: LOCK_ICON}));
+    heading.append(new Gtk.Label({label: lock.title, xalign: 0, css_classes: ['heading']}));
+    box.append(heading);
+    box.append(new Gtk.Label({label: lock.text, xalign: 0, wrap: true, max_width_chars: 36, css_classes: ['dim-label']}));
+    const button = new Gtk.Button({label: lock.buttonLabel, css_classes: ['suggested-action']});
+    const popover = new Gtk.Popover({child: box});
+    button.connect('clicked', () => {
+        popover.popdown();
+        lock.connect();
+    });
+    box.append(button);
+    return popover;
+}
+
+/** A locked feature's icon button: a padlock that opens the popover (why, and Connect), with the reason as its tooltip. */
+function lockedIconButton(lock) {
+    const button = new Gtk.MenuButton({icon_name: LOCK_ICON, popover: lockPopover(lock), tooltip_text: lock.tooltip,
+        valign: Gtk.Align.CENTER, css_classes: ['flat', 'sourceglance-icon-action']});
+    button.update_property([Gtk.AccessibleProperty.LABEL], [lock.tooltip]);
+    return button;
+}
+
+/** The AI assistant's button: a padlock until a sync server has signed this computer in. */
+function aiButton(ai) {
+    if (!ai.enabled)
+        return lockedIconButton(ai.lock);
+    return iconButton({gicon: ai.gicon, tooltip: ai.tooltip, onClick: ai.run});
+}
+
 /** An icon-only button for an item's title line (see iconButtonParts()). */
 export function iconButton(params) {
     return iconButtonParts(params).widget;
@@ -465,7 +505,7 @@ function interactive(actions, item, row) {
 }
 
 /**
- * An issue or pull request: Preview, Comment (with its count), Close, a button per board it's
+ * An issue or pull request: Preview, Comment (with its count), the AI assistant (when one is chosen), Close, a button per board it's
  * on, Open in the browser and a (⋮) menu (with its custom fields) on the title line, then its labels and assignees as
  * chips. Comment shows a comment box under the item, which goes again on Cancel or once posted.
  * `context` leads the subtitle, e.g. the repository where the list doesn't group by it.
@@ -496,9 +536,11 @@ export function issueRow({item, busy, icons, actions, context = ''}) {
         composer.child = box.widget;
     }
 
+    const ai = actions.aiAction(item);
     const buttons = [
         iconButton({iconName: 'view-reveal-symbolic', tooltip: _('Preview'), onClick: () => actions.preview(item)}),
         comment.widget,
+        ...ai ? [aiButton(ai)] : [],
         iconButton({gicon: item.kind === 'pr' ? icons.prClosed : icons.issueClosed, tooltip: _('Close'),
             onClick: () => actions.close(item)}),
         ...(item.boards ?? []).map(board => iconButton({gicon: icons.boards,

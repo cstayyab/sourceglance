@@ -44,7 +44,7 @@ names; when you need a new one, add it here in the same PR ([Writing docs](writi
 | Glance | `glance` | The sidebar group of Widgets and System Tray | |
 | Widget | `widget` | A card on the desktop or in Glance → Widgets | tile (except the System Tray previews) |
 | Custom widget | `custom-widget` | A widget you build from filters | |
-| Page | `page` | One screen in the window, opened from the sidebar. Settings is one page; the entries under it (Accounts, Preferences, Startup, About), each a page of its own. Preferences has two big tabs, Organizations and Projects; About has the update check right under the version scroll to their heading | tab, view |
+| Page | `page` | One screen in the window, opened from the sidebar. Settings is one page; the entries under it (Accounts, Preferences, Sync server, AI assistant, Startup, About), each a page of its own. Preferences has two big tabs, Organizations and Projects; About has the update check right under the version scroll to their heading | tab, view |
 | Sidebar | `sidebar` | The window's list of pages | menu |
 | Filter | `filter` | A way to narrow a list: search, label, assignee | |
 

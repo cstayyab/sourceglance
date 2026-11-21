@@ -23,6 +23,10 @@ import {ListPage} from './pages/list.js';
 import {BoardsPage} from './pages/boards.js';
 import {TasksPage} from './pages/tasks.js';
 import {buildStartupPage} from './pages/systemStart.js';
+import {buildAiPage} from './pages/aiAssistant.js';
+import {AiAssistant} from './aiAssistant.js';
+import {SyncService} from './syncService.js';
+import {buildSyncPage} from './pages/sync.js';
 
 /**
  * @param {Adw.Window} window
@@ -63,7 +67,15 @@ export function fillWindow(window, {settings, dir, version}) {
         ...Object.fromEntries(Object.entries(WIDGET_ICONS).map(([key, name]) => [`widget-${key}`, icon(`${name}-symbolic`)])),
     };
     const overlay = new Adw.ToastOverlay();
-    const toast = title => overlay.add_toast(new Adw.Toast({title}));
+    // `action`, if given, is {label, onClick}: a button on the toast.
+    const toast = (title, action = null) => {
+        const shown = new Adw.Toast({title});
+        if (action) {
+            shown.button_label = action.label;
+            shown.connect('button-clicked', action.onClick);
+        }
+        overlay.add_toast(shown);
+    };
     const ctx = {window, settings, client, clients, names, projects, version, toast, dir: dir, icons};
 
     // One search box, on the right of the title bar, filters all three lists. While it has text, the
@@ -105,7 +117,32 @@ export function fillWindow(window, {settings, dir, version}) {
         isFor: owner => main?.isPanelFor(owner) ?? false,
         isOpen: () => main?.isPanelOpen() ?? false,
     };
-    const actions = new WindowActions({window, clients, data, toast, icons, panel});
+    // Signing in to a sync server: accounts and settings follow you, and the AI instructions come from it.
+    const sync = new SyncService({window, settings, version, toast});
+    ctx.sync = sync;
+    const ai = new AiAssistant({window, settings, toast, iconDir: dir.get_child('icons'), sync});
+    ctx.ai = ai;
+    const actions = new WindowActions({window, clients, data, toast, icons, panel, ai, openPage: id => main?.select(id)});
+    ctx.openPage = id => main?.select(id);
+    // Rows carry the AI button, so choosing another agent (or none) rebuilds them.
+    const rebuildPages = () => {
+        for (const page of pages)
+            page.update(data.state);
+    };
+    ai.onChanged(rebuildPages);
+    // ...and so does the sync server letting the AI buttons work, or no longer.
+    let aiWasReady = false;
+    sync.onChanged(() => {
+        if (sync.aiReady !== aiWasReady) {
+            aiWasReady = sync.aiReady;
+            rebuildPages();
+        }
+    });
+    window.connect('close-request', () => {
+        sync.destroy();
+        return false;
+    });
+    sync.start().catch(e => console.warn(`sourceglance: sync: ${e.message}`));
     const repos = () => settings.get_strv('repositories');
     const onClearSearch = () => {
         search.text = '';
@@ -160,6 +197,8 @@ export function fillWindow(window, {settings, dir, version}) {
     };
     const accountsPages = buildAccountsPage(ctx);
     const startupPage = buildStartupPage(ctx);
+    const aiPage = buildAiPage(ctx);
+    const syncPage = buildSyncPage(ctx);
     const aboutPage = buildAboutPage({window, settings, appIcon: icon('sourceglance-app'), version});
 
     // Whether the sidebar shows icons only. Kept in settings when this version's schema has it.
@@ -205,6 +244,10 @@ export function fillWindow(window, {settings, dir, version}) {
                 page: accountsPages.page, pageTitle: _('Accounts')},
             {id: 'settings-preferences', parent: 'settings', title: _('Preferences'), iconName: 'preferences-system-symbolic',
                 page: accountsPages.preferencesPage, pageTitle: _('Preferences')},
+            {id: 'settings-sync', parent: 'settings', title: _('Sync server'), shortTitle: _('Sync'),
+                iconName: 'emblem-synchronizing-symbolic', page: syncPage, pageTitle: _('Sync server')},
+            {id: 'settings-ai', parent: 'settings', title: _('AI assistant'), shortTitle: _('AI'),
+                gicon: icons.code, page: aiPage, pageTitle: _('AI assistant')},
             {id: 'settings-startup', parent: 'settings', title: _('Startup'), iconName: 'system-run-symbolic',
                 page: startupPage, pageTitle: _('Startup')},
             {id: 'settings-about', parent: 'settings', title: _('About'), iconName: 'help-about-symbolic',

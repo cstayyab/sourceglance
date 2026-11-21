@@ -1,7 +1,8 @@
 # Architecture
 
 sourceglance is a GNOME Shell extension (see [ADR 0001](adr/0001-gnome-shell-extension.md)).
-It runs in two processes that share code under `src/lib/`:
+It runs in two processes that share code under `src/lib/` (the parts with no GNOME imports live in `src/shared/`, see its
+[README](../src/shared/README.md)):
 
 - **Shell process** — `extension.js` runs inside `gnome-shell`. It owns the panel
   indicator and the refresh loop. A crash or blocking call here freezes the desktop, so

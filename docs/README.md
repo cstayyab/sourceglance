@@ -13,6 +13,7 @@
 - [Installer wizard](design/installer.md): MSI-style setup wizard: pages, maintenance mode, command line
 - [Theme](design/theme.md): colors, shapes, icons, type and motion, with the reasons
 - [Behavior](design/behavior.md): Group by, friendly names, projects, watch list, hidden boards, the top bar switch
+- [Sync server and AI assistant](design/sync-and-ai.md): signing in, what follows you, the AI buttons, the requests a server answers
 
 ## Architecture
 

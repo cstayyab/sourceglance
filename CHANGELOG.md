@@ -7,6 +7,38 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-21
+
+### Added
+
+- **AI assistant.** Choose a command-line AI agent from the drop-down (or None) under Settings → AI assistant. Each issue and
+  pull request then has a button, next to Comment, that opens the agent in a terminal in the repository's folder with
+  the item as its first message; the first time, it asks where the repository is on this computer, and
+  the page lists and forgets those folders. The comment box (in the list and in the preview panel) has a **Suggest**
+  button: the agent drafts a comment, using what you typed as what you want to say. The draft only fills the box; you
+  edit it and press Comment. The agent runs on this computer with your own sign-in to it, with no tools for a
+  suggestion.
+  The launch message carries the description and latest comments and asks the agent to gather the rest itself
+  (the thread, the repository's documentation, its own tools), to tell you what it is doing and to ask before it
+  changes anything. If it can't reach GitHub or GitLab it checks sign-in, permissions and connectors with you.
+  Settings → AI assistant shows these instructions (read only) and has a box for your own additions to them. The
+  instructions come from your sync server (below): the AI buttons stay off, with the reason as their tooltip, until
+  you are signed in to one.
+- **Sync server** (Settings → Sync server). Sign in to Source Glance Cloud, or enter the address of another server (`https://`;
+  plain `http://` only for this computer). Signing in is a code the app shows and copies for you: you sign in on the
+  server's page in your browser and paste it there. The sign-in token is kept in the GNOME keyring, and nothing is sent
+  until you sign in.
+  When you connect it asks what to turn on: **Launch in AI button** (on), **Encrypted cloud backup of account tokens**
+  (off) and **Save settings** (always on); the same switches stay on the page. With token backup off no account token is
+  sent to or from the server. With the AI button off the instructions aren't fetched, and the AI buttons show a padlock
+  whose popover says why and has a button to Settings → Sync server.
+  Once signed in, accounts signed in with a personal access token follow you between computers (the token is encrypted on
+  the server; browser sign-ins stay on the computer that made them), and so do the settings that follow you (group by,
+  organization and project names, hidden boards, watched repositories, your AI additions). An account removed on one
+  computer is removed on the server; one removed on the server is kept on a computer that still has it. Signing out keeps
+  every account already on this computer. Plans: Individual is free; Startup is free for 6 months, then $5 a month, for up to 5 accounts, requiring
+  company email (e.g. @your-company.com); Enterprise is $0.99 per user a month for 6 or more. Limits are shown now; payment comes later.
+
 ## [0.13.0] - 2026-11-20
 
 ### Added
@@ -413,7 +445,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/omer-gh/sourceglance/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/omer-gh/sourceglance/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/omer-gh/sourceglance/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/omer-gh/sourceglance/compare/v0.11.0...v0.12.0

@@ -25,7 +25,7 @@ import {
     previewRequests,
     reopenRequests,
 } from '../lib/requests.js';
-import {actionButton, addChip, chip, chipLine, labelClass} from './pages/common.js';
+import {LOCK_ICON, actionButton, addChip, chip, chipLine, labelClass, lockPopover} from './pages/common.js';
 
 /** Text from GitHub or GitLab, shown as is (never as markup), selectable. */
 function plainText(text, dim = false) {
@@ -235,8 +235,10 @@ function errorText(error, item = null) {
 export class WindowActions {
     /** `data` is the WindowData; `clients` an AccountClients; `window` parents the dialogs. */
     /** `panel` is {show({title, subtitle, child, owner}), hide(), isFor(owner), isOpen()}: the window's right panel. */
-    constructor({window, clients, data, toast, icons, panel}) {
+    constructor({window, clients, data, toast, icons, panel, ai, openPage}) {
         this._window = window;
+        this._openPage = openPage;
+        this._ai = ai;
         this._panel = panel;
         this._icons = icons;
         // Items whose labels and assignees are showing (collapsed by default), by itemKey().
@@ -381,6 +383,9 @@ export class WindowActions {
             css_classes: ['dim-label', 'caption']}));
         const cancel = new Gtk.Button({label: _('Cancel')});
         const post = new Gtk.Button({label: _('Comment'), css_classes: ['suggested-action'], sensitive: false});
+        const suggest = this._suggestButton(item, editor.buffer);
+        if (suggest)
+            footer.append(suggest);
         footer.append(cancel);
         footer.append(post);
         widget.append(footer);
@@ -430,13 +435,7 @@ export class WindowActions {
         const load = async () => {
             show(new Gtk.Spinner({spinning: true, width_request: 32, height_request: 32,
                 halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
-            const {requests, parse} = previewRequests(item);
-            const details = await this._fetch(item, async ({client, token}) => {
-                const responses = [];
-                for (const request of requests)
-                    responses.push(await client.send(token, request));
-                return parse(responses);
-            }, false);
+            const details = await this._details(item);
             // Another item's preview may have replaced this one meanwhile, or it was closed.
             if (!this._panel.isFor(owner))
                 return;
@@ -455,6 +454,91 @@ export class WindowActions {
             show(panel);
         };
         load();
+    }
+
+    /** The item's description and comments, or null after a toast says why not. */
+    _details(item) {
+        const {requests, parse} = previewRequests(item);
+        return this._fetch(item, async ({client, token}) => {
+            const responses = [];
+            for (const request of requests)
+                responses.push(await client.send(token, request));
+            return parse(responses);
+        }, false);
+    }
+
+    /**
+     * The row's AI button: {gicon, tooltip, enabled, run()} that opens the chosen agent on this item in a
+     * terminal in the repository's folder, or null when no agent is chosen (or for drafts).
+     */
+    /**
+     * Why the AI assistant is locked and what to do: {title, text, buttonLabel, tooltip, connect()}. `connect` opens
+     * Settings → Sync server, where you sign in to a server.
+     */
+    lock() {
+        const signedIn = this._ai.signedIn;
+        const off = signedIn && !this._ai.featureOn;
+        const title = !signedIn ? _('Connect to a secure server first') : off ? _('Turned off') : _('Waiting for the server');
+        const text = !signedIn
+            ? _('The AI assistant takes its instructions from a Source Glance server. Sign in to Source Glance Cloud, or to your own server, to unlock it.')
+            : off
+                ? _('You turned the AI button off for this server. Turn “Launch in AI button” back on in Settings → Sync server.')
+                : _('You are signed in, but the server’s AI instructions have not arrived yet. Open Sync server and press Sync now.');
+        return {
+            title,
+            text,
+            buttonLabel: signedIn ? _('Open Sync server') : _('Connect to a server'),
+            tooltip: _('Locked: %s').format(title.toLowerCase()),
+            connect: () => this._openPage?.('settings-sync'),
+        };
+    }
+
+    aiAction(item) {
+        const provider = this._ai.provider;
+        if (!provider || item.kind === 'draft')
+            return null;
+        const enabled = this._ai.enabled;
+        return {gicon: this._ai.icon(provider), enabled, lock: this.lock(),
+            tooltip: _('Launch in %s').format(provider.name),
+            run: async () => this._ai.work(item, await this._details(item))};
+    }
+
+    /**
+     * The comment box's Suggest button: the chosen agent drafts a comment from the item and what's
+     * typed in `buffer`, which then holds the draft (Undo brings the typing back). `details` is the
+     * description and comments if the caller has them, else they're loaded. Null when no agent is chosen.
+     */
+    _suggestButton(item, buffer, details = null) {
+        const provider = this._ai.provider;
+        if (!provider)
+            return null;
+        const box = new Gtk.Box({spacing: 6});
+        // Without a server: a padlock and a popover that says why and takes you to Settings → Sync server.
+        if (!this._ai.enabled) {
+            const lock = this.lock();
+            box.append(new Gtk.Image({icon_name: LOCK_ICON}));
+            box.append(new Gtk.Label({label: _('Suggest')}));
+            return new Gtk.MenuButton({child: box, popover: lockPopover(lock), tooltip_text: lock.tooltip});
+        }
+        box.append(new Gtk.Image({gicon: this._ai.icon(provider)}));
+        const label = new Gtk.Label({label: _('Suggest')});
+        box.append(label);
+        const button = new Gtk.Button({child: box, tooltip_text:
+            _('Ask %s for a comment. What you typed is taken as what you want to say.').format(provider.name)});
+        button.connect('clicked', async () => {
+            button.sensitive = false;
+            label.label = _('Thinking…');
+            try {
+                details ??= await this._details(item);
+                const text = await this._ai.suggest(item, details, buffer.text);
+                if (text)
+                    buffer.text = text;
+            } finally {
+                label.label = _('Suggest');
+                button.sensitive = true;
+            }
+        });
+        return button;
     }
 
     /** What kind of item this is: its icon and colour (as in the lists) and its name. */
@@ -580,7 +664,12 @@ export class WindowActions {
                 postButton.sensitive = true;
         };
         postButton.connect('clicked', post);
-        footer.append(postButton);
+        const buttons = new Gtk.Box({spacing: 8, halign: Gtk.Align.END});
+        const suggest = this._suggestButton(item, composer.buffer, details);
+        if (suggest)
+            buttons.append(suggest);
+        buttons.append(postButton);
+        footer.append(buttons);
         return {content: new Adw.Clamp({child: box, maximum_size: 1100}), composer: footer};
     }
 

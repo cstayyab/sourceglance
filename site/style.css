@@ -60,6 +60,18 @@ h3 { font-size: 1.1rem; }
 .site-header nav { display: flex; gap: 22px; }
 .site-header nav a { color: var(--hero-muted); text-decoration: none; font-weight: 500; }
 .site-header nav a:hover { color: #fff; }
+/* Cloud Login and Free Signup: buttons at the end of the menu. */
+.site-header nav { align-items: center; }
+.site-header nav a.nav-login, .site-header nav a.nav-signup { padding: 7px 14px; border-radius: 8px; font-weight: 700; white-space: nowrap; }
+.site-header nav a.nav-login { color: #fff; border: 1px solid rgb(255 255 255 / 40%); }
+.site-header nav a.nav-login:hover { background: rgb(255 255 255 / 10%); }
+.site-header nav a.nav-signup { color: #fff; background: var(--blue); border: 1px solid var(--blue); }
+.site-header nav a.nav-signup:hover { background: #2b7bf5; border-color: #2b7bf5; }
+/* Ten items don't fit a middle-sized window: the in-page links give way to the buttons. */
+@media (max-width: 1100px) {
+  .site-header nav { gap: 16px; }
+  .site-header nav a.wide-only { display: none; }
+}
 
 /* Hero */
 .hero { background: var(--hero-bg); color: var(--hero-text); padding: 72px 0 88px; }
@@ -444,6 +456,9 @@ pre code { background: none; padding: 0; }
   .site-header nav { gap: 12px; font-size: .95rem; }
   .brand { font-size: 1.05rem; gap: 8px; }
   .wide-only { display: none; }
+  /* A phone: the brand and the two buttons. */
+  .site-header nav a:not(.nav-login):not(.nav-signup) { display: none; }
+  .site-header nav a.nav-login, .site-header nav a.nav-signup { padding: 0 12px; min-height: 44px; display: inline-flex; align-items: center; font-size: .85rem; }
   .mock-clock { display: none; }
   .seg { padding: 0 8px; }
   .win-rail, .win-sub { display: none; }

@@ -48,6 +48,51 @@
       <summary>Hidden project boards</summary>
       <description>Project boards you chose to hide, each by its address (plain text). Kept only in Source Glance.</description>
     </key>
+    <key name="sync-server" type="s">
+      <default>''</default>
+      <summary>Sync server</summary>
+      <description>The address of the server this computer signs in to (Settings → Sync server): the hosted service, one on this computer, or your own. Empty: none. The sign-in itself is in the GNOME keyring, never here.</description>
+    </key>
+    <key name="sync-feature-ai" type="b">
+      <default>true</default>
+      <summary>Use the AI assistant with the sync server</summary>
+      <description>Whether the AI "Launch in" and Suggest buttons are on. Chosen when connecting to a sync server; the server's AI instructions are fetched only while this is on.</description>
+    </key>
+    <key name="sync-feature-tokens" type="b">
+      <default>false</default>
+      <summary>Back up account tokens, encrypted, on the sync server</summary>
+      <description>Whether personal access tokens of signed-in accounts are kept (encrypted) on the sync server so another computer needs no re-entering. Chosen when connecting; off by default. Browser sign-ins are never backed up.</description>
+    </key>
+    <key name="sync-revision" type="i">
+      <default>0</default>
+      <summary>Synced settings revision</summary>
+      <description>Internal. The revision of the synced settings this computer saw at its last sync.</description>
+    </key>
+    <key name="sync-settings-hash" type="s">
+      <default>''</default>
+      <summary>Synced settings fingerprint</summary>
+      <description>Internal. A fingerprint of the synced settings as of the last sync, to tell whether they changed here since.</description>
+    </key>
+    <key name="sync-fingerprints" type="a{ss}">
+      <default>{}</default>
+      <summary>Synced accounts' fingerprints</summary>
+      <description>Internal. For each account that is synced, a fingerprint of its token as of the last sync (never the token), to tell which side changed it.</description>
+    </key>
+    <key name="ai-provider" type="s">
+      <default>'claude'</default>
+      <summary>AI assistant</summary>
+      <description>The command-line AI agent the window's AI buttons start: "claude", "codex" or "gemini", or empty for none. Only its name is kept here.</description>
+    </key>
+    <key name="ai-instructions" type="s">
+      <default>''</default>
+      <summary>Your additions for the AI assistant</summary>
+      <description>Text added to the end of what an agent is told when it is launched on an issue or pull request. Kept only in Source Glance.</description>
+    </key>
+    <key name="repo-folders" type="a{ss}">
+      <default>{}</default>
+      <summary>Local folders of repositories</summary>
+      <description>The folder on this computer where each repository is checked out, as plain text: the repository (lower case, owner/name) to the folder's path. The AI assistant opens in it. Kept only in Source Glance.</description>
+    </key>
     <key name="layout" type="s">
       <choices>
         <choice value="separate"/>
