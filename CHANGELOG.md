@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-21
+
 ### Added
 
 - **Browser sign-ins show up on the sync server.** An account you signed in to with the browser can't travel (its token is
@@ -458,7 +460,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/omer-gh/sourceglance/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/omer-gh/sourceglance/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/omer-gh/sourceglance/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/omer-gh/sourceglance/compare/v0.12.1...v0.13.0
