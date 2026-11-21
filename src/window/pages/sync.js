@@ -11,7 +11,7 @@ import {CLOUD_SERVER, SERVER_CHOICES} from '../../lib/sync.js';
 
 const PLANS = [
     {name: _('Individual'), text: _('Free, for one person')},
-    {name: _('Startup'), text: _('$10 a month for up to 5 accounts on your company domain')},
+    {name: _('Startup'), text: _('Free for 6 months, then $5 a month, for up to 5 accounts on your company domain')},
     {name: _('Enterprise'), text: _('$0.99 per user a month, for 6 or more accounts on your company domain')},
 ];
 
