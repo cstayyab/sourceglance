@@ -12,6 +12,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/_site}"
 REPO="omer-gh/sourceglance"
+# Where Cloud Login and Free Signup lead: the hosted service. Set CLOUD_URL= (empty) to make them relative, for a copy
+# of this page that is served by the service itself.
+CLOUD_URL="${CLOUD_URL-https://sourceglance.mohammadomer.com}"
 RELEASES="https://github.com/$REPO/releases"
 
 mkdir -p "$OUT/images"
@@ -49,6 +52,7 @@ sed -e "s|@VERSION@|$version|g" \
     -e "s|@SETUP_ARM@|$(asset '^sourceglance-Setup-.*-aarch64\.AppImage$')|g" \
     -e "s|@ZIP@|$(asset '\.shell-extension\.zip$')|g" \
     -e "s|@SUMS@|$(asset '^SHA256SUMS$')|g" \
+    -e "s|@CLOUD_URL@|$CLOUD_URL|g" \
     "$ROOT/site/index.html" > "$OUT/index.html"
 
 echo "Built $OUT (release: $version)"
