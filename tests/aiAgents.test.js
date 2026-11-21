@@ -100,6 +100,7 @@ test('the desktop link opens a session in the folder with the prompt, both encod
     const {desktop} = aiProvider('claude');
     assert.equal(desktop.scheme, 'claude');
     assert.equal(desktop.uri('/home/a b/repo', 'Fix #1 & more?'), 'claude://code/new?folder=%2Fhome%2Fa%20b%2Frepo&q=Fix%20%231%20%26%20more%3F');
+    assert.equal(aiProvider('codex').desktop.uri('/a b', 'Fix #1'), 'codex://new?path=%2Fa%20b&prompt=Fix%20%231');
     assert.equal(aiProvider('gemini').desktop, undefined);
 });
 
