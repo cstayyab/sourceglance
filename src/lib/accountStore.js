@@ -19,10 +19,21 @@ import {
     withLogin,
     withoutAccount,
 } from './accounts.js';
+import {accountKey} from './sync.js';
 import {clearSecret, lookupSecret, storeSecret} from './tokenStore.js';
 
 export function readAccounts(settings) {
     return parseAccounts(settings.get_strv('accounts'));
+}
+
+/**
+ * The name of the computer that provides this account, or null when this computer does (or there is no sync server). An account
+ * another computer provides comes down from the sync server and is that computer's to sign out: not here.
+ */
+export function providerOf(settings, account) {
+    if (!settings.settings_schema.has_key('sync-managed'))
+        return null;
+    return settings.get_value('sync-managed').deepUnpack()[accountKey(account)] ?? null;
 }
 
 function writeAccounts(settings, accounts) {

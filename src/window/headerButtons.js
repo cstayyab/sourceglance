@@ -8,7 +8,7 @@ import Gtk from 'gi://Gtk';
 
 import {gettext as _} from './i18n.js';
 
-import {removeAccount} from '../lib/accountStore.js';
+import {providerOf, removeAccount} from '../lib/accountStore.js';
 import {accountTitle, fetchProblem, hostLabel, isDefaultBase, platformName, problemFix} from '../lib/accounts.js';
 
 // How long the pointer may be away from the "!" and its note before the note closes.
@@ -288,7 +288,8 @@ export class AccountsButton {
     }
 
     _confirmSignOutAll() {
-        const accounts = this._sources.map(source => source.account);
+        // Accounts another computer provides are signed out there, not here.
+        const accounts = this._sources.map(source => source.account).filter(account => !providerOf(this._settings, account));
         if (accounts.length === 0)
             return;
         const dialog = new Adw.AlertDialog({

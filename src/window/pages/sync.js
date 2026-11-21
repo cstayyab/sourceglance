@@ -24,7 +24,7 @@ function featureRows(settings) {
         subtitle: _('Adds the AI assistant to issues and pull requests, with instructions from the server.')});
     settings.bind('sync-feature-ai', ai, 'active', Gio.SettingsBindFlags.DEFAULT);
     const tokens = new Adw.SwitchRow({title: _('Encrypted cloud backup of account tokens'),
-        subtitle: _('Keeps the personal access tokens of your signed-in accounts on the server, encrypted, so another computer needs no re-entering. Browser sign-ins are never backed up.')});
+        subtitle: _('Sends this computer’s signed-in accounts to the server, encrypted, so your other computers and the web app can use them. The server renews browser sign-ins, so they are renewed in one place only. Accounts other computers provide always come down, and only they can sign them out. Turning this off takes only this computer’s accounts off the server.')});
     settings.bind('sync-feature-tokens', tokens, 'active', Gio.SettingsBindFlags.DEFAULT);
     const save = new Adw.SwitchRow({title: _('Save settings'), active: true, sensitive: false,
         subtitle: _('Group by, organization and project names, hidden boards and your AI additions follow you. Always on.')});

@@ -7,7 +7,7 @@ import Gtk from 'gi://Gtk';
 
 import {gettext as _} from '../i18n.js';
 
-import {loadAccounts, removeAccount} from '../../lib/accountStore.js';
+import {loadAccounts, providerOf, removeAccount} from '../../lib/accountStore.js';
 import {GITHUB_COM, GITLAB_COM, accountTitle, hostLabel, isDefaultBase} from '../../lib/accounts.js';
 import {GITHUB_APP_CLIENT_ID} from '../../lib/config.js';
 import {GitHubError, isCancelled} from '../../lib/github.js';
@@ -72,9 +72,11 @@ export function buildAccountsPage(ctx) {
     };
 
     const accountRow = account => {
+        // Provided by another computer through the sync server: used here, but signed in and out there.
+        const provider = providerOf(settings, account);
         const row = new Adw.ActionRow({
             title: accountTitle(account),
-            subtitle: `${isDefaultBase(account.platform, account.base) ? '' : `${hostLabel(account.base)} · `}${methodText(account)} · ${_('Checking…')}`,
+            subtitle: `${isDefaultBase(account.platform, account.base) ? '' : `${hostLabel(account.base)} · `}${provider ? `${_('Provided by %s').format(provider)} · ` : ''}${methodText(account)} · ${_('Checking…')}`,
             use_markup: false,
         });
         row.add_prefix(new Gtk.Image({icon_name: 'avatar-default-symbolic'}));
@@ -83,7 +85,8 @@ export function buildAccountsPage(ctx) {
         const remove = new Gtk.Button({icon_name: 'user-trash-symbolic', tooltip_text: _('Sign out'),
             valign: Gtk.Align.CENTER, css_classes: ['flat']});
         remove.connect('clicked', () => confirmRemove(account));
-        row.add_suffix(again);
+        if (!provider)
+            row.add_suffix(again);
         // Which repositories and project boards this account brings in (GitHub accounts).
         if (account.platform === 'github') {
             const select = new Gtk.Button({label: _('Limit repositories & boards'), valign: Gtk.Align.CENTER,
@@ -93,13 +96,14 @@ export function buildAccountsPage(ctx) {
         }
         // The default GitHub sign-in can't read code, so it can't find submodules: a fine-grained
         // token you choose can (its own repositories and permissions).
-        if (account.platform === 'github' && account.base === GITHUB_COM && account.clientId === GITHUB_APP_CLIENT_ID) {
+        if (!provider && account.platform === 'github' && account.base === GITHUB_COM && account.clientId === GITHUB_APP_CLIENT_ID) {
             const token = new Gtk.Button({label: _('Use a fine-grained token'), valign: Gtk.Align.CENTER,
                 css_classes: ['flat'], tooltip_text: _('Sign in to this account with a fine-grained personal access token')});
             token.connect('clicked', () => openAddAccountDialog(ctx, {platform: 'github', base: GITHUB_COM, startWith: 'pat'}));
             row.add_suffix(token);
         }
-        row.add_suffix(remove);
+        if (!provider)
+            row.add_suffix(remove);
         const prefix = row.subtitle.slice(0, row.subtitle.lastIndexOf(' · '));
         (async () => {
             try {

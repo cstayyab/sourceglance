@@ -9,7 +9,7 @@ import Soup from 'gi://Soup?version=3.0';
 
 import {gettext as _} from './i18n.js';
 
-import {notifyAccountsChanged, readAccounts} from '../lib/accountStore.js';
+import {notifyAccountsChanged, readAccounts, removeAccount} from '../lib/accountStore.js';
 import {accountTitle, sameAccount, serializeAccounts, withAccount} from '../lib/accounts.js';
 import {
     SYNCED_SETTINGS,
@@ -38,6 +38,7 @@ import {
     signOutRequest,
     stateRequest,
     syncedAccountId,
+    withdrawRequest,
 } from '../lib/sync.js';
 import {clearSecret, lookupSecret, storeSecret} from '../lib/tokenStore.js';
 
@@ -166,6 +167,14 @@ export class SyncService {
         // A feature switch takes effect at once (the AI buttons lock or unlock); the sync that follows does the rest.
         for (const key of ['sync-feature-ai', 'sync-feature-tokens'])
             this._handlerIds.push(this._settings.connect(`changed::${key}`, () => this._changed()));
+        // Turning the backup off takes this computer's accounts off the server (the others' stay, and keep coming down).
+        let providing = this.featureTokens;
+        this._handlerIds.push(this._settings.connect('changed::sync-feature-tokens', () => {
+            const now = this.featureTokens;
+            if (providing && !now)
+                void this._withdraw();
+            providing = now;
+        }));
         this._timers.push(GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, AUTO_SYNC_SECONDS, () => {
             void this.sync({silent: true});
             return GLib.SOURCE_CONTINUE;
@@ -271,6 +280,7 @@ export class SyncService {
                     this._email = answer.email;
                     this._error = '';
                     this._changed();
+                    this._firstConnection = true;
                     await this.sync({silent: false});
                     return {ok: true};
                 case 'slow-down':
@@ -413,7 +423,8 @@ export class SyncService {
         this._busy = true;
         this._changed();
         try {
-            const answer = await this._send(stateRequest(base, token, {tokens: this.featureTokens}));
+            // Accounts other computers provide always come down; token backup only decides whether this computer sends its own.
+            const answer = await this._send(stateRequest(base, token));
             if (answer.status === 401) {
                 await this._forget();
                 this._toast(_('The server signed this computer out. Sign in again in Settings → Sync server.'));
@@ -425,10 +436,14 @@ export class SyncService {
             this._signedIn = true;
             this._email = state.email;
             this._plan = state.plan;
-            // Settings are always saved. Tokens and the AI instructions only when you turned those on.
-            const summary = this.featureTokens
-                ? await this._syncAccounts(base, token, state)
-                : {pulled: 0, pushed: 0, removed: 0, kept: 0, problems: []};
+            // A computer that connects to a server that already holds accounts takes part in the backup from the start.
+            if (this._firstConnection) {
+                this._firstConnection = false;
+                if (state.accounts.length > 0 && !this.featureTokens)
+                    this._settings.set_boolean('sync-feature-tokens', true);
+            }
+            // Settings are always saved. This computer's tokens only go when you turned the backup on; the AI instructions when you turned those on.
+            const summary = await this._syncAccounts(base, token, state);
             await this._sendHints(base, token);
             await this._syncSettings(base, token, state);
             if (this.featureAi)
@@ -469,6 +484,38 @@ export class SyncService {
         notifyAccountsChanged(this._settings);
     }
 
+    /** The accounts another computer provides: key → that computer's name. */
+    _managed() {
+        return this._settings.settings_schema.has_key('sync-managed') ? this._settings.get_value('sync-managed').deepUnpack() : {};
+    }
+
+    _setManaged(map) {
+        if (this._settings.settings_schema.has_key('sync-managed'))
+            this._settings.set_value('sync-managed', new GLib.Variant('a{ss}', map));
+    }
+
+    /** Token backup went off: the server takes away what this computer provided, and what it agreed on for those accounts is forgotten. */
+    async _withdraw() {
+        const base = this.server;
+        const token = base ? await this._token() : null;
+        if (!token)
+            return;
+        try {
+            const reply = await this._send(withdrawRequest(base, token));
+            if (reply.status !== 200)
+                throw new Error(String(reply.status));
+            const managed = this._managed();
+            const agreed = this._settings.get_value('sync-fingerprints').deepUnpack();
+            for (const key of Object.keys(agreed))
+                if (!(key in managed))
+                    delete agreed[key];
+            this._settings.set_value('sync-fingerprints', new GLib.Variant('a{ss}', agreed));
+        } catch (e) {
+            this._error = _('Couldn’t take this computer’s accounts off the server: %s').format(e.message);
+            this._changed();
+        }
+    }
+
     /** Keeps only the access token of a browser sign-in the server has taken over: this computer gets renewed ones from the server. */
     async _handOver(account) {
         this._applying = true;
@@ -485,7 +532,8 @@ export class SyncService {
     async _syncAccounts(base, token, state) {
         const local = await this._localAccounts();
         const agreed = this._settings.get_value('sync-fingerprints').deepUnpack();
-        const plan = planAccountSync(local, state.accounts, agreed, fingerprint);
+        const managed = this._managed();
+        const plan = planAccountSync(local, state.accounts, agreed, fingerprint, {providing: this.featureTokens, managed});
         const summary = {pulled: 0, pushed: 0, removed: 0, kept: plan.kept.length, problems: []};
         const final = new Map(state.accounts.map(account => [accountKey(account), account]));
 
@@ -498,6 +546,11 @@ export class SyncService {
                     await this._saveAccount({id: syncedAccountId(account), platform: account.platform, base: account.base,
                         login: account.login, method: account.method, clientId: mine?.clientId ?? null},
                     secretFor(account.platform, account.token, {expiresAt: account.expiresAt}));
+                    // Another computer's account is its to remove; this one only uses it.
+                    if (account.mine)
+                        delete managed[accountKey(account)];
+                    else
+                        managed[accountKey(account)] = account.provider ?? _('another computer');
                     summary.pulled++;
                 } catch (e) {
                     // Most likely the keyring is locked: this account isn't saved, and nothing is removed on its account.
@@ -526,6 +579,20 @@ export class SyncService {
                 summary.removed++;
             }
         }
+        // Provided by another computer that no longer has it: it is gone here too (nothing here could sign it out).
+        for (const account of plan.removeLocal) {
+            try {
+                this._applying = true;
+                await removeAccount(this._settings, account);
+                delete managed[accountKey(account)];
+                summary.removed++;
+            } catch (e) {
+                summary.problems.push(`${account.login}: ${e.message}`);
+            } finally {
+                this._applying = false;
+            }
+        }
+        this._setManaged(managed);
         const kept = plan.kept;
         this._settings.set_value('sync-fingerprints',
             new GLib.Variant('a{ss}', agreedAfterSync([...final.values(), ...kept], fingerprint)));

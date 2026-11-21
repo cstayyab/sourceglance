@@ -77,6 +77,8 @@ export const deleteAccountRequest = (base, token, id) =>
 export const putSettingsRequest = (base, token, revision, data) =>
     json('PUT', base, '/api/sync/settings', {revision, data}, token);
 /** `hints` are what hintsFor() returns: the accounts that can't travel, so the server can offer to sign in to them too. */
+/** Token backup was turned off: the server takes away the accounts this computer provided and keeps the others. */
+export const withdrawRequest = (base, token) => json('POST', base, '/api/sync/withdraw', {}, token);
 export const putHintsRequest = (base, token, hints) => json('PUT', base, '/api/sync/hints', {hints}, token);
 
 // Answers.
@@ -141,7 +143,9 @@ export function parseState(json) {
             return null;
         const method = raw.method === 'device' ? 'device' : 'pat';
         const expiresAt = Number.isInteger(raw.expiresAt) && raw.expiresAt > 0 ? raw.expiresAt : null;
-        accounts.push({id: raw.id, platform: raw.platform, base: raw.base, login: raw.login, token: raw.token, method, expiresAt});
+        // `mine`: this computer provides it (it is the one that can change or remove it); `provider` is the name of the computer that does.
+        accounts.push({id: raw.id, platform: raw.platform, base: raw.base, login: raw.login, token: raw.token, method, expiresAt,
+            mine: raw.mine !== false, provider: isText(raw.provider, 80) ? raw.provider : null});
     }
     const {revision, data} = json.settings;
     if (!Number.isInteger(revision) || revision < 0 || !isObject(data))
@@ -186,22 +190,32 @@ export const hintsFor = accounts => accounts.filter(account => account.method ==
 
 /**
  * Compares this device with the server. `local` are {id, platform, base, login, method} with `token` (null when the
- * keyring can't give it: such an account is still here, so it is never taken for a removed one); `remote`
- * are the server's. `agreed` maps an account key to the fingerprint of its token when both sides last agreed.
- * Returns what to do: pull (add or update here), push (add or update there), removeRemote (removed here since
- * the last sync) and kept (on this device but removed on the server: left alone, not sent again).
+ * keyring can't give it: such an account is still here, so it is never taken for a removed one); `remote` are the server's,
+ * each with `mine` (this device provides it). `agreed` maps an account key to the fingerprint of its token when both sides
+ * last agreed; `managed` maps the key of every account another device provides to that device's name.
+ *
+ * `providing` is token backup: only then does this device send its accounts. It always receives the others', and it can't
+ * change or remove those: they go when the device that provides them removes them or stops providing them.
+ *
+ * Returns what to do: pull (add or update here), push (add or update there), removeRemote (removed here since the last
+ * sync), removeLocal (provided by another device that no longer has it) and kept (on this device but removed on the
+ * server: left alone, not sent again).
  */
-export function planAccountSync(local, remote, agreed, fingerprint) {
+export function planAccountSync(local, remote, agreed, fingerprint, {providing = true, managed = {}} = {}) {
     const here = new Map(local.filter(isSyncable).map(account => [accountKey(account), account]));
     const there = new Map(remote.map(account => [accountKey(account), account]));
-    const plan = {pull: [], push: [], removeRemote: [], kept: []};
+    const plan = {pull: [], push: [], removeRemote: [], removeLocal: [], kept: []};
     for (const [key, account] of there) {
         const mine = here.get(key);
+        const provides = account.mine !== false;
         if (!mine) {
-            if (key in agreed)
-                plan.removeRemote.push(account);
-            else
+            if (key in agreed && provides) {
+                // Removed here since the last sync: gone there too, unless this device isn't providing (then it is left as it is).
+                if (providing)
+                    plan.removeRemote.push(account);
+            } else {
                 plan.pull.push(account);
+            }
             continue;
         }
         // Listed here but its token can't be read (locked or cleared keyring): bring the server's back, never delete.
@@ -209,9 +223,13 @@ export function planAccountSync(local, remote, agreed, fingerprint) {
             plan.pull.push(account);
             continue;
         }
-        const same = mine.token === account.token;
-        if (same)
+        if (mine.token === account.token)
             continue;
+        // Not this device's to change, or it isn't providing: the server's wins.
+        if (!provides || !providing) {
+            plan.pull.push(account);
+            continue;
+        }
         const known = agreed[key];
         const localChanged = known !== undefined && fingerprint(mine.token) !== known;
         const remoteChanged = known === undefined || fingerprint(account.token) !== known;
@@ -224,8 +242,12 @@ export function planAccountSync(local, remote, agreed, fingerprint) {
     for (const [key, account] of here) {
         if (there.has(key))
             continue;
-        // Nothing to send without a token.
-        if (account.token === null)
+        if (key in managed) {
+            plan.removeLocal.push(account);
+            continue;
+        }
+        // Nothing to send without a token, or while not providing.
+        if (account.token === null || !providing)
             continue;
         if (key in agreed)
             plan.kept.push(account);
