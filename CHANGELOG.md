@@ -7,6 +7,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-22
+
 ### Changed
 
 - **Source Glance no longer tracks whether your AI assistant is signed in.** The Sign in row in Settings → AI assistant and
@@ -498,7 +500,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and project IDs are validated before they reach a request.
 - The token lives only in the GNOME keyring and is never logged.
 
-[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/omer-gh/sourceglance/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/omer-gh/sourceglance/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/omer-gh/sourceglance/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/omer-gh/sourceglance/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/omer-gh/sourceglance/compare/v0.14.1...v0.15.0
