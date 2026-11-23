@@ -146,6 +146,12 @@ export function uninstall(removeData) {
     return invoke('uninstall', {removeData});
 }
 
+/** Development builds only: made-up lists from SOURCEGLANCE_FAKE_LISTS, or null. */
+export async function fakeLists() {
+    const text = await invoke('dev_fake_lists');
+    return text ? JSON.parse(text) : null;
+}
+
 export function abortError() {
     return Object.assign(new Error('Operation was cancelled'), {name: 'AbortError'});
 }

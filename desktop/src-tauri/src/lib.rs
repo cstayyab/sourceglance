@@ -396,15 +396,41 @@ fn hide_popover(app: tauri::AppHandle) {
     }
 }
 
-/// Resizes the popover to fit its content, within the width the menus use on Ubuntu.
+/// Resizes the popover to fit its content, within the width the menus use on Ubuntu (plus the
+/// actions menu beside it). The right edge stays put, so the actions open to the left of the
+/// list, as on Ubuntu.
 #[tauri::command]
 fn size_popover(app: tauri::AppHandle, width: f64, height: f64) {
-    if let Some(popover) = app.get_webview_window("popover") {
-        let _ = popover.set_size(tauri::LogicalSize::new(
-            width.clamp(240.0, 800.0),
-            height.clamp(80.0, 2000.0),
-        ));
+    let Some(popover) = app.get_webview_window("popover") else {
+        return;
+    };
+    let scale = popover.scale_factor().unwrap_or(1.0);
+    let width = width.clamp(240.0, 1100.0);
+    let height = height.clamp(80.0, 3000.0);
+    let right = match (popover.outer_position(), popover.outer_size()) {
+        (Ok(position), Ok(size)) => Some(position.x as f64 + size.width as f64),
+        _ => None,
+    };
+    let _ = popover.set_size(tauri::LogicalSize::new(width, height));
+    if let Some(right) = right {
+        let y = popover.outer_position().map(|p| p.y).unwrap_or(0);
+        let x = right - width * scale;
+        let _ = popover.set_position(tauri::PhysicalPosition::new(x.round() as i32, y));
     }
+}
+
+/// Development only, like `SOURCEGLANCE_FAKE_LISTS` in the Ubuntu window (src/window/data.js):
+/// made-up lists from a JSON file, for screenshots and checking the UI without an account.
+/// Release builds always answer None.
+#[tauri::command]
+fn dev_fake_lists() -> Option<String> {
+    #[cfg(debug_assertions)]
+    {
+        let path = std::env::var("SOURCEGLANCE_FAKE_LISTS").ok()?;
+        std::fs::read_to_string(path).ok()
+    }
+    #[cfg(not(debug_assertions))]
+    None
 }
 
 /// Quits everything: menu-bar items, popover and window.
@@ -628,6 +654,7 @@ pub fn run() {
             start_at_login,
             set_start_at_login,
             uninstall,
+            dev_fake_lists,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Source Glance");

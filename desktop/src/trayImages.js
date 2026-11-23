@@ -13,10 +13,12 @@ const PILL_PADDING = 4 * SCALE;
 const ICON_GAP = 3 * SCALE;
 const PART_GAP = 7 * SCALE;
 const FONT = `600 ${11 * SCALE}px -apple-system, BlinkMacSystemFont, sans-serif`;
+const NAME_FONT = `500 ${13 * SCALE}px -apple-system, BlinkMacSystemFont, sans-serif`;
+const NAME_GAP = 5 * SCALE;
 const BLUE = '#3584e4';
 const RED = '#e01b24';
 
-export const LIST_ICONS = {app: appIcon, issues: ICONS.issue, prs: ICONS.pr, boards: ICONS.projects};
+export const LIST_ICONS = {app: appIcon, issues: ICONS.issues, prs: ICONS.pr, boards: ICONS.boards};
 
 const images = new Map();
 const drawn = new Map();
@@ -51,8 +53,9 @@ async function tintedIcon(url, color) {
 }
 
 /**
- * One menu-bar item's image, as PNG bytes. `parts` is a list of `{icon}` (an icon URL) and
- * `{pill, alert}` (a count, or "!" in red when `alert` is set).
+ * One menu-bar item's image, as PNG bytes. `parts` is a list of `{icon}` (an icon URL),
+ * `{name}` (text in the menu bar's colour) and `{pill, alert}` (a count, or "!" in red when
+ * `alert` is set).
  */
 export async function drawItem(parts, dark = darkMenuBar()) {
     const key = JSON.stringify([parts, dark]);
@@ -62,13 +65,28 @@ export async function drawItem(parts, dark = darkMenuBar()) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     ctx.font = FONT;
-    const widths = parts.map(part => part.icon
-        ? ICON
-        : Math.max(PILL_HEIGHT, Math.ceil(ctx.measureText(part.pill).width) + 2 * PILL_PADDING));
+    const widths = parts.map(part => {
+        if (part.icon)
+            return ICON;
+        if (part.name !== undefined) {
+            ctx.font = NAME_FONT;
+            const width = Math.ceil(ctx.measureText(part.name).width);
+            ctx.font = FONT;
+            return width;
+        }
+        return Math.max(PILL_HEIGHT, Math.ceil(ctx.measureText(part.pill).width) + 2 * PILL_PADDING);
+    });
+    // Space before a part: small after an icon or a name, bigger between lists.
+    const gap = index => {
+        const previous = parts[index - 1];
+        if (parts[index].name !== undefined)
+            return NAME_GAP;
+        return previous.icon || previous.name !== undefined ? ICON_GAP : PART_GAP;
+    };
     let width = 0;
     parts.forEach((part, index) => {
         if (index > 0)
-            width += parts[index - 1].icon && !part.icon ? ICON_GAP : PART_GAP;
+            width += gap(index);
         width += widths[index];
     });
     canvas.width = Math.max(width, 1);
@@ -76,9 +94,15 @@ export async function drawItem(parts, dark = darkMenuBar()) {
     let x = 0;
     for (const [index, part] of parts.entries()) {
         if (index > 0)
-            x += parts[index - 1].icon && !part.icon ? ICON_GAP : PART_GAP;
+            x += gap(index);
         if (part.icon) {
             ctx.drawImage(await tintedIcon(part.icon, color), x, (HEIGHT - ICON) / 2);
+        } else if (part.name !== undefined) {
+            ctx.fillStyle = color;
+            ctx.font = NAME_FONT;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(part.name, x, HEIGHT / 2 + SCALE / 2);
         } else {
             const y = (HEIGHT - PILL_HEIGHT) / 2;
             ctx.fillStyle = part.alert ? RED : BLUE;
@@ -99,20 +123,31 @@ export async function drawItem(parts, dark = darkMenuBar()) {
     return bytes;
 }
 
+/** The Grouped layout's one count: every list added up, "25+" if any was cut off (as on Ubuntu). */
+export function totalBadge(badges) {
+    const counts = badges.filter(text => /^\d+\+?$/.test(text));
+    if (counts.length === 0)
+        return '';
+    const total = counts.reduce((sum, text) => sum + Number.parseInt(text, 10), 0);
+    return counts.some(text => text.endsWith('+')) ? `${total}+` : String(total);
+}
+
 /**
- * The images for every menu-bar item: `counts` maps each list to its badge text, `problem`
- * adds the red "!" to the Source Glance item, as on Ubuntu.
+ * The images for every menu-bar item, like the Ubuntu top bar: the Source Glance item with its
+ * name (and in the Grouped layout the total of every list), then each list's icon and count.
+ * `counts` maps each list to its badge text; `problem` adds the red "!", as on Ubuntu.
  */
 export async function trayImages({layout, buttons, counts, problem}) {
     const alert = problem ? [{pill: '!', alert: true}] : [];
-    const list = id => [{icon: LIST_ICONS[id]}, {pill: counts[id] || '0'}];
+    const app = [{icon: appIcon}, {name: 'Source Glance'}, ...alert];
     const result = {};
     if (layout === 'tabs') {
-        result.app = await drawItem([{icon: appIcon}, ...alert, ...buttons.flatMap(list)]);
+        const total = totalBadge(buttons.map(id => counts[id] ?? ''));
+        result.app = await drawItem([...app, ...total ? [{pill: total}] : []]);
         return result;
     }
-    result.app = await drawItem([{icon: appIcon}, ...alert]);
+    result.app = await drawItem(app);
     for (const id of buttons)
-        result[id] = await drawItem(list(id));
+        result[id] = await drawItem([{icon: LIST_ICONS[id]}, {pill: counts[id] || '0'}]);
     return result;
 }

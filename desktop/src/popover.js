@@ -16,7 +16,7 @@ import {
 } from './platform/tauri.js';
 import {Store} from './store.js';
 import {trayImages} from './trayImages.js';
-import {render, toolbarButtons} from './views.js';
+import {element, iconNode, render, toolbarButtons} from './views.js';
 
 const $ = id => document.getElementById(id);
 
@@ -29,11 +29,8 @@ const ui = {
     state: store.state,
     page: 'app',
     tab: 'issues',
-    // Label filters are per session, as on Ubuntu.
-    filters: {},
-    expanded: null,
-    badge: id => listBadge(id, store.state) || '0',
     rerender: () => show(),
+    openActions: (row, entries) => openActions(row, entries),
     app: {
         startAtLogin: false,
         openMain: page => openMain(page),
@@ -65,7 +62,57 @@ function notify(text) {
     fit();
 }
 
+/** The item whose actions are open beside the list, if any. */
+let actionsFor = null;
+
+/** Opens an item's actions in a menu beside the list, level with its row, as on Ubuntu. */
+function openActions(row, entries) {
+    if (actionsFor === row) {
+        closeActions();
+        return;
+    }
+    closeActions();
+    actionsFor = row;
+    row.setAttribute('aria-expanded', 'true');
+    const box = $('actions');
+    box.replaceChildren(...entries.map(entry => {
+        const button = element('button', {className: 'row action', attrs: {type: 'button', role: 'menuitem'}},
+            [iconNode(entry.icon), element('span', {className: 'label', text: entry.text})]);
+        button.disabled = entry.enabled === false;
+        button.addEventListener('click', () => {
+            closeActions();
+            entry.onClick();
+        });
+        return button;
+    }));
+    box.hidden = false;
+    // Centred on the row, kept inside the window.
+    const rowBox = row.getBoundingClientRect();
+    const top = Math.max(0, rowBox.top + rowBox.height / 2 - box.offsetHeight / 2);
+    box.style.marginTop = `${Math.round(top)}px`;
+    fit();
+    box.querySelector('button:not(:disabled)')?.focus();
+}
+
+function closeActions() {
+    actionsFor?.setAttribute('aria-expanded', 'false');
+    actionsFor = null;
+    const box = $('actions');
+    if (!box.hidden) {
+        box.hidden = true;
+        box.replaceChildren();
+        fit();
+    }
+}
+
+// A click anywhere outside the actions closes them.
+document.addEventListener('mousedown', event => {
+    if (actionsFor && !$('actions').contains(event.target) && !actionsFor.contains(event.target))
+        closeActions();
+});
+
 function showPanel(panel) {
+    closeActions();
     const layer = $('panel-layer');
     layer.replaceChildren(...panel ? [panel] : []);
     layer.hidden = !panel;
@@ -75,16 +122,26 @@ function showPanel(panel) {
 
 ui.actions = new Actions({store, showPanel, notify});
 
-/** Sizes the window to its content: Ubuntu's menu width, and at most 70 % of the screen high. */
+/**
+ * Sizes the window to its content: Ubuntu's menu width (plus the actions beside it while
+ * they're open), and at most the screen's height. Rust keeps the window's right edge in place.
+ */
 function fit() {
     const width = menuWidth(window.screen.width);
-    document.body.style.width = `${width}px`;
-    const height = Math.min(document.body.scrollHeight, Math.round(window.screen.availHeight * 0.7));
-    sizePopover(width, height);
+    $('box').style.width = `${width}px`;
+    const actions = $('actions');
+    const extra = actions.hidden ? 0 : actions.offsetWidth + 6;
+    const limit = window.screen.availHeight - 40;
+    $('box').style.maxHeight = `${limit}px`;
+    const height = Math.min(limit, Math.max($('box').scrollHeight + 2,
+        actions.hidden ? 0 : actions.offsetTop + actions.offsetHeight));
+    sizePopover(width + extra, height);
 }
 
 function show() {
     ui.state = store.state;
+    // A redraw replaces the rows, so the open actions would point at a row that's gone.
+    closeActions();
     render(ui);
     fit();
 }
@@ -139,7 +196,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ref
 
 await listen('popover:show', async ({payload}) => {
     ui.page = payload;
-    ui.expanded = null;
     showPanel(null);
     ui.app.startAtLogin = await startAtLogin();
     show();
@@ -148,7 +204,9 @@ await listen('popover:show', async ({payload}) => {
 document.addEventListener('keydown', event => {
     if (event.key !== 'Escape')
         return;
-    if (!$('panel-layer').hidden)
+    if (actionsFor)
+        closeActions();
+    else if (!$('panel-layer').hidden)
         showPanel(null);
     else
         hidePopover();

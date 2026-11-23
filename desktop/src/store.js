@@ -9,7 +9,7 @@ import {emit, listen} from '@tauri-apps/api/event';
 
 import {GitHubClient} from './platform/github.js';
 import {GitLabClient} from './platform/gitlab.js';
-import {accountList, secrets} from './platform/tauri.js';
+import {accountList, fakeLists, secrets} from './platform/tauri.js';
 
 const factory = {
     github: (version, base) => new GitHubClient(version, base),
@@ -47,6 +47,19 @@ export class Store {
     }
 
     async start() {
+        // Development only: show made-up lists (screenshots), like the Ubuntu window.
+        this._fake = await fakeLists().catch(() => null);
+        if (this._fake) {
+            for (const source of this._fake.sources ?? [])
+                source.updatedAt = source.updatedAt ? new Date(source.updatedAt) : new Date();
+            this.accounts = this._fake.sources.map(source => source.account);
+            allowLinkBases(this.accounts.map(account => account.base));
+            this.state = {...this._fake, updatedAt: new Date(), refreshing: false, busy: [], problem: null,
+                intervalMinutes: 10};
+            this.settings.connect(() => this._changed());
+            this._changed();
+            return;
+        }
         this.settings.connect(key => {
             // The popover reloads on its own for these; the main window only rereads the accounts.
             if (RELOAD_KEYS.includes(key))
@@ -83,6 +96,8 @@ export class Store {
     }
 
     async refresh() {
+        if (this._fake)
+            return;
         if (this._follow) {
             await this._loadAccounts();
             await emit('refresh');
