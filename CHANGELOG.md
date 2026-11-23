@@ -11,7 +11,7 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Source Glance for macOS** (Phase 0 and 1 of [ADR 0006](docs/adr/0006-cross-platform-desktop-app-with-tauri.md),
   [#10](https://github.com/omer-gh/sourceglance/issues/10)): a menu-bar app built with Tauri
-  from the same `src/lib` code as the extension. Sign in to github.com, gitlab.com or a
+  from the same `src/shared` code as the extension. Sign in to github.com, gitlab.com or a
   self-hosted instance (browser sign-in or a personal access token); sign-ins are kept in
   the login Keychain. The menu bar shows your Issues, Pull requests and Projects, each with
   its count in a blue pill, as separate items (the default, like Ubuntu) or as one item with
@@ -27,9 +27,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- The account list logic (`accountRegistry.js`) and the cancellation check
-  (`cancellation.js`) moved out of the GNOME-only code so the macOS app can share them. No
-  change for the extension.
+- The account list logic (`accountRegistry.js`), the list loaders (`loader.js`,
+  `gitlabLoader.js`) and the cancellation check (`cancellation.js`) moved into `src/shared`
+  so the macOS app can share them, with the usual re-exports left in `src/lib`. No change for
+  the extension.
 
 ## [0.18.0] - 2026-11-22
 

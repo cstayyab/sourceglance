@@ -13,14 +13,14 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Rect, Runtime};
 
-pub const LISTS: [&str; 3] = ["issues", "prs", "projects"];
+pub const LISTS: [&str; 3] = ["issues", "prs", "boards"];
 const APP: &str = "app";
 
 fn icon(id: &str) -> Image<'static> {
     let bytes: &'static [u8] = match id {
         "issues" => include_bytes!("../icons/tray/issues.png"),
         "prs" => include_bytes!("../icons/tray/prs.png"),
-        "projects" => include_bytes!("../icons/tray/projects.png"),
+        "boards" => include_bytes!("../icons/tray/projects.png"),
         _ => include_bytes!("../icons/tray/app.png"),
     };
     Image::from_bytes(bytes).expect("bundled tray icon")
@@ -30,7 +30,7 @@ fn tooltip(id: &str) -> &'static str {
     match id {
         "issues" => "Issues",
         "prs" => "Pull requests",
-        "projects" => "Projects",
+        "boards" => "Project Boards",
         _ => "Source Glance",
     }
 }
@@ -43,7 +43,7 @@ pub struct TrayState {
     /// Badge text per list, from `listBadge()`: "", "7" or "25+".
     pub issues: String,
     pub prs: String,
-    pub projects: String,
+    pub boards: String,
     /// Shown on the Source Glance item when a list didn't load (the red "!" on Ubuntu).
     pub problem: bool,
     /// Each item's image as PNG (its icon and the count in a blue pill), drawn by the
@@ -60,7 +60,7 @@ impl TrayState {
         match id {
             "issues" => &self.issues,
             "prs" => &self.prs,
-            "projects" => &self.projects,
+            "boards" => &self.boards,
             _ => "",
         }
     }
@@ -320,10 +320,10 @@ mod tests {
     fn state(layout: &str) -> TrayState {
         TrayState {
             layout: layout.into(),
-            buttons: vec!["issues".into(), "prs".into(), "projects".into()],
+            buttons: vec!["issues".into(), "prs".into(), "boards".into()],
             issues: "12".into(),
             prs: "".into(),
-            projects: "25+".into(),
+            boards: "25+".into(),
             problem: false,
             images: HashMap::new(),
         }
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn separate_layout_has_one_item_per_list() {
         let s = state("separate");
-        assert_eq!(s.items(), vec!["app", "issues", "prs", "projects"]);
+        assert_eq!(s.items(), vec!["app", "issues", "prs", "boards"]);
         assert_eq!(s.title("issues"), "12");
         assert_eq!(s.title("prs"), "0");
         assert_eq!(s.title("app"), "");
@@ -346,7 +346,7 @@ mod tests {
         assert_eq!(s.title("app"), "12 · 0 · 25+");
         assert_eq!(
             s.spoken("app"),
-            "Source Glance, Issues: 12, Pull requests: 0, Projects: 25+"
+            "Source Glance, Issues: 12, Pull requests: 0, Project Boards: 25+"
         );
         s.problem = true;
         s.buttons = vec!["issues".into()];

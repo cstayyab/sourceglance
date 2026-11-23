@@ -1,9 +1,9 @@
 // Item actions from the popover: comment, close or reopen, assignees, labels and project
 // status. Same flow and requests as src/lib/actions.js on Ubuntu; the dialogs are panels
 // inside the popover instead of GNOME dialogs. Every change runs as the item's account.
-import {accountForItem} from '@core/accounts.js';
-import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest} from '@core/model.js';
-import {assigneeRequests, closeReasons, closeRequests, commentRequests, labelRequests, reopenRequests} from '@core/requests.js';
+import {accountForItem} from '@shared/accounts.js';
+import {assigneeChoices, itemKey, itemRef, labelChoices, moveStatusRequest} from '@shared/model.js';
+import {assigneeRequests, closeReasons, closeRequests, commentRequests, labelRequests, reopenRequests} from '@shared/requests.js';
 import {ApiError} from './platform/http.js';
 import {LOCAL_NETWORK_TEXT, element} from './views.js';
 

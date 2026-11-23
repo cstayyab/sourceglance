@@ -1,7 +1,7 @@
 // What each menu-bar popover shows, the same as the Ubuntu top-bar menus (src/lib/views.js):
 // one section per account, repository headings that collapse, a label filter, and the
 // closed-items footer. `ui` is {root, state, settings, filters, rerender, actions, page}.
-import {hostLabel, isDefaultBase} from '@core/accounts.js';
+import {hostLabel, isDefaultBase} from '@shared/accounts.js';
 import {
     draftTarget,
     filterByLabel,
@@ -12,12 +12,14 @@ import {
     itemKey,
     itemRef,
     labelOptions,
+    normalizeButtons,
     relativeTime,
     sourceBadge,
     toggleId,
+    TOOLBAR_LISTS,
     truncate,
-} from '@core/model.js';
-import {closedPageUrl, profileUrl} from '@core/requests.js';
+} from '@shared/model.js';
+import {closedPageUrl, profileUrl} from '@shared/requests.js';
 
 import issueIcon from '../../src/icons/issue-symbolic.svg';
 import issueClosedIcon from '../../src/icons/issue-closed-symbolic.svg';
@@ -324,9 +326,9 @@ function renderProjects(ui) {
         return;
     }
     for (const src of sources) {
-        const id = `projects:${src.key}`;
+        const id = `boards:${src.key}`;
         const collapsed = ui.settings.get('collapsed-sections', []).includes(id);
-        toggle(ui, truncate(src.title, 48), sourceBadge('projects', src), collapsed, 'collapsed-sections', id, 'account');
+        toggle(ui, truncate(src.title, 48), sourceBadge('boards', src), collapsed, 'collapsed-sections', id, 'account');
         if (!collapsed)
             renderBoards(ui, src);
     }
@@ -375,14 +377,9 @@ function renderApp(ui) {
     action(ui, 'Quit', () => ui.app.quit());
 }
 
-const LIST_IDS = ['issues', 'prs', 'projects'];
-
-/** The lists chosen in `toolbar-buttons`, ignoring unknown names and repeats. */
+/** The lists chosen in `toolbar-buttons`, in their fixed order (old ids renamed). */
 export function toolbarButtons(settings) {
-    const chosen = settings.get('toolbar-buttons', LIST_IDS);
-    if (!Array.isArray(chosen))
-        return LIST_IDS;
-    return chosen.filter((id, index) => LIST_IDS.includes(id) && chosen.indexOf(id) === index);
+    return normalizeButtons(settings.get('toolbar-buttons', TOOLBAR_LISTS));
 }
 
 /** The tabs layout: one tab per list, like Ubuntu's "tabs" top bar. */
@@ -390,7 +387,7 @@ function renderTabs(ui) {
     const tabs = ['app', ...toolbarButtons(ui.settings)];
     if (!tabs.includes(ui.tab))
         ui.tab = tabs[1] ?? 'app';
-    const titles = {app: 'Source Glance', issues: 'Issues', prs: 'Pull requests', projects: 'Projects'};
+    const titles = {app: 'Source Glance', issues: 'Issues', prs: 'Pull requests', boards: 'Project Boards'};
     const bar = element('div', {className: 'tabs', attrs: {role: 'tablist'}});
     for (const id of tabs) {
         const badge = id === 'app' ? '' : ui.badge(id);
@@ -413,7 +410,7 @@ const PAGES = {
     app: renderApp,
     issues: ui => renderItemList(ui, LISTS.issues),
     prs: ui => renderItemList(ui, LISTS.prs),
-    projects: renderProjects,
+    boards: renderProjects,
     tabs: renderTabs,
 };
 

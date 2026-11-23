@@ -1,6 +1,6 @@
 // The macOS window: accounts, settings and the Issues, Pull requests and Projects lists, using
 // the shared code in src/lib. Text from the API is set with textContent, never as HTML.
-import {removeAccount, saveAccount} from '@core/accountRegistry.js';
+import {removeAccount, saveAccount} from '@shared/accountRegistry.js';
 import {
     accountId,
     accountTitle,
@@ -8,9 +8,9 @@ import {
     isDefaultBase,
     parseInstanceUrl,
     platformName,
-} from '@core/accounts.js';
-import {GITHUB_APP_CLIENT_ID, GITLAB_CLIENT_ID} from '@core/config.js';
-import {listBadge} from '@core/model.js';
+} from '@shared/accounts.js';
+import {GITHUB_APP_CLIENT_ID, GITLAB_CLIENT_ID} from '@lib/config.js';
+import {listBadge} from '@shared/model.js';
 import {listen} from '@tauri-apps/api/event';
 
 import {GitHubClient} from './platform/github.js';
@@ -28,7 +28,7 @@ import {
     uninstall,
 } from './platform/tauri.js';
 import {Store} from './store.js';
-import {LOCAL_NETWORK_TEXT, element, errorText, timeAgo} from './views.js';
+import {LOCAL_NETWORK_TEXT, element, errorText, timeAgo, toolbarButtons} from './views.js';
 
 const factory = {
     github: (version, base) => new GitHubClient(version, base),
@@ -140,7 +140,7 @@ class App {
 
     async _renderSettings() {
         $('layout').value = this.settings.get('layout', 'separate');
-        const buttons = this.settings.get('toolbar-buttons', ['issues', 'prs', 'projects']);
+        const buttons = toolbarButtons(this.settings);
         for (const box of document.querySelectorAll('input[name=button]'))
             box.checked = buttons.includes(box.value);
         $('dock-icon').checked = this.settings.get('show-dock-icon', false);
@@ -224,7 +224,7 @@ class App {
                 return element('section', {className: 'source'}, [heading, element('p', {className: 'hint', text: 'Signed out. Sign in again under Accounts.'})]);
             if (source.status === 'error' && !source.updatedAt)
                 return element('section', {className: 'source'}, [heading, element('p', {className: 'hint', text: errorText(source.error, this.state.intervalMinutes)})]);
-            if (this.current === 'projects')
+            if (this.current === 'boards')
                 return element('section', {className: 'source'}, [heading, ...this._boards(source)]);
             const groups = this.current === 'issues' ? source.groups : source.prGroups;
             if (groups.length === 0)

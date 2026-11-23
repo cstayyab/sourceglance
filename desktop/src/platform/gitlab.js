@@ -2,8 +2,8 @@
 // through Rust, which also renews the token. `token` is a sign-in reference (see tauri.js).
 import {invoke} from '@tauri-apps/api/core';
 
-import {GITLAB_COM, gitlabUrls, parseGitLabDiscovery} from '@core/accounts.js';
-import {GITLAB_CLIENT_ID} from '@core/config.js';
+import {GITLAB_COM, gitlabUrls, parseGitLabDiscovery} from '@shared/accounts.js';
+import {GITLAB_CLIENT_ID} from '@lib/config.js';
 import {
     GITLAB_SCOPE,
     closedCountPaths,
@@ -13,8 +13,8 @@ import {
     parseGitLabLabels,
     parseGitLabMembers,
     parseGitLabToken,
-} from '@core/gitlabModel.js';
-import {DEVICE_GRANT_TYPE, classifyDeviceTokenResponse} from '@core/model.js';
+} from '@shared/gitlabModel.js';
+import {DEVICE_GRANT_TYPE, classifyDeviceTokenResponse} from '@shared/model.js';
 import {ApiError, DeviceFlowError, oauth, request} from './http.js';
 import {sleep, throwIfAborted} from './tauri.js';
 

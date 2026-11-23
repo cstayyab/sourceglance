@@ -1,6 +1,6 @@
 // GitHub client for the desktop app. Same methods as src/lib/github.js, but requests go
 // through Rust instead of Soup. `token` is a sign-in reference (see tauri.js).
-import {GITHUB_COM, githubUrls, isSafeAccountUrl, parseGhesMeta} from '@core/accounts.js';
+import {GITHUB_COM, githubUrls, isSafeAccountUrl, parseGhesMeta} from '@shared/accounts.js';
 import {
     DEVICE_GRANT_TYPE,
     buildSearchPath,
@@ -16,7 +16,7 @@ import {
     parseViewerBoards,
     projectItemsRequest,
     viewerBoardsRequest,
-} from '@core/model.js';
+} from '@shared/model.js';
 import {ApiError, DeviceFlowError, oauth, request} from './http.js';
 import {sleep} from './tauri.js';
 

@@ -40,13 +40,11 @@ export default [
         },
     },
     {
-        // ADR 0004: the pure core must stay importable from Node.
-        // Also used by the desktop app (ADR 0006), so no Tauri imports either.
+        // ADR 0004: the pure core must stay importable from Node. src/shared is also the
+        // desktop app's (ADR 0006), so no Tauri imports there either.
         files: [
-            'src/lib/model.js', 'src/lib/gitlabModel.js', 'tools/installer/lib/plan.js',
-            'src/lib/accounts.js', 'src/lib/accountRegistry.js', 'src/lib/cancellation.js',
-            'src/lib/config.js', 'src/lib/gitlabLoader.js', 'src/lib/loader.js',
-            'src/lib/markdown.js', 'src/lib/requests.js', 'src/lib/updates.js',
+            'src/shared/**/*.js', 'src/lib/config.js', 'src/lib/updates.js',
+            'tools/installer/lib/plan.js',
         ],
         rules: {
             'no-restricted-imports': ['error', {patterns: ['gi://*', 'resource://*', '@tauri-apps/*']}],
@@ -70,6 +68,11 @@ export default [
             'no-implied-eval': 'error',
             'no-new-func': 'error',
             'no-script-url': 'error',
+            // Shared code only from src/shared: src/lib may pull in GNOME (config.js is plain).
+            'no-restricted-imports': ['error', {patterns: [{
+                group: ['@lib/*', '!@lib/config.js', '**/src/lib/*'],
+                message: 'Import shared code from @shared; only @lib/config.js is allowed from src/lib.',
+            }]}],
             // API text goes in with textContent.
             'no-restricted-properties': ['error',
                 {property: 'innerHTML', message: 'Use textContent or DOM nodes (untrusted data).'},

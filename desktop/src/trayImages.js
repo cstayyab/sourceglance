@@ -16,7 +16,7 @@ const FONT = `600 ${11 * SCALE}px -apple-system, BlinkMacSystemFont, sans-serif`
 const BLUE = '#3584e4';
 const RED = '#e01b24';
 
-export const LIST_ICONS = {app: appIcon, issues: ICONS.issue, prs: ICONS.pr, projects: ICONS.projects};
+export const LIST_ICONS = {app: appIcon, issues: ICONS.issue, prs: ICONS.pr, boards: ICONS.projects};
 
 const images = new Map();
 const drawn = new Map();

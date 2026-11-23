@@ -2,9 +2,9 @@
 // which is always loaded, is the one that fetches them; the main window follows its results,
 // so the API isn't used twice. A change in either window (signing in, an action) makes the
 // popover reload.
-import {AccountClients, loadAccount, loadAccounts} from '@core/accountRegistry.js';
-import {aggregateStatus, fetchProblem, latestUpdate, sourceFrom} from '@core/accounts.js';
-import {allowLinkBases} from '@core/requests.js';
+import {AccountClients, loadAccount, loadAccounts} from '@shared/accountRegistry.js';
+import {aggregateStatus, fetchProblem, latestUpdate, sourceFrom} from '@shared/accounts.js';
+import {allowLinkBases} from '@shared/requests.js';
 import {emit, listen} from '@tauri-apps/api/event';
 
 import {GitHubClient} from './platform/github.js';
@@ -153,7 +153,7 @@ export class Store {
         try {
             const result = await loadAccount(this.clients, account, {
                 repos: this.settings.get('repositories', []),
-                projects: true,
+                boards: true,
             }, signal);
             this.results.set(account.id, result.status === 'ready' ? {...result, updatedAt: new Date(), error: null} : result);
         } catch (e) {

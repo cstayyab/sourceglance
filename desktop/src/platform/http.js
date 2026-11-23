@@ -2,7 +2,7 @@
 // classifyHttpError(), like on GNOME, or an AbortError when cancelled.
 import {invoke} from '@tauri-apps/api/core';
 
-import {classifyHttpError} from '@core/model.js';
+import {classifyHttpError} from '@shared/model.js';
 import {abortError, throwIfAborted} from './tauri.js';
 
 /** Same fields as GitHubError in src/lib/github.js. */

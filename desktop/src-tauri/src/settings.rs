@@ -91,6 +91,57 @@ pub fn parse_account(text: &str) -> Option<Account> {
     Some(Account { id, platform, base })
 }
 
+/// Projects became Project Boards (`docs/naming.md`): a saved list id `projects` (or
+/// `projects:…`) becomes `boards`, like `renameLegacyBoards()` in model.js and
+/// `migrateBoardsRename()` on Ubuntu. Returns whether anything changed; safe to run every time.
+fn migrate_boards(values: &mut Map<String, Value>) -> bool {
+    fn rename(id: &str) -> String {
+        if id == "projects" {
+            "boards".into()
+        } else if let Some(rest) = id.strip_prefix("projects:") {
+            format!("boards:{rest}")
+        } else {
+            id.into()
+        }
+    }
+    let mut changed = false;
+    for key in [
+        "toolbar-buttons",
+        "widgets",
+        "collapsed-groups",
+        "collapsed-sections",
+    ] {
+        let Some(Value::Array(ids)) = values.get(key) else {
+            continue;
+        };
+        let mut next: Vec<Value> = Vec::new();
+        for id in ids {
+            let id = id
+                .as_str()
+                .map(|t| Value::String(rename(t)))
+                .unwrap_or(id.clone());
+            if !next.contains(&id) {
+                next.push(id);
+            }
+        }
+        if &next != ids {
+            values.insert(key.into(), Value::Array(next));
+            changed = true;
+        }
+    }
+    if let Some(Value::Object(positions)) = values.get("widget-positions") {
+        if positions.contains_key("projects") {
+            let next: Map<String, Value> = positions
+                .iter()
+                .map(|(id, value)| (rename(id), value.clone()))
+                .collect();
+            values.insert("widget-positions".into(), Value::Object(next));
+            changed = true;
+        }
+    }
+    changed
+}
+
 impl Settings {
     pub fn load(path: Option<PathBuf>) -> Settings {
         let values = path
@@ -99,10 +150,17 @@ impl Settings {
             .and_then(|text| serde_json::from_str::<Value>(&text).ok())
             .and_then(|v| v.as_object().cloned())
             .unwrap_or_default();
-        Settings {
+        let mut values = values;
+        let settings_changed = migrate_boards(&mut values);
+        let settings = Settings {
             path,
             values: Mutex::new(values),
+        };
+        if settings_changed {
+            let values = settings.values.lock().unwrap();
+            let _ = settings.save(&values);
         }
+        settings
     }
 
     pub fn all(&self) -> Value {
@@ -210,6 +268,31 @@ mod tests {
         assert_eq!(settings.accounts().len(), 1);
         assert!(settings.knows_instance("https://git.example.com"));
         assert!(!settings.knows_instance("https://evil.example.com"));
+    }
+
+    #[test]
+    fn projects_becomes_boards_once() {
+        let mut values: Map<String, Value> = serde_json::from_value(serde_json::json!({
+            "toolbar-buttons": ["issues", "projects", "boards"],
+            "collapsed-sections": ["projects:github:github.com:al", "issues:x"],
+            "widget-positions": {"projects": [1, 2], "issues": [3, 4]},
+            "layout": "separate",
+        }))
+        .unwrap();
+        assert!(migrate_boards(&mut values));
+        assert_eq!(
+            values["toolbar-buttons"],
+            serde_json::json!(["issues", "boards"])
+        );
+        assert_eq!(
+            values["collapsed-sections"],
+            serde_json::json!(["boards:github:github.com:al", "issues:x"])
+        );
+        assert_eq!(
+            values["widget-positions"]["boards"],
+            serde_json::json!([1, 2])
+        );
+        assert!(!migrate_boards(&mut values));
     }
 
     #[test]

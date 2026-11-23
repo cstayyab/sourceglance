@@ -1,6 +1,6 @@
 // The menu-bar popover. It's always loaded (hidden), refreshes the lists on the interval,
 // keeps the menu-bar counts up to date, and shows the page for whichever item was clicked.
-import {listBadge, menuWidth} from '@core/model.js';
+import {listBadge, menuWidth} from '@shared/model.js';
 import {listen} from '@tauri-apps/api/event';
 
 import {Actions} from './actions.js';
@@ -98,14 +98,14 @@ async function trayState(state) {
         buttons: toolbarButtons(settings),
         issues: listBadge('issues', state),
         prs: listBadge('prs', state),
-        projects: listBadge('projects', state),
+        boards: listBadge('boards', state),
         problem: Boolean(state.problem),
     };
     try {
         tray.images = await trayImages({
             layout: tray.layout,
             buttons: tray.buttons,
-            counts: {issues: tray.issues, prs: tray.prs, projects: tray.projects},
+            counts: {issues: tray.issues, prs: tray.prs, boards: tray.boards},
             problem: tray.problem,
         });
     } catch (e) {
