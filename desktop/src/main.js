@@ -10,7 +10,7 @@ import {
     platformName,
 } from '@shared/accounts.js';
 import {GITHUB_APP_CLIENT_ID, GITLAB_CLIENT_ID} from '@lib/config.js';
-import {listBadge} from '@shared/model.js';
+import {listBadge, normalizeGroupBy, organizationOf} from '@shared/model.js';
 import {listen} from '@tauri-apps/api/event';
 
 import {GitHubClient} from './platform/github.js';
@@ -27,6 +27,7 @@ import {
     startAtLogin,
     uninstall,
 } from './platform/tauri.js';
+import {DisplayNames} from './displayNames.js';
 import {Store} from './store.js';
 import {LOCAL_NETWORK_TEXT, element, errorText, timeAgo, toolbarButtons} from './views.js';
 
@@ -41,6 +42,9 @@ class App {
     constructor(settings) {
         this.settings = settings;
         this.store = new Store(settings, {follow: true});
+        // Organization names: the platform's, and the ones you set (Settings → Organizations).
+        this.names = new DisplayNames(this.store.clients, settings);
+        this._organizations = 0;
         this.current = 'issues';
         this.signIn = null;
     }
@@ -56,6 +60,7 @@ class App {
     async start() {
         this._wire();
         this.store.connect(() => this.render());
+        this.names.connectChanged(() => this._renderOrganizations());
         await listen('open-page', ({payload}) => this.openPage(payload));
         await this.store.start();
         // First run: the window opens before it can hear the popover ask for Accounts.
@@ -93,6 +98,7 @@ class App {
         // Settings: the menu bar, the Dock icon and starting at login.
         $('bar-enabled').addEventListener('change', () => this.settings.set('bar-enabled', $('bar-enabled').checked));
         $('layout').addEventListener('change', () => this.settings.set('layout', $('layout').value));
+        $('group-by').addEventListener('change', () => this.settings.set('group-by', $('group-by').value));
         for (const box of document.querySelectorAll('input[name=button]')) {
             box.addEventListener('change', () => this.settings.set('toolbar-buttons',
                 [...document.querySelectorAll('input[name=button]:checked')].map(b => b.value)));
@@ -142,11 +148,90 @@ class App {
     async _renderSettings() {
         $('bar-enabled').checked = this.settings.get('bar-enabled', true) !== false;
         $('layout').value = this.settings.get('layout', 'separate');
+        $('group-by').value = normalizeGroupBy(this.settings.get('group-by', 'project'));
+        this._renderOrganizations();
         const buttons = toolbarButtons(this.settings);
         for (const box of document.querySelectorAll('input[name=button]'))
             box.checked = buttons.includes(box.value);
         $('dock-icon').checked = this.settings.get('show-dock-icon', false);
         $('start-at-login').checked = await startAtLogin();
+    }
+
+    /**
+     * Settings → Organizations, as on Ubuntu (src/window/pages/organizations.js): one row per
+     * organization login across accounts, the platforms that have it, and an editable name that
+     * offers every organization's name. Typing waits for Enter or leaving the field.
+     */
+    async _renderOrganizations() {
+        if ($('settings').hidden)
+            return;
+        const list = $('organization-list');
+        // Don't redraw under someone typing a name.
+        if (list.contains(document.activeElement))
+            return;
+        const generation = ++this._organizations;
+        const found = await Promise.all(this.accounts.map(async account => ({account, orgs: await this.names.discover(account)})));
+        if (generation !== this._organizations || list.contains(document.activeElement))
+            return;
+        const unique = new Map();
+        for (const {account, orgs} of found) {
+            for (const org of orgs) {
+                const key = org.login.toLowerCase();
+                if (!unique.has(key))
+                    unique.set(key, {account, org, platforms: []});
+                const where = accountTitle({...account, login: ''});
+                if (!unique.get(key).platforms.includes(where))
+                    unique.get(key).platforms.push(where);
+            }
+        }
+        // What the field offers: every organization of every account, by its name (or login).
+        const choices = [];
+        for (const {account, org} of unique.values()) {
+            const choice = this.names.nameOf(account, org.login) || org.login;
+            if (!choices.some(known => known.toLowerCase() === choice.toLowerCase()))
+                choices.push(choice);
+        }
+        $('organization-choices').replaceChildren(...choices.map(choice => element('option', {attrs: {value: choice}})));
+        const entries = [...unique.values()].sort((a, b) => a.org.login.localeCompare(b.org.login));
+        list.replaceChildren(...entries.map(({account, org, platforms}) => this._organizationRow(account, org.login, platforms)));
+        list.hidden = entries.length === 0;
+        $('no-organizations').hidden = entries.length > 0;
+        this.names.load(found.flatMap(({account, orgs}) => orgs.map(({login}) => ({account, login}))));
+    }
+
+    _organizationRow(account, login, platforms) {
+        const input = element('input', {attrs: {'type': 'text', 'list': 'organization-choices', 'maxlength': '60',
+            'aria-label': `Name for ${login}`, 'spellcheck': 'false'}});
+        input.value = this.names.nameOf(account, login) || login;
+        let saved = input.value.trim();
+        const save = () => {
+            const name = input.value.trim();
+            if (name === saved)
+                return;
+            saved = name;
+            // The login alone is no name: it goes back to what the platform says.
+            this.names.setOverride(account, login, name.toLowerCase() === login.toLowerCase() ? '' : name)
+                .catch(e => console.error('sourceglance: saving the name failed', e));
+        };
+        input.addEventListener('change', save);
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                save();
+            }
+        });
+        return element('li', {}, [
+            element('span', {className: 'who'}, [element('span', {text: `@${login}`}), element('small', {text: platforms.join(' · ')})]),
+            input,
+        ]);
+    }
+
+    /** Organizations seen on loaded items are listed too, as on Ubuntu. */
+    _noteOrganizations() {
+        for (const src of this.state.sources) {
+            const groups = (src.groups ?? []).concat(src.prGroups ?? []);
+            this.names.noteSeen(src.account, [...new Set(groups.map(group => organizationOf(group.repo)))]);
+        }
     }
 
     _methodChanged() {
@@ -175,6 +260,7 @@ class App {
     }
 
     render() {
+        this._noteOrganizations();
         this._renderStatus();
         this._renderCounts();
         this._renderAccounts();

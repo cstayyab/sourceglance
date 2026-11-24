@@ -29,6 +29,10 @@ const KEYS: &[(&str, &str)] = &[
     ("check-updates", "bool"),
     ("token-changed", "number"),
     ("bar-enabled", "bool"),
+    ("group-by", "string"),
+    // Plain text maps (see checked_text_map): your names for organizations, and projects.
+    ("organization-names", "object"),
+    ("project-repos", "object"),
     // macOS only.
     ("show-dock-icon", "bool"),
 ];
@@ -143,6 +147,30 @@ fn migrate_boards(values: &mut Map<String, Value>) -> bool {
     changed
 }
 
+/// A map of plain text (a login or repository → a name), as the page sends it: only short text
+/// without control characters is kept, and only so many entries. The names are shown as text.
+fn checked_text_map(value: &Value) -> Value {
+    const MAX_ENTRIES: usize = 1000;
+    const MAX_KEY: usize = 255;
+    const MAX_NAME: usize = 100;
+    let plain = |text: &str, max: usize| {
+        !text.is_empty() && text.chars().count() <= max && !text.chars().any(char::is_control)
+    };
+    let kept = value
+        .as_object()
+        .map(|map| {
+            map.iter()
+                .filter(|(key, name)| {
+                    plain(key, MAX_KEY) && name.as_str().is_some_and(|n| plain(n, MAX_NAME))
+                })
+                .take(MAX_ENTRIES)
+                .map(|(key, name)| (key.clone(), name.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    Value::Object(kept)
+}
+
 impl Settings {
     pub fn load(path: Option<PathBuf>) -> Settings {
         let values = path
@@ -178,10 +206,18 @@ impl Settings {
         if !type_matches(&value, kind) {
             return Err("wrong type".into());
         }
-        let value = if key == "accounts" {
-            Self::checked_accounts(&value)
-        } else {
-            value
+        let value = match key {
+            "accounts" => Self::checked_accounts(&value),
+            "organization-names" | "project-repos" => checked_text_map(&value),
+            "group-by" => {
+                // "owner" is the old name for "organization", as on Ubuntu.
+                let known = ["project", "platform", "organization", "owner"];
+                if !value.as_str().is_some_and(|v| known.contains(&v)) {
+                    return Err("unknown grouping".into());
+                }
+                value
+            }
+            _ => value,
         };
         let mut values = self.values.lock().unwrap();
         values.insert(key.to_string(), value.clone());
@@ -269,6 +305,28 @@ mod tests {
         assert_eq!(settings.accounts().len(), 1);
         assert!(settings.knows_instance("https://git.example.com"));
         assert!(!settings.knows_instance("https://evil.example.com"));
+    }
+
+    #[test]
+    fn names_are_kept_as_short_plain_text() {
+        let settings = Settings::load(None);
+        let saved = settings
+            .set(
+                "organization-names",
+                serde_json::json!({
+                    "acme-labs": "Acme Labs",
+                    "bad": "line\nbreak",
+                    "empty": "",
+                    "number": 7,
+                    "long": "x".repeat(200),
+                }),
+            )
+            .unwrap();
+        assert_eq!(saved, serde_json::json!({"acme-labs": "Acme Labs"}));
+        assert!(settings
+            .set("group-by", Value::from("organization"))
+            .is_ok());
+        assert!(settings.set("group-by", Value::from("anything")).is_err());
     }
 
     #[test]

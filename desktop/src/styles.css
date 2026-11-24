@@ -126,3 +126,11 @@ main { padding: 16px; display: grid; gap: 16px; }
 button.danger { color: var(--problem); }
 .confirm { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
 .confirm p { margin: 0 0 8px; }
+
+/* Settings → Organizations: one row per organization, with its name. */
+.organization-list { list-style: none; padding: 0; margin: 0 0 12px; border: 1px solid var(--border); border-radius: 10px; }
+.organization-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; }
+.organization-list li + li { border-top: 1px solid var(--border); }
+.organization-list .who { display: grid; min-width: 0; }
+.organization-list .who small { color: var(--muted); }
+.organization-list input { width: 220px; flex: none; font: inherit; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: inherit; }

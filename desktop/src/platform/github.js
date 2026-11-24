@@ -91,7 +91,8 @@ export class GitHubClient {
         if (!req)
             throw new TypeError('sourceglance: empty request');
         const json = await this._request(req.method, req.path, token, req.body, signal);
-        if (req.graphql && json?.errors?.length)
+        // A `partial` request keeps what came back when only part of it couldn't be read.
+        if (req.graphql && json?.errors?.length && !(req.partial && json.data))
             throw new ApiError({kind: classifyGraphqlErrors(json.errors), status: 200, retryAt: null});
         return json;
     }

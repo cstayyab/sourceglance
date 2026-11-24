@@ -20,7 +20,9 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a menu beside the list, and Glance, Tasks, Settings and About in the Source Glance menu.
   **Show Source Glance in the menu bar** (Settings) works like Ubuntu's Top bar switch: off
   takes it out of the menu bar and stops checking in the background while the window keeps
-  working; opening Source Glance again turns it back on. Optional Dock icon and start at login.
+  working; opening Source Glance again turns it back on. **Group by** and **Organizations**
+  (Settings) work as on Ubuntu: name each organization (the same name on GitHub and GitLab
+  makes one group), with the platform's own name when you haven't set one. Optional Dock icon and start at login.
   Reaching a server on your local network asks for macOS's Local Network permission, and
   says how to turn it on if it's off.
 - **A Setup wizard for macOS:** `Source-Glance-X.Y.Z.pkg` opens Apple's Installer and installs

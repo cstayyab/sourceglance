@@ -69,6 +69,18 @@
           <label><input type="checkbox" name="button" value="prs"> Pull requests</label>
           <label><input type="checkbox" name="button" value="boards"> Project Boards</label>
         </fieldset>
+        <label>Group by
+          <select id="group-by">
+            <option value="project">Project</option>
+            <option value="platform">Platform</option>
+            <option value="organization">Organization</option>
+          </select>
+        </label>
+        <h3>Organizations</h3>
+        <p class="hint">Name each organization. Organizations with the same name share a group in your lists. This stays in Source Glance; nothing changes on GitHub or GitLab.</p>
+        <ul id="organization-list" class="organization-list"></ul>
+        <p id="no-organizations" class="hint" hidden>Sign in to see your organizations.</p>
+        <datalist id="organization-choices"></datalist>
         <h3>System</h3>
         <label class="inline"><input id="dock-icon" type="checkbox"> Show in the Dock</label>
         <label class="inline"><input id="start-at-login" type="checkbox"> Start automatically at login</label>
