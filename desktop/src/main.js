@@ -28,7 +28,10 @@ import {
     uninstall,
 } from './platform/tauri.js';
 import {DisplayNames} from './displayNames.js';
+import {ProjectStore} from './projectStore.js';
+import {ProjectsEditor} from './projectsEditor.js';
 import {Store} from './store.js';
+import {WatchList} from './watchList.js';
 import {LOCAL_NETWORK_TEXT, element, errorText, timeAgo, toolbarButtons} from './views.js';
 
 const factory = {
@@ -44,6 +47,8 @@ class App {
         this.store = new Store(settings, {follow: true});
         // Organization names: the platform's, and the ones you set (Settings → Organizations).
         this.names = new DisplayNames(this.store.clients, settings);
+        // Projects and the repositories to watch, as in Ubuntu's Preferences and Limit repositories.
+        this.projects = new ProjectStore(settings, this.store.clients);
         this._organizations = 0;
         this.current = 'issues';
         this.signIn = null;
@@ -61,6 +66,31 @@ class App {
         this._wire();
         this.store.connect(() => this.render());
         this.names.connectChanged(() => this._renderOrganizations());
+        this.projectsEditor = new ProjectsEditor({
+            store: this.projects,
+            list: $('project-list'),
+            note: $('projects-note'),
+            more: $('projects-more'),
+            resetBox: $('projects-reset'),
+            resetYes: $('projects-reset-yes'),
+            resetCancel: $('projects-reset-cancel'),
+            notify: text => {
+                $('settings-message').textContent = text;
+            },
+        });
+        this.watchList = new WatchList({
+            settings: this.settings,
+            clients: this.store.clients,
+            accounts: () => this.accounts,
+            // Only github.com's items: the watch list is github.com's.
+            seenRepos: () => this.state.sources
+                .filter(src => src.platform === 'github' && src.account.base === 'https://github.com')
+                .flatMap(src => (src.groups ?? []).concat(src.prGroups ?? []).map(group => group.repo)),
+            section: $('watch-section'),
+            list: $('watch-list'),
+            search: $('watch-search'),
+            results: $('watch-results'),
+        });
         await listen('open-page', ({payload}) => this.openPage(payload));
         await this.store.start();
         // First run: the window opens before it can hear the popover ask for Accounts.
@@ -150,6 +180,8 @@ class App {
         $('layout').value = this.settings.get('layout', 'separate');
         $('group-by').value = normalizeGroupBy(this.settings.get('group-by', 'project'));
         this._renderOrganizations();
+        this.projectsEditor.render();
+        this.watchList.render();
         const buttons = toolbarButtons(this.settings);
         for (const box of document.querySelectorAll('input[name=button]'))
             box.checked = buttons.includes(box.value);
@@ -226,12 +258,19 @@ class App {
         ]);
     }
 
-    /** Organizations seen on loaded items are listed too, as on Ubuntu. */
+    /**
+     * What the loaded items tell Settings, as on Ubuntu: their organizations and repositories,
+     * the submodules of those repositories, and the project boards (platform projects).
+     */
     _noteOrganizations() {
         for (const src of this.state.sources) {
             const groups = (src.groups ?? []).concat(src.prGroups ?? []);
             this.names.noteSeen(src.account, [...new Set(groups.map(group => organizationOf(group.repo)))]);
+            const repos = [...new Set(groups.map(group => group.repo))];
+            this.projects.noteRepos(repos);
+            this.projects.discoverSubmodules(src.account, repos);
         }
+        this.projects.noteBoards(this.state.sources.flatMap(src => (src.boards ?? []).map(board => board.title)));
     }
 
     _methodChanged() {
@@ -389,7 +428,9 @@ class App {
                 base,
                 login,
                 method,
-                clientId: null,
+                // As on Ubuntu: the browser sign-in remembers which app it used (the GitHub App
+                // can't read repository files, so nothing asks it to).
+                clientId: method === 'device' && !selfHosted ? (platform === 'gitlab' ? GITLAB_CLIENT_ID : GITHUB_APP_CLIENT_ID) : null,
             }, reference);
             this._signInMessage(`Signed in: ${accountTitle(account)}`);
         } catch (e) {

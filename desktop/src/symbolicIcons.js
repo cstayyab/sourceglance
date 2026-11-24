@@ -30,6 +30,8 @@ export const SYMBOLIC = {
     reopen: svg('<path d="M4.5 6.5h6a3 3 0 0 1 0 6H7"/><path d="M6.5 4 4 6.5 6.5 9"/>'),
     // system-users-symbolic: Assignees….
     assignees: svg('<circle cx="6" cy="5.5" r="2.25"/><path d="M2 13c0-2.5 1.8-4 4-4s4 1.5 4 4"/><path d="M10.5 3.5a2.25 2.25 0 0 1 0 4.25M12 9.25c1.3.5 2 1.9 2 3.75"/>'),
-    // edit-symbolic: a draft on a project board.
+    // user-trash-symbolic: Disband project.
+    trash: svg('<path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.75 9h6.5l.75-9M6.75 7v4M9.25 7v4"/>'),
+    // edit-symbolic: a draft on a project board, and renaming a project.
     draft: svg('<path d="M10.5 2.5l3 3-8 8h-3v-3z"/><path d="M9 4l3 3"/>'),
 };

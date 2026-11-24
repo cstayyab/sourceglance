@@ -33,6 +33,8 @@ const KEYS: &[(&str, &str)] = &[
     // Plain text maps (see checked_text_map): your names for organizations, and projects.
     ("organization-names", "object"),
     ("project-repos", "object"),
+    // The names of projects that came from a platform (see checked_text_list).
+    ("project-boards", "array"),
     // macOS only.
     ("show-dock-icon", "bool"),
 ];
@@ -171,6 +173,37 @@ fn checked_text_map(value: &Value) -> Value {
     Value::Object(kept)
 }
 
+/// A list of plain text, as the page sends it: only short text without control characters that
+/// `keep` accepts, at most a thousand entries.
+fn checked_text_list(value: &Value, keep: impl Fn(&str) -> bool) -> Value {
+    let kept = value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .filter(|text| {
+                    !text.is_empty() && !text.chars().any(char::is_control) && keep(text)
+                })
+                .take(1000)
+                .map(|text| Value::String(text.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    Value::Array(kept)
+}
+
+/// "owner/name" with GitHub's characters.
+fn is_repo(text: &str) -> bool {
+    let part = |p: &str| {
+        !p.is_empty()
+            && p.len() <= 100
+            && p.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    };
+    matches!(text.split_once('/'), Some((owner, name)) if part(owner) && part(name) && !name.contains('/'))
+}
+
 impl Settings {
     pub fn load(path: Option<PathBuf>) -> Settings {
         let values = path
@@ -209,6 +242,9 @@ impl Settings {
         let value = match key {
             "accounts" => Self::checked_accounts(&value),
             "organization-names" | "project-repos" => checked_text_map(&value),
+            "project-boards" => checked_text_list(&value, |name| name.chars().count() <= 100),
+            // The watch list: owner/name only, like isValidRepo() in model.js.
+            "repositories" => checked_text_list(&value, is_repo),
             "group-by" => {
                 // "owner" is the old name for "organization", as on Ubuntu.
                 let known = ["project", "platform", "organization", "owner"];
@@ -327,6 +363,13 @@ mod tests {
             .set("group-by", Value::from("organization"))
             .is_ok());
         assert!(settings.set("group-by", Value::from("anything")).is_err());
+        let watched = settings
+            .set(
+                "repositories",
+                serde_json::json!(["acme/web", "not a repo", "a/b/c", "", 3, "acme/api"]),
+            )
+            .unwrap();
+        assert_eq!(watched, serde_json::json!(["acme/web", "acme/api"]));
     }
 
     #[test]
