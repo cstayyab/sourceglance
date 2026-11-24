@@ -95,18 +95,6 @@
         <p class="hint">Repositories are projects of their own until you group them: rename a project, or drag a repository onto another.</p>
         <ul id="project-list" class="project-list"></ul>
         <p id="projects-note" class="hint" hidden>Some accounts can’t read repository files, so submodules aren’t found. Drag them into a project, or sign in with a fine-grained token.</p>
-        <div id="watch-section" hidden>
-          <h3>Repositories to watch</h3>
-          <p class="hint">On github.com, your lists show the repositories you watch: all of them until you switch some off. Add a public repository to watch it too.</p>
-          <input id="watch-search" class="watch-search" type="search" placeholder="Find public repositories, or type owner/name and press Enter" aria-label="Find public repositories" spellcheck="false">
-          <ul id="watch-results" class="organization-list watch-results"></ul>
-          <ul id="watch-list" class="watch-list"></ul>
-        </div>
-        <div id="boards-section" hidden>
-          <h3>Project boards to show</h3>
-          <p class="hint">Switch off the boards you don’t follow. They leave the menu bar, its counts and this window; nothing changes on GitHub.</p>
-          <ul id="boards-list" class="watch-list"></ul>
-        </div>
         <h3>System</h3>
         <label class="inline"><input id="dock-icon" type="checkbox"> Show in the Dock</label>
         <label class="inline"><input id="start-at-login" type="checkbox"> Start automatically at login</label>
@@ -136,6 +124,13 @@
       <div id="list-body"></div>
     </section>
   </main>
+  <aside id="access-panel" class="side-panel" aria-labelledby="access-title" hidden>
+    <div class="side-panel-header">
+      <div class="who"><h2 id="access-title"></h2><small id="access-subtitle"></small></div>
+      <button type="button" id="access-close" class="flat" aria-label="Close">✕</button>
+    </div>
+    <div id="access-body" class="side-panel-body"></div>
+  </aside>
 
   <script type="module" src="/src/main.js"></script>
 </body>

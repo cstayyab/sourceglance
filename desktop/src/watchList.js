@@ -1,9 +1,9 @@
-// Settings → Repositories to watch: which github.com repositories the lists show (the `repositories`
-// setting; empty means all). The same rules as the watch list in Ubuntu's Limit repositories &
-// boards (src/shared/repoAccess.js): switching one off from "all" lists the rest, listing everything
-// goes back to empty, the last one can't be switched off, and adding keeps what's watched.
-import {GITHUB_COM} from '@shared/accounts.js';
-import {isValidRepo} from '@shared/model.js';
+// Limit repositories & boards → Watch repositories: which github.com repositories the lists show
+// (the `repositories` setting; empty means all), the same as Ubuntu's (src/window/pages/
+// accountAccess.js) with the rules in src/shared/repoAccess.js: switching one off from "all" lists
+// the rest, listing everything goes back to empty, the last one can't be switched off, and adding
+// keeps what's watched. One collapsible group per organization, with a switch for all of it.
+import {parseRepoList} from '@shared/model.js';
 import {
     MAX_PAGES,
     addWatched,
@@ -16,58 +16,48 @@ import {
     reposRequest,
     searchReposRequest,
     setWatched,
-    toggleWatched,
 } from '@shared/repoAccess.js';
 
 import {element} from './views.js';
 
+/**
+ * A collapsible group (<details>) titled by an organization, with its count and a switch for all
+ * of its rows. Returns {group, body, master, count}.
+ */
+export function accordion(title, label) {
+    const master = element('input', {className: 'switch', attrs: {'type': 'checkbox', 'role': 'switch', 'aria-label': label}});
+    // The switch works on its own: clicking it doesn't open or close the group.
+    master.addEventListener('click', event => event.stopPropagation());
+    const count = element('span', {className: 'count'});
+    const summary = element('summary', {}, [element('span', {className: 'title', text: title}), count, master]);
+    const body = element('ul', {className: 'rows'});
+    const group = element('details', {className: 'accordion'}, [summary, body]);
+    return {group, body, master, count};
+}
+
+/** A row with a title, an optional line under it, and a switch. */
+export function switchRow(title, subtitle, checked, label, onChange) {
+    const box = element('input', {className: 'switch', attrs: {'type': 'checkbox', 'role': 'switch', 'aria-label': label}});
+    box.checked = checked;
+    box.addEventListener('change', () => onChange(box.checked, box));
+    const text = element('span', {className: 'who'}, [element('span', {text: title}),
+        ...subtitle ? [element('small', {text: subtitle})] : []]);
+    return element('li', {}, [element('label', {}, [text, box])]);
+}
+
 export class WatchList {
-    /** `accounts()` lists the accounts, `seenRepos()` the repositories seen on items. */
-    constructor({settings, clients, accounts, seenRepos, section, list, search, results}) {
+    /** `seenRepos()` lists the repositories seen on github.com items; `names` is a DisplayNames. */
+    constructor({settings, clients, names, seenRepos}) {
         this._settings = settings;
         this._clients = clients;
-        this._accounts = accounts;
+        this._names = names;
         this._seenRepos = seenRepos;
-        this._section = section;
-        this._list = list;
-        this._search = search;
-        this._results = results;
         // The repositories each github.com sign-in can see, asked once per account this session.
         this._available = new Map();
-        this._query = 0;
-        this._timer = null;
-
-        search.addEventListener('input', () => this._searchSoon());
-        search.addEventListener('keydown', event => {
-            if (event.key !== 'Enter')
-                return;
-            event.preventDefault();
-            // A full owner/name adds it without searching.
-            const name = search.value.trim();
-            if (isValidRepo(name)) {
-                this._add(name);
-                search.value = '';
-                results.replaceChildren();
-            }
-        });
-        settings.connect(key => {
-            if (key === 'repositories')
-                this.render();
-        });
-    }
-
-    _githubAccounts() {
-        return this._accounts().filter(account => account.platform === 'github' && account.base === GITHUB_COM);
     }
 
     _watched() {
         return this._settings.get('repositories', []) ?? [];
-    }
-
-    async _all() {
-        const seen = this._seenRepos().filter(repo => isValidRepo(repo));
-        const known = await Promise.all(this._githubAccounts().map(account => this._repos(account)));
-        return availableRepos(known.flat(), [...seen, ...this._watched()]);
     }
 
     // Up to three pages of the repositories a sign-in can see (read-only).
@@ -77,17 +67,15 @@ export class WatchList {
                 const found = [];
                 try {
                     const token = await this._clients.tokenFor(account);
-                    if (!token)
-                        return found;
-                    const client = this._clients.clientFor(account);
-                    for (let page = 1; page <= MAX_PAGES; page++) {
+                    const client = token ? this._clients.clientFor(account) : null;
+                    for (let page = 1; client && page <= MAX_PAGES; page++) {
                         const json = await client.send(token, reposRequest(page));
                         found.push(...parseRepos(json));
                         if (!mayHaveMore(json))
                             break;
                     }
                 } catch {
-                    // The repositories seen on items still show.
+                    // What the lists have seen is still offered.
                 }
                 return found;
             })());
@@ -95,89 +83,133 @@ export class WatchList {
         return this._available.get(account.id);
     }
 
-    async _set(next) {
-        try {
-            await this._settings.set('repositories', next);
-        } catch (e) {
-            console.error('sourceglance: saving the watch list failed', e);
-        }
-    }
+    /**
+     * Draws the section for `account` into `container`: a search for public repositories, then one
+     * group per organization. Returns a function that stops listening for changes.
+     */
+    render(account, container) {
+        const search = element('input', {className: 'search', attrs: {'type': 'search', 'spellcheck': 'false',
+            'placeholder': 'Find a public repository to add', 'aria-label': 'Find a public repository to add'}});
+        search.disabled = true;
+        const results = element('ul', {className: 'results'});
+        const groups = element('div', {className: 'groups'}, [element('p', {className: 'hint', text: 'Loading…'})]);
+        container.replaceChildren(search, results, groups);
 
-    async _add(name) {
-        await this._set(addWatched(this._watched(), await this._all(), [name]));
-    }
+        let all = [];
+        const known = repo => all.some(other => other.toLowerCase() === repo.toLowerCase());
+        const save = next => this._settings.set('repositories', next)
+            .catch(e => console.error('sourceglance: saving the watch list failed', e));
 
-    // Searches public repositories 0.4 s after the last key, from two characters. An older answer
-    // never replaces a newer one.
-    _searchSoon() {
-        clearTimeout(this._timer);
-        const query = this._search.value.trim();
-        const mine = ++this._query;
-        if (query.length < 2) {
-            this._results.replaceChildren();
-            return;
-        }
-        this._timer = setTimeout(async () => {
-            const account = this._githubAccounts()[0];
-            if (!account)
-                return;
-            let found = [];
-            try {
-                const token = await this._clients.tokenFor(account);
-                if (token)
-                    found = parseSearchRepos(await this._clients.clientFor(account).send(token, searchReposRequest(query)));
-            } catch {
-                found = [];
-            }
-            if (mine !== this._query)
-                return;
+        // Each organization's group stays open or closed across redraws.
+        const open = new Set();
+        const draw = () => {
             const watched = this._watched();
-            this._results.replaceChildren(...found.map(repo => {
-                const on = watched.some(name => name.toLowerCase() === repo.name.toLowerCase());
-                const add = element('button', {text: on ? 'Watched' : 'Add', attrs: {type: 'button'}});
-                add.disabled = on;
-                add.addEventListener('click', () => this._add(repo.name));
-                return element('li', {}, [
-                    element('span', {className: 'who'}, [element('span', {text: repo.name}),
-                        element('small', {text: repo.description || `${repo.stars} stars`})]),
-                    add,
-                ]);
-            }));
-        }, 400);
-    }
-
-    /** Draws the list, grouped by organization, each with a switch for all its repositories. */
-    async render() {
-        const accounts = this._githubAccounts();
-        this._section.hidden = accounts.length === 0;
-        if (accounts.length === 0)
-            return;
-        const all = await this._all();
-        const watched = this._watched();
-        const rows = [];
-        for (const {organization, repos} of reposByOrganization(all)) {
-            const on = repos.filter(repo => isWatched(watched, repo)).length;
-            const master = element('input', {attrs: {'type': 'checkbox', 'aria-label': `Watch every repository of ${organization}`}});
-            master.checked = on === repos.length;
-            master.indeterminate = on > 0 && on < repos.length;
-            master.addEventListener('change', () => this._set(setWatched(watched, all, repos, master.checked)));
-            rows.push(element('li', {className: 'organization'}, [element('label', {}, [master, ` ${organization}`])]));
-            for (const repo of repos) {
-                const box = element('input', {attrs: {'type': 'checkbox', 'aria-label': `Watch ${repo}`}});
-                box.checked = isWatched(watched, repo);
-                box.addEventListener('change', async () => {
-                    const next = toggleWatched(watched, all, repo, box.checked);
-                    // The last watched repository can't be switched off (an empty list means all).
-                    if (next === watched)
-                        box.checked = true;
-                    else
-                        await this._set(next);
-                });
-                rows.push(element('li', {className: 'repo'}, [element('label', {}, [box, ` ${repo}`])]));
+            if (all.length === 0) {
+                groups.replaceChildren(element('p', {className: 'hint', text: 'No repositories found'}));
+                return;
             }
-        }
-        if (rows.length === 0)
-            rows.push(element('li', {className: 'empty', text: 'No repositories found yet.'}));
-        this._list.replaceChildren(...rows);
+            groups.replaceChildren(...reposByOrganization(all).map(({organization, repos}) => {
+                const on = repos.filter(repo => isWatched(watched, repo)).length;
+                const title = this._names.label(account, organization);
+                const {group, body, master, count} = accordion(title, `Watch all repositories of ${organization}`);
+                group.open = open.has(organization.toLowerCase());
+                group.addEventListener('toggle', () => {
+                    if (group.open)
+                        open.add(organization.toLowerCase());
+                    else
+                        open.delete(organization.toLowerCase());
+                });
+                count.textContent = `${on}/${repos.length}`;
+                master.checked = on > 0;
+                master.addEventListener('change', () => save(setWatched(this._watched(), all, repos, master.checked)));
+                body.replaceChildren(...repos.map(repo => switchRow(repo, '', isWatched(watched, repo), `Watch ${repo}`, (checked, box) => {
+                    const next = setWatched(this._watched(), all, [repo], checked);
+                    // A change the list refused (the last ones can't go off) puts the switch back.
+                    if (next === this._watched())
+                        box.checked = !checked;
+                    else
+                        save(next);
+                })));
+                return group;
+            }));
+        };
+
+        const addRepos = repos => {
+            const fresh = repos.filter(repo => !known(repo));
+            if (fresh.length === 0)
+                return;
+            const next = addWatched(this._watched(), all, fresh);
+            all = availableRepos([...all, ...fresh]);
+            save(next);
+        };
+
+        // Searches GitHub 0.4 s after you stop typing, from two characters; an older answer never
+        // replaces a newer one. It finds public repositories to add; it doesn't filter the list.
+        let query = 0;
+        let timer = null;
+        const showResults = found => results.replaceChildren(...found.map(({name, description, stars}) => {
+            const add = element('button', {className: 'flat', text: known(name) ? 'Added' : 'Add', attrs: {type: 'button'}});
+            add.disabled = known(name);
+            add.addEventListener('click', () => {
+                addRepos([name]);
+                add.textContent = 'Added';
+                add.disabled = true;
+            });
+            return element('li', {}, [
+                element('span', {className: 'who'}, [element('span', {text: name}),
+                    element('small', {text: [stars > 0 ? `★ ${stars.toLocaleString()}` : '', description].filter(Boolean).join(' · ')})]),
+                add,
+            ]);
+        }));
+        search.addEventListener('input', () => {
+            clearTimeout(timer);
+            const text = search.value.trim();
+            const mine = ++query;
+            if (text.length < 2) {
+                showResults([]);
+                return;
+            }
+            timer = setTimeout(async () => {
+                let found;
+                try {
+                    const token = await this._clients.tokenFor(account);
+                    const client = token ? this._clients.clientFor(account) : null;
+                    found = client ? parseSearchRepos(await client.send(token, searchReposRequest(text))) : [];
+                } catch {
+                    found = [];
+                }
+                if (mine === query)
+                    showResults(found);
+            }, 400);
+        });
+        // A full owner/name you type is added on Enter, without waiting for a search.
+        search.addEventListener('keydown', event => {
+            if (event.key !== 'Enter')
+                return;
+            event.preventDefault();
+            const {repos, invalid} = parseRepoList(search.value);
+            if (invalid.length > 0 || repos.length === 0)
+                return;
+            addRepos(repos);
+            search.value = '';
+            showResults([]);
+        });
+
+        const stop = this._settings.connect(key => {
+            if (key === 'repositories')
+                draw();
+        });
+        (async () => {
+            const found = await this._repos(account);
+            // Repositories already on the list that this sign-in doesn't show (a public one) are here too.
+            all = availableRepos(found, [...this._seenRepos(), ...this._watched()]);
+            search.disabled = false;
+            draw();
+        })();
+        return () => {
+            stop();
+            clearTimeout(timer);
+            query++;
+        };
     }
 }

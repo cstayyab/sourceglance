@@ -27,6 +27,7 @@ import {
     startAtLogin,
     uninstall,
 } from './platform/tauri.js';
+import {AccessPanel} from './accessPanel.js';
 import {BoardsList} from './boardsList.js';
 import {DisplayNames} from './displayNames.js';
 import {ProjectStore} from './projectStore.js';
@@ -79,25 +80,24 @@ class App {
                 $('settings-message').textContent = text;
             },
         });
-        this.watchList = new WatchList({
-            settings: this.settings,
-            clients: this.store.clients,
-            accounts: () => this.accounts,
-            // Only github.com's items: the watch list is github.com's.
-            seenRepos: () => this.state.sources
-                .filter(src => src.platform === 'github' && src.account.base === 'https://github.com')
-                .flatMap(src => (src.groups ?? []).concat(src.prGroups ?? []).map(group => group.repo)),
-            section: $('watch-section'),
-            list: $('watch-list'),
-            search: $('watch-search'),
-            results: $('watch-results'),
-        });
-        this.boardsList = new BoardsList({
-            settings: this.settings,
-            sources: () => this.state.sources,
-            names: this.names,
-            section: $('boards-section'),
-            list: $('boards-list'),
+        // Limit repositories & boards, per GitHub account, in a panel at the window's right.
+        this.access = new AccessPanel({
+            panel: $('access-panel'),
+            title: $('access-title'),
+            subtitle: $('access-subtitle'),
+            body: $('access-body'),
+            close: $('access-close'),
+            watchList: new WatchList({
+                settings: this.settings,
+                clients: this.store.clients,
+                names: this.names,
+                // Only github.com's items: the watch list is github.com's.
+                seenRepos: () => this.state.sources
+                    .filter(src => src.platform === 'github' && src.account.base === 'https://github.com')
+                    .flatMap(src => (src.groups ?? []).concat(src.prGroups ?? []).map(group => group.repo)),
+            }),
+            boardsList: new BoardsList({settings: this.settings, names: this.names}),
+            sourceOf: account => this.state.sources.find(src => src.account.id === account.id),
         });
         await listen('open-page', ({payload}) => this.openPage(payload));
         await this.store.start();
@@ -189,8 +189,6 @@ class App {
         $('group-by').value = normalizeGroupBy(this.settings.get('group-by', 'project'));
         this._renderOrganizations();
         this.projectsEditor.render();
-        this.watchList.render();
-        this.boardsList.render();
         const buttons = toolbarButtons(this.settings);
         for (const box of document.querySelectorAll('input[name=button]'))
             box.checked = buttons.includes(box.value);
@@ -309,8 +307,6 @@ class App {
 
     render() {
         this._noteOrganizations();
-        if (!$('settings').hidden)
-            this.boardsList.render();
         this._renderStatus();
         this._renderCounts();
         this._renderAccounts();
@@ -349,9 +345,19 @@ class App {
                     this._accountsMessage(`Couldn’t sign out of ${accountTitle(account)}: ${e?.message ?? e}`);
                 }
             });
-            return element('li', {}, [element('span', {text: accountTitle(account)}), remove]);
+            const actions = [remove];
+            if (account.platform === 'github') {
+                const limit = element('button', {text: 'Limit repositories & boards', attrs: {type: 'button'}});
+                limit.addEventListener('click', () => this.access.toggle(account));
+                actions.unshift(limit);
+            }
+            return element('li', {}, [element('span', {text: accountTitle(account)}),
+                element('span', {className: 'account-actions'}, actions)]);
         }));
         $('no-accounts').hidden = this.accounts.length > 0;
+        // An account signed out: its panel goes too.
+        if (this.access.owner && !this.accounts.some(account => account.id === this.access.owner))
+            this.access.hide();
     }
 
     _renderList() {
