@@ -27,6 +27,7 @@ import {
     startAtLogin,
     uninstall,
 } from './platform/tauri.js';
+import {BoardsList} from './boardsList.js';
 import {DisplayNames} from './displayNames.js';
 import {ProjectStore} from './projectStore.js';
 import {ProjectsEditor} from './projectsEditor.js';
@@ -90,6 +91,13 @@ class App {
             list: $('watch-list'),
             search: $('watch-search'),
             results: $('watch-results'),
+        });
+        this.boardsList = new BoardsList({
+            settings: this.settings,
+            sources: () => this.state.sources,
+            names: this.names,
+            section: $('boards-section'),
+            list: $('boards-list'),
         });
         await listen('open-page', ({payload}) => this.openPage(payload));
         await this.store.start();
@@ -182,6 +190,7 @@ class App {
         this._renderOrganizations();
         this.projectsEditor.render();
         this.watchList.render();
+        this.boardsList.render();
         const buttons = toolbarButtons(this.settings);
         for (const box of document.querySelectorAll('input[name=button]'))
             box.checked = buttons.includes(box.value);
@@ -300,6 +309,8 @@ class App {
 
     render() {
         this._noteOrganizations();
+        if (!$('settings').hidden)
+            this.boardsList.render();
         this._renderStatus();
         this._renderCounts();
         this._renderAccounts();

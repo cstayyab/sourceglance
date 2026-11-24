@@ -35,6 +35,8 @@ const KEYS: &[(&str, &str)] = &[
     ("project-repos", "object"),
     // The names of projects that came from a platform (see checked_text_list).
     ("project-boards", "array"),
+    // Project boards you hid, by web address (or title): plain text.
+    ("hidden-boards", "array"),
     // macOS only.
     ("show-dock-icon", "bool"),
 ];
@@ -243,6 +245,7 @@ impl Settings {
             "accounts" => Self::checked_accounts(&value),
             "organization-names" | "project-repos" => checked_text_map(&value),
             "project-boards" => checked_text_list(&value, |name| name.chars().count() <= 100),
+            "hidden-boards" => checked_text_list(&value, |key| key.chars().count() <= 500),
             // The watch list: owner/name only, like isValidRepo() in model.js.
             "repositories" => checked_text_list(&value, is_repo),
             "group-by" => {
@@ -370,6 +373,16 @@ mod tests {
             )
             .unwrap();
         assert_eq!(watched, serde_json::json!(["acme/web", "acme/api"]));
+        let hidden = settings
+            .set(
+                "hidden-boards",
+                serde_json::json!(["https://github.com/orgs/acme/projects/1", "a\tb", ""]),
+            )
+            .unwrap();
+        assert_eq!(
+            hidden,
+            serde_json::json!(["https://github.com/orgs/acme/projects/1"])
+        );
     }
 
     #[test]

@@ -4,6 +4,7 @@
 // popover reload.
 import {AccountClients, loadAccount, loadAccounts} from '@shared/accountRegistry.js';
 import {aggregateStatus, fetchProblem, latestUpdate, sourceFrom} from '@shared/accounts.js';
+import {boardKey} from '@shared/projects.js';
 import {allowLinkBases} from '@shared/requests.js';
 import {emit, listen} from '@tauri-apps/api/event';
 
@@ -54,9 +55,16 @@ export class Store {
                 source.updatedAt = source.updatedAt ? new Date(source.updatedAt) : new Date();
             this.accounts = this._fake.sources.map(source => source.account);
             allowLinkBases(this.accounts.map(account => account.base));
+            for (const source of this._fake.sources ?? [])
+                source.allBoards ??= source.boards;
             this.state = {...this._fake, updatedAt: new Date(), refreshing: false, busy: [], problem: null,
                 intervalMinutes: 10};
-            this.settings.connect(() => this._changed());
+            this._hideFakeBoards();
+            this.settings.connect(key => {
+                if (key === 'hidden-boards')
+                    this._hideFakeBoards();
+                this._changed();
+            });
             this._changed();
             return;
         }
@@ -68,6 +76,8 @@ export class Store {
                 this._schedule();
             else if (key === 'bar-enabled' && !this._follow)
                 this._barChanged();
+            else if (key === 'hidden-boards')
+                this._rebuild();
             else
                 this._changed();
         });
@@ -208,8 +218,30 @@ export class Store {
         }
     }
 
+    /**
+     * Whether a project board is hidden (Settings → Project boards to show). Applied while the
+     * lists are built, so the popovers, the window and the menu-bar counts agree, as on Ubuntu.
+     */
+    _hiddenBoard() {
+        const hidden = new Set(this.settings.get('hidden-boards', []) ?? []);
+        return board => hidden.has(boardKey(board));
+    }
+
+    /** Builds the lists again from what's loaded, after hiding or showing boards. */
+    _rebuild() {
+        this.state = this._state(this.state.refreshing);
+        this._changed();
+    }
+
+    _hideFakeBoards() {
+        const hidden = this._hiddenBoard();
+        for (const source of this.state.sources ?? [])
+            source.boards = source.allBoards?.filter(board => !hidden(board)) ?? null;
+    }
+
     _state(refreshing) {
-        const sources = this.accounts.map(account => sourceFrom(account, this.results.get(account.id) ?? {}));
+        const hiddenBoard = this._hiddenBoard();
+        const sources = this.accounts.map(account => sourceFrom(account, this.results.get(account.id) ?? {}, () => false, hiddenBoard));
         return {
             status: this.accounts.length === 0 ? 'signed-out' : aggregateStatus(sources),
             sources,

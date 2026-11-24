@@ -26,7 +26,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   group repositories by name: rename one in place, drag a repository onto another project,
   disband or reset them, and submodules join their parent's project when the sign-in can read
   repository files (the GitHub App sign-in never asks). **Repositories to watch** picks which
-  github.com repositories the lists show, and can add public ones. Optional Dock icon and start at login.
+  github.com repositories the lists show, and can add public ones. **Project boards to show**
+  hides the boards you don't follow from the popovers, the window and the menu-bar counts. Optional Dock icon and start at login.
   Reaching a server on your local network asks for macOS's Local Network permission, and
   says how to turn it on if it's off.
 - **A Setup wizard for macOS:** `Source-Glance-X.Y.Z.pkg` opens Apple's Installer and installs

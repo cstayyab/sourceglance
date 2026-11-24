@@ -170,3 +170,10 @@ button.flat:hover { background: var(--border); }
 .icon.blank { background: none; }
 .project-list .title .flat { opacity: 0.7; }
 .project-list .title .flat:hover { opacity: 1; }
+
+/* Settings → Project boards to show. */
+.watch-list li.organization { display: flex; justify-content: space-between; align-items: center; }
+.watch-list li.account { font-weight: 600; margin-top: 10px; }
+.watch-list .count { color: var(--muted); font-weight: normal; font-variant-numeric: tabular-nums; }
+.watch-list .who { display: inline-grid; }
+.watch-list .who small { color: var(--muted); }
