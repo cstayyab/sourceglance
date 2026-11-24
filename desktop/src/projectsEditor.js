@@ -202,7 +202,7 @@ export class ProjectsEditor {
     }
 
     _newProjectRow() {
-        const add = element('button', {className: 'flat new-project', text: '+ New project', attrs: {type: 'button'}});
+        const add = element('button', {className: 'flat new-project', attrs: {type: 'button'}}, [iconNode(ICONS.add), 'New project']);
         add.addEventListener('click', () => {
             const all = [...this._store.projects(), ...this._pending];
             let name = 'New project';

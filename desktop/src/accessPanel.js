@@ -62,7 +62,7 @@ export class AccessPanel {
                     element('small', {text: usesApp ? 'Pick the repositories the Source Glance app may change and, if private, see'
                         : 'Change the token’s repositories and permissions on GitHub'}),
                 ]),
-                iconNode(ICONS.open),
+                iconNode(ICONS.external),
             ]);
             link.addEventListener('click', () => openLink(accessUrl).catch(e => console.warn('sourceglance: link refused', e)));
             sections.push(element('section', {}, [element('h3', {text: 'Access on GitHub'}), link]));

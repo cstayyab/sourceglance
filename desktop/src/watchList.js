@@ -18,7 +18,7 @@ import {
     setWatched,
 } from '@shared/repoAccess.js';
 
-import {element} from './views.js';
+import {ICONS, element, iconNode} from './views.js';
 
 /**
  * A collapsible group (<details>) titled by an organization, with its count and a switch for all
@@ -29,7 +29,10 @@ export function accordion(title, label) {
     // The switch works on its own: clicking it doesn't open or close the group.
     master.addEventListener('click', event => event.stopPropagation());
     const count = element('span', {className: 'count'});
-    const summary = element('summary', {}, [element('span', {className: 'title', text: title}), count, master]);
+    const chevron = iconNode(ICONS.chevron);
+    chevron.classList.add('chevron');
+    // A grid, as on Ubuntu: chevron, title, then the count and the switch in fixed columns.
+    const summary = element('summary', {}, [chevron, element('span', {className: 'title', text: title}), count, master]);
     const body = element('ul', {className: 'rows'});
     const group = element('details', {className: 'accordion'}, [summary, body]);
     return {group, body, master, count};

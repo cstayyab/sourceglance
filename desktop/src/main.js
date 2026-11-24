@@ -559,7 +559,7 @@ class App {
         const open = element('button', {className: 'flat', attrs: {type: 'button', title: 'Open the board'}}, [iconNode(ICONS.open)]);
         open.disabled = !board.url;
         open.addEventListener('click', () => openLink(board.url).catch(e => console.warn('sourceglance: link refused', e)));
-        return element('li', {attrs: {'data-key': item.number ?? ''}}, [
+        return element('li', {className: 'draft', attrs: {'data-key': item.number ?? ''}}, [
             iconNode(ICONS.draft),
             element('span', {className: 'who'}, [element('span', {text: draft.title || 'Untitled draft'}),
                 element('small', {text: [draft.status ?? 'No status', board.title].join(' · ')})]),

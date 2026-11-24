@@ -30,6 +30,12 @@ export const SYMBOLIC = {
     reopen: svg('<path d="M4.5 6.5h6a3 3 0 0 1 0 6H7"/><path d="M6.5 4 4 6.5 6.5 9"/>'),
     // system-users-symbolic: Assignees….
     assignees: svg('<circle cx="6" cy="5.5" r="2.25"/><path d="M2 13c0-2.5 1.8-4 4-4s4 1.5 4 4"/><path d="M10.5 3.5a2.25 2.25 0 0 1 0 4.25M12 9.25c1.3.5 2 1.9 2 3.75"/>'),
+    // window-close-symbolic: closing a panel.
+    close: svg('<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>'),
+    // view-more-symbolic: the ⋯ menu of a group.
+    more: svg('<circle cx="3.5" cy="8" r="1.1" fill="#000" stroke="none"/><circle cx="8" cy="8" r="1.1" fill="#000" stroke="none"/><circle cx="12.5" cy="8" r="1.1" fill="#000" stroke="none"/>'),
+    // list-add-symbolic: New project.
+    add: svg('<path d="M8 3v10M3 8h10"/>'),
     // view-refresh-symbolic: Refresh.
     refresh: svg('<path d="M13 8a5 5 0 1 1-1.46-3.54"/><path d="M13 2.5v3h-3"/>'),
     // adw-external-link-symbolic: links that open in the browser.

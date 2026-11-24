@@ -130,6 +130,7 @@
             <button type="button" role="tab" data-tab="projects" aria-selected="false"><span class="icon" data-icon="boards"></span>Projects</button>
           </div>
           <div id="tab-organizations">
+            <h3>Organizations</h3>
             <p class="hint">Name each organization. Organizations with the same name share a group in your lists. This stays in Source Glance; nothing changes on GitHub or GitLab.</p>
             <ul id="organization-list" class="organization-list"></ul>
             <p id="no-organizations" class="hint" hidden>Sign in to see your organizations.</p>
@@ -137,9 +138,10 @@
           </div>
           <div id="tab-projects" hidden>
             <div class="section-title">
-              <p class="hint">Repositories are projects of their own until you group them: rename a project, or drag a repository onto another.</p>
-              <button type="button" id="projects-more" class="flat" aria-haspopup="true" aria-expanded="false" title="More">⋯</button>
+              <h3>Projects</h3>
+              <button type="button" id="projects-more" class="flat icon-button" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More"><span class="icon" data-icon="more"></span></button>
             </div>
+            <p class="hint">Repositories are projects of their own until you group them: rename a project, or drag a repository onto another.</p>
             <div id="projects-reset" class="confirm" hidden>
               <p><strong>Reset projects?</strong> This removes every project you made or renamed and puts moved repositories back. Each repository becomes a project of its own again, submodules rejoin their parent’s project, and projects from a platform stay. Organization names aren’t affected. You can’t undo this.</p>
               <div class="row-buttons">
@@ -212,7 +214,7 @@
   <aside id="access-panel" class="side-panel" aria-labelledby="access-title" hidden>
     <div class="side-panel-header">
       <div class="who"><h2 id="access-title"></h2><small id="access-subtitle"></small></div>
-      <button type="button" id="access-close" class="flat" aria-label="Close">✕</button>
+      <button type="button" id="access-close" class="flat icon-button" aria-label="Close" title="Close"><span class="icon" data-icon="close"></span></button>
     </div>
     <div id="access-body" class="side-panel-body"></div>
   </aside>
