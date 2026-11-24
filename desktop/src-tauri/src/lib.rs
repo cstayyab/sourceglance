@@ -316,11 +316,25 @@ fn settings_set(
     origin: Option<String>,
 ) -> Result<(), String> {
     let value = state.settings.set(&key, value)?;
+    if key == "bar-enabled" {
+        set_bar(&app, value.as_bool().unwrap_or(true));
+    }
     let _ = app.emit(
         "settings-changed",
         serde_json::json!({"key": key, "value": value, "origin": origin}),
     );
     Ok(())
+}
+
+/// The Top bar switch: shows or takes down the menu-bar items. The popover's Store stops or
+/// starts its timed refresh when it hears the same setting change.
+fn set_bar<R: tauri::Runtime>(app: &tauri::AppHandle<R>, on: bool) {
+    let _ = app.state::<Tray>().set_on(app, on);
+    if !on {
+        if let Some(popover) = app.get_webview_window("popover") {
+            let _ = popover.hide();
+        }
+    }
 }
 
 /// Opens a link in the browser, only on github.com, gitlab.com or an account's instance
@@ -575,6 +589,12 @@ pub fn run() {
                 user_agent: format!("sourceglance/{version}"),
             });
             app.manage(Tray::default());
+            // Starting Source Glance (Spotlight, the Dock, or at login) turns the Top bar on,
+            // like the app icon's start request on Ubuntu.
+            let _ = app
+                .state::<AppState>()
+                .settings
+                .set("bar-enabled", Value::Bool(true));
             app.manage(Anchor::default());
             #[cfg(target_os = "macos")]
             {
@@ -618,10 +638,15 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| match (window.label(), event) {
-            // Closing the window keeps Source Glance running in the menu bar, as on Ubuntu.
+            // Closing the window keeps Source Glance running in the menu bar, as on Ubuntu. With
+            // the Top bar off there's nothing left to show, so it quits instead.
             ("main", WindowEvent::CloseRequested { api, .. }) => {
-                api.prevent_close();
-                let _ = window.hide();
+                if window.app_handle().state::<Tray>().is_on() {
+                    api.prevent_close();
+                    let _ = window.hide();
+                } else {
+                    window.app_handle().exit(0);
+                }
             }
             // The popover closes when you click elsewhere.
             ("popover", WindowEvent::Focused(false)) => {
@@ -656,8 +681,18 @@ pub fn run() {
             uninstall,
             dev_fake_lists,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Source Glance");
+        .build(tauri::generate_context!())
+        .expect("error while starting Source Glance")
+        .run(|app, event| {
+            // Opening Source Glance again while it runs (Spotlight, the Dock) shows the window,
+            // so the Top bar switch can always be reached.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                show_main(app, None);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)]

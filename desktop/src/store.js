@@ -66,6 +66,8 @@ export class Store {
                 this._follow ? this._loadAccounts() : this.refresh();
             else if (key === 'refresh-interval' && !this._follow)
                 this._schedule();
+            else if (key === 'bar-enabled' && !this._follow)
+                this._barChanged();
             else
                 this._changed();
         });
@@ -89,8 +91,31 @@ export class Store {
         return emit('lists-changed', this._id);
     }
 
+    /** Whether the Top bar switch is on: off stops the timed refresh, as on Ubuntu. */
+    _barOn() {
+        return this.settings.get('bar-enabled', true) !== false;
+    }
+
+    _barChanged() {
+        if (this._barOn()) {
+            this.refresh();
+            return;
+        }
+        clearTimeout(this._timer);
+        this._timer = null;
+        this._controller?.abort();
+        this._controller = null;
+        this.state = this._state(false);
+        this._changed();
+        this._publish();
+    }
+
+    /** The next timed refresh, unless the Top bar is off (the window can still ask for one). */
     _schedule() {
         clearTimeout(this._timer);
+        this._timer = null;
+        if (!this._barOn())
+            return;
         const minutes = Math.max(1, this.settings.get('refresh-interval', 10));
         this._timer = setTimeout(() => this.refresh(), minutes * 60 * 1000);
     }

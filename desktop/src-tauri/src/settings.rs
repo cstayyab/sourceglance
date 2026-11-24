@@ -28,6 +28,7 @@ const KEYS: &[(&str, &str)] = &[
     ("start-automatically", "bool"),
     ("check-updates", "bool"),
     ("token-changed", "number"),
+    ("bar-enabled", "bool"),
     // macOS only.
     ("show-dock-icon", "bool"),
 ];

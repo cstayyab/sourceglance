@@ -91,6 +91,7 @@ class App {
         $('cancel-sign-in').addEventListener('click', () => this.signIn?.abort());
 
         // Settings: the menu bar, the Dock icon and starting at login.
+        $('bar-enabled').addEventListener('change', () => this.settings.set('bar-enabled', $('bar-enabled').checked));
         $('layout').addEventListener('change', () => this.settings.set('layout', $('layout').value));
         for (const box of document.querySelectorAll('input[name=button]')) {
             box.addEventListener('change', () => this.settings.set('toolbar-buttons',
@@ -139,6 +140,7 @@ class App {
     }
 
     async _renderSettings() {
+        $('bar-enabled').checked = this.settings.get('bar-enabled', true) !== false;
         $('layout').value = this.settings.get('layout', 'separate');
         const buttons = toolbarButtons(this.settings);
         for (const box of document.querySelectorAll('input[name=button]'))

@@ -17,7 +17,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its count in a blue pill, as separate items (the default, like Ubuntu) or as one item with
   a tab per list, which suits MacBooks with a notch. The popovers look and work like the Ubuntu
   top-bar menus: one flat list across all accounts grouped by Group by, each item's actions in
-  a menu beside the list, and Glance, Tasks, Settings and About in the Source Glance menu. Optional Dock icon and start at login.
+  a menu beside the list, and Glance, Tasks, Settings and About in the Source Glance menu.
+  **Show Source Glance in the menu bar** (Settings) works like Ubuntu's Top bar switch: off
+  takes it out of the menu bar and stops checking in the background while the window keeps
+  working; opening Source Glance again turns it back on. Optional Dock icon and start at login.
   Reaching a server on your local network asks for macOS's Local Network permission, and
   says how to turn it on if it's off.
 - **A Setup wizard for macOS:** `Source-Glance-X.Y.Z.pkg` opens Apple's Installer and installs

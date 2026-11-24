@@ -132,11 +132,17 @@ impl TrayState {
 pub struct Tray {
     state: Mutex<TrayState>,
     shown: Mutex<Vec<String>>,
+    /// The Top bar switch is off: no items, but the latest state is kept for when it's on.
+    off: Mutex<bool>,
 }
 
 impl Tray {
     /// Brings the menu bar in line with `next`: adds and removes items, and sets titles.
     pub fn update<R: Runtime>(&self, app: &AppHandle<R>, next: TrayState) -> tauri::Result<()> {
+        if *self.off.lock().unwrap() {
+            *self.state.lock().unwrap() = next;
+            return Ok(());
+        }
         let wanted = next.items();
         let mut shown = self.shown.lock().unwrap();
         // New items start with their plain icon, so their images must be set again.
@@ -182,6 +188,26 @@ impl Tray {
         }
         *self.state.lock().unwrap() = next;
         Ok(())
+    }
+
+    /// The Top bar switch (`bar-enabled`, as on Ubuntu): off takes every item out of the menu
+    /// bar, on puts them back with the latest counts.
+    pub fn set_on<R: Runtime>(&self, app: &AppHandle<R>, on: bool) -> tauri::Result<()> {
+        *self.off.lock().unwrap() = !on;
+        if !on {
+            let mut shown = self.shown.lock().unwrap();
+            for id in shown.iter() {
+                app.remove_tray_by_id(id.as_str());
+            }
+            shown.clear();
+            return Ok(());
+        }
+        let state = self.state.lock().unwrap().clone();
+        self.update(app, state)
+    }
+
+    pub fn is_on(&self) -> bool {
+        !*self.off.lock().unwrap()
     }
 
     pub fn layout(&self) -> String {
