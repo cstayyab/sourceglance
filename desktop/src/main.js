@@ -1,5 +1,7 @@
-// The macOS window: accounts, settings and the Issues, Pull requests and Projects lists, using
-// the shared code in src/lib. Text from the API is set with textContent, never as HTML.
+// The macOS window, laid out like Ubuntu's (src/window/app.js): Glance (Widgets, System Tray),
+// Tasks (All Tasks, Issues, Pull requests, Project Boards) and Settings (Accounts, Preferences,
+// Startup, About), with search, Refresh and the Accounts card in the header. It uses the shared
+// code in src/shared. Text from the API is set with textContent, never as HTML.
 import {removeAccount, saveAccount} from '@shared/accountRegistry.js';
 import {
     accountId,
@@ -9,8 +11,19 @@ import {
     parseInstanceUrl,
     platformName,
 } from '@shared/accounts.js';
-import {GITHUB_APP_CLIENT_ID, GITLAB_CLIENT_ID} from '@lib/config.js';
-import {listBadge, normalizeGroupBy, organizationOf} from '@shared/model.js';
+import {AUTHOR_GITHUB, AUTHOR_NAME, GITHUB_APP_CLIENT_ID, GITLAB_CLIENT_ID, REPO_URL} from '@lib/config.js';
+import {
+    allTasks,
+    draftTarget,
+    filterTasks,
+    isMine,
+    itemMatches,
+    itemRef,
+    listBadge,
+    normalizeGroupBy,
+    organizationOf,
+    searchTerms,
+} from '@shared/model.js';
 import {listen} from '@tauri-apps/api/event';
 
 import {GitHubClient} from './platform/github.js';
@@ -18,6 +31,7 @@ import {GitLabClient} from './platform/gitlab.js';
 import {
     Settings,
     allowInstance,
+    quitApp,
     copyDeviceCode,
     holdToken,
     openLink,
@@ -34,7 +48,8 @@ import {ProjectStore} from './projectStore.js';
 import {ProjectsEditor} from './projectsEditor.js';
 import {Store} from './store.js';
 import {WatchList} from './watchList.js';
-import {LOCAL_NETWORK_TEXT, element, errorText, timeAgo, toolbarButtons} from './views.js';
+import {ICONS, LOCAL_NETWORK_TEXT, element, errorText, groupsFor, iconNode, timeAgo, toolbarButtons} from './views.js';
+import appIcon from '../../src/icons/sourceglance-app.svg';
 
 const factory = {
     github: (version, base) => new GitHubClient(version, base),
@@ -42,6 +57,41 @@ const factory = {
 };
 
 const $ = id => document.getElementById(id);
+
+// The sections and their pages, as in Ubuntu's sidebar. Glance's two entries are parts of one
+// page; the Tasks pages share the list page.
+const SECTIONS = {
+    glance: {title: 'Glance', pages: [
+        {id: 'widgets', title: 'Widgets', icon: 'glance', page: 'page-glance', anchor: 'widgets'},
+        {id: 'tray', title: 'System Tray', icon: 'settings', page: 'page-glance', anchor: 'tray'},
+    ]},
+    tasks: {title: 'Tasks', pages: [
+        {id: 'tasks', title: 'All Tasks', icon: 'tasks', page: 'page-tasks', count: 'tasks'},
+        {id: 'issues', title: 'Issues', icon: 'issues', page: 'page-tasks', count: 'issues'},
+        {id: 'prs', title: 'Pull requests', icon: 'pr', page: 'page-tasks', count: 'prs'},
+        {id: 'boards', title: 'Project Boards', icon: 'boards', page: 'page-tasks', count: 'boards'},
+    ]},
+    settings: {title: 'Settings', pages: [
+        {id: 'accounts', title: 'Accounts', icon: 'assignees', page: 'accounts'},
+        {id: 'settings-preferences', title: 'Preferences', icon: 'settings', page: 'page-preferences'},
+        {id: 'settings-startup', title: 'Startup', icon: 'startup', page: 'page-startup'},
+        {id: 'settings-about', title: 'About', icon: 'about', page: 'page-about'},
+    ]},
+};
+
+// Other names pages are asked for by: the popover's menu and the older ids.
+const ALIASES = {glance: 'widgets', settings: 'accounts', about: 'settings-about', preferences: 'settings-preferences',
+    startup: 'settings-startup', projects: 'boards'};
+
+function pageInfo(id) {
+    const wanted = ALIASES[id] ?? id;
+    for (const [section, {pages}] of Object.entries(SECTIONS)) {
+        const page = pages.find(entry => entry.id === wanted);
+        if (page)
+            return {section, ...page};
+    }
+    return null;
+}
 
 class App {
     constructor(settings) {
@@ -52,8 +102,10 @@ class App {
         // Projects and the repositories to watch, as in Ubuntu's Preferences and Limit repositories.
         this.projects = new ProjectStore(settings, this.store.clients);
         this._organizations = 0;
-        this.current = 'issues';
+        this.page = 'issues';
         this.signIn = null;
+        // Which section shows; the page last open in each section is kept.
+        this._lastPage = {glance: 'widgets', tasks: 'issues', settings: 'accounts'};
     }
 
     get accounts() {
@@ -100,28 +152,93 @@ class App {
             sourceOf: account => this.state.sources.find(src => src.account.id === account.id),
         });
         await listen('open-page', ({payload}) => this.openPage(payload));
+        this.openPage('issues');
         await this.store.start();
         // First run: the window opens before it can hear the popover ask for Accounts.
         if (this.accounts.length === 0)
             this.openPage('accounts');
     }
 
-    /** "accounts", "settings" or "tasks" (the lists). */
-    openPage(page) {
-        $('accounts').hidden = page !== 'accounts';
-        $('settings').hidden = page !== 'settings';
-        if (page === 'settings')
+    /** Shows a page by id (see SECTIONS), selecting its section and entry in the sidebars. */
+    openPage(id) {
+        const info = pageInfo(id) ?? pageInfo('issues');
+        this.page = info.id;
+        this._lastPage[info.section] = info.id;
+        for (const button of document.querySelectorAll('[data-section]'))
+            button.setAttribute('aria-current', String(button.dataset.section === info.section));
+        $('section-title').textContent = SECTIONS[info.section].title;
+        this._renderSectionPages(info.section);
+        for (const page of document.querySelectorAll('.page'))
+            page.hidden = page.id !== info.page;
+        $('page-title').textContent = info.section === 'glance' ? 'Glance' : info.title;
+        // Search is for the lists.
+        $('search').hidden = info.section !== 'tasks';
+        if (info.anchor)
+            $(info.anchor).scrollIntoView({block: 'start'});
+        else
+            document.querySelector('.pages').scrollTop = 0;
+        this._hideCard();
+        if (info.section === 'tasks')
+            this._renderList();
+        else
             this._renderSettings();
     }
 
+    /** The section's pages in the second sidebar, with counts for the lists. */
+    _renderSectionPages(section) {
+        $('section-pages').replaceChildren(...SECTIONS[section].pages.map(page => {
+            const count = page.count ? listBadge(page.count, this.state) || '' : '';
+            const button = element('button', {attrs: {'type': 'button', 'aria-current': String(page.id === this.page)}}, [
+                iconNode(ICONS[page.icon]),
+                element('span', {className: 'label', text: page.title}),
+                ...count ? [element('span', {className: 'badge', text: count})] : [],
+            ]);
+            button.addEventListener('click', () => this.openPage(page.id));
+            return element('li', {}, [button]);
+        }));
+    }
+
     _wire() {
+        // Icons named in the page (data-icon) and the app icon.
+        for (const node of document.querySelectorAll('[data-icon]')) {
+            const url = ICONS[node.dataset.icon];
+            node.style.maskImage = `url("${url}")`;
+            node.style.webkitMaskImage = `url("${url}")`;
+        }
+        for (const image of document.querySelectorAll('.app-icon, .about-icon'))
+            image.src = appIcon;
+        $('about-version').textContent = `Version ${__APP_VERSION__}`;
+        $('about-author').textContent = AUTHOR_NAME;
+        $('about-author-login').textContent = `@${AUTHOR_GITHUB}`;
+        const links = {
+            author: `https://github.com/${AUTHOR_GITHUB}`,
+            issues: `${REPO_URL}/issues`,
+            fork: `${REPO_URL}/fork`,
+            contributing: `${REPO_URL}/blob/main/CONTRIBUTING.md`,
+        };
+        for (const button of document.querySelectorAll('[data-link]'))
+            button.addEventListener('click', () => openLink(links[button.dataset.link]).catch(e => console.warn('sourceglance: link refused', e)));
+
+        for (const button of document.querySelectorAll('[data-section]'))
+            button.addEventListener('click', () => this.openPage(this._lastPage[button.dataset.section]));
+        $('exit').addEventListener('click', () => quitApp());
         $('refresh').addEventListener('click', () => this.store.refresh());
-        $('show-accounts').addEventListener('click', () => this.openPage($('accounts').hidden ? 'accounts' : 'tasks'));
-        $('show-settings').addEventListener('click', () => this.openPage($('settings').hidden ? 'settings' : 'tasks'));
-        for (const tab of document.querySelectorAll('[role=tab]')) {
+        $('search').addEventListener('input', () => this._renderList());
+        $('accounts-button').addEventListener('click', () => ($('accounts-card').hidden ? this._showCard() : this._hideCard()));
+        document.addEventListener('mousedown', event => {
+            if (!$('accounts-card').hidden && !$('accounts-card').contains(event.target) && !$('accounts-button').contains(event.target))
+                this._hideCard();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape')
+                this._hideCard();
+        });
+        for (const tab of document.querySelectorAll('.big-tabs [role=tab]')) {
             tab.addEventListener('click', () => {
-                this.current = tab.dataset.list;
-                this.render();
+                for (const other of document.querySelectorAll('.big-tabs [role=tab]'))
+                    other.setAttribute('aria-selected', String(other === tab));
+                $('tab-organizations').hidden = tab.dataset.tab !== 'organizations';
+                $('tab-projects').hidden = tab.dataset.tab !== 'projects';
             });
         }
         for (const radio of document.querySelectorAll('input[name=method]'))
@@ -135,7 +252,13 @@ class App {
 
         // Settings: the menu bar, the Dock icon and starting at login.
         $('bar-enabled').addEventListener('change', () => this.settings.set('bar-enabled', $('bar-enabled').checked));
-        $('layout').addEventListener('change', () => this.settings.set('layout', $('layout').value));
+        for (const radio of document.querySelectorAll('input[name=layout]'))
+            radio.addEventListener('change', () => this.settings.set('layout', radio.value));
+        $('refresh-interval').addEventListener('change', () => {
+            const minutes = Math.min(120, Math.max(1, Math.round(Number($('refresh-interval').value) || 10)));
+            $('refresh-interval').value = String(minutes);
+            this.settings.set('refresh-interval', minutes);
+        });
         $('group-by').addEventListener('change', () => this.settings.set('group-by', $('group-by').value));
         for (const box of document.querySelectorAll('input[name=button]')) {
             box.addEventListener('change', () => this.settings.set('toolbar-buttons',
@@ -151,7 +274,7 @@ class App {
                 await setStartAtLogin(wanted);
                 await this.settings.set('start-automatically', wanted);
             } catch (e) {
-                $('settings-message').textContent = `Couldn’t change the login item: ${e}`;
+                $('startup-message').textContent = `Couldn’t change the login item: ${e}`;
             }
             $('start-at-login').checked = await startAtLogin();
         });
@@ -170,12 +293,12 @@ class App {
         });
         $('uninstall-yes').addEventListener('click', async () => {
             $('uninstall-yes').disabled = true;
-            $('settings-message').textContent = 'Uninstalling…';
+            $('uninstall-message').textContent = 'Uninstalling…';
             try {
                 await uninstall($('remove-data').checked);
-                $('settings-message').textContent = 'Source Glance is in the Trash. Goodbye!';
+                $('uninstall-message').textContent = 'Source Glance is in the Trash. Goodbye!';
             } catch (e) {
-                $('settings-message').textContent = `Couldn’t uninstall: ${e}`;
+                $('uninstall-message').textContent = `Couldn’t uninstall: ${e}`;
                 $('uninstall-confirm').hidden = true;
                 $('uninstall').disabled = false;
                 $('uninstall-yes').disabled = false;
@@ -185,7 +308,10 @@ class App {
 
     async _renderSettings() {
         $('bar-enabled').checked = this.settings.get('bar-enabled', true) !== false;
-        $('layout').value = this.settings.get('layout', 'separate');
+        const layout = this.settings.get('layout', 'separate');
+        for (const radio of document.querySelectorAll('input[name=layout]'))
+            radio.checked = radio.value === layout;
+        $('refresh-interval').value = String(this.settings.get('refresh-interval', 10));
         $('group-by').value = normalizeGroupBy(this.settings.get('group-by', 'project'));
         this._renderOrganizations();
         this.projectsEditor.render();
@@ -202,7 +328,7 @@ class App {
      * offers every organization's name. Typing waits for Enter or leaving the field.
      */
     async _renderOrganizations() {
-        if ($('settings').hidden)
+        if ($('page-preferences').hidden)
             return;
         const list = $('organization-list');
         // Don't redraw under someone typing a name.
@@ -308,9 +434,12 @@ class App {
     render() {
         this._noteOrganizations();
         this._renderStatus();
-        this._renderCounts();
+        this._renderSectionPages(pageInfo(this.page).section);
         this._renderAccounts();
-        this._renderList();
+        if (!$('accounts-card').hidden)
+            this._showCard();
+        if (pageInfo(this.page).section === 'tasks')
+            this._renderList();
     }
 
     _renderStatus() {
@@ -322,13 +451,6 @@ class App {
             text = `${problem.title}: ${problem.kind === 'signed-out' ? 'signed out' : problem.kind}`;
         $('status').textContent = text;
         $('status').classList.toggle('problem', Boolean(problem));
-    }
-
-    _renderCounts() {
-        for (const badge of document.querySelectorAll('[data-count]'))
-            badge.textContent = listBadge(badge.dataset.count, this.state) || '0';
-        for (const tab of document.querySelectorAll('[role=tab]'))
-            tab.setAttribute('aria-selected', String(tab.dataset.list === this.current));
     }
 
     _renderAccounts() {
@@ -360,47 +482,148 @@ class App {
             this.access.hide();
     }
 
+    /**
+     * The Tasks pages: All Tasks (one list, newest first), Issues and Pull requests (grouped by
+     * Group by, like the popovers), and Project Boards. The header's search filters them.
+     */
     _renderList() {
         const body = $('list-body');
-        const sections = this.state.sources.map(source => {
-            const heading = element('h3', {text: source.title});
-            if (source.status === 'signed-out')
-                return element('section', {className: 'source'}, [heading, element('p', {className: 'hint', text: 'Signed out. Sign in again under Accounts.'})]);
-            if (source.status === 'error' && !source.updatedAt)
-                return element('section', {className: 'source'}, [heading, element('p', {className: 'hint', text: errorText(source.error, this.state.intervalMinutes)})]);
-            if (this.current === 'boards')
-                return element('section', {className: 'source'}, [heading, ...this._boards(source)]);
-            const groups = this.current === 'issues' ? source.groups : source.prGroups;
-            if (groups.length === 0)
-                return element('section', {className: 'source'}, [heading, element('p', {className: 'hint', text: 'Nothing assigned to you.'})]);
-            return element('section', {className: 'source'}, [heading, ...groups.map(group => element('div', {className: 'group'}, [
-                element('h4', {text: group.repo}),
-                element('ul', {}, group.issues.map(item => this._item(item))),
-            ]))]);
+        const terms = searchTerms($('search').value);
+        const loaded = this.state.sources.filter(src => src.status !== 'signed-out' && src.updatedAt);
+        const notes = this.state.sources.flatMap(src => {
+            if (src.status === 'signed-out')
+                return [element('p', {className: 'hint', text: `${src.title}: not signed in. Sign in again under Settings → Accounts.`})];
+            if (src.status === 'error')
+                return [element('p', {className: 'hint', text: `${src.title}: ${errorText(src.error, this.state.intervalMinutes)}`})];
+            return [];
         });
-        body.replaceChildren(...sections);
+        if (this.accounts.length === 0) {
+            body.replaceChildren(element('p', {className: 'empty-state', text: 'Sign in to see what’s assigned to you.'}));
+            return;
+        }
+        if (this.page === 'tasks') {
+            const tasks = filterTasks(allTasks(loaded).filter(task => !task.item || isMine(task.item)), [], terms);
+            body.replaceChildren(...notes, tasks.length
+                ? element('ul', {className: 'tasks'}, tasks.map(task => (task.item ? this._item(task.item, true) : this._draft(task.board, task.draft))))
+                : element('p', {className: 'empty-state', text: terms.length ? 'Nothing matches your search.' : 'Nothing assigned to you.'}));
+            return;
+        }
+        if (this.page === 'boards') {
+            const boards = loaded.filter(src => src.platform === 'github').flatMap(src => src.boards ?? []);
+            const groups = boards.map(board => ({board, drafts: board.drafts.filter(draft =>
+                filterTasks([{title: draft.title, status: draft.status, repo: board.title}], [], terms).length > 0)}))
+                .filter(({drafts}) => drafts.length > 0);
+            body.replaceChildren(...notes, ...groups.length ? groups.map(({board, drafts}) => element('section', {className: 'task-group'}, [
+                element('h3', {}, [element('span', {text: board.title}), element('span', {className: 'count', text: String(drafts.length)})]),
+                element('ul', {className: 'tasks'}, drafts.map(draft => this._draft(board, draft))),
+            ])) : [element('p', {className: 'empty-state', text: terms.length ? 'Nothing matches your search.' : 'No draft items on your project boards.'})]);
+            return;
+        }
+        const groupsOf = src => (this.page === 'issues' ? src.groups : src.prGroups) ?? [];
+        const ui = {settings: this.settings};
+        const byProject = normalizeGroupBy(this.settings.get('group-by', 'project')) === 'project';
+        const groups = groupsFor(ui, loaded, groupsOf)
+            .map(group => ({...group, issues: group.issues.filter(item => isMine(item) && itemMatches(item, terms))}))
+            .filter(group => group.issues.length > 0);
+        body.replaceChildren(...notes, ...groups.length ? groups.map(group => element('section', {className: 'task-group'}, [
+            element('h3', {}, [element('span', {text: group.title}), element('span', {className: 'count', text: String(group.issues.length)})]),
+            element('ul', {className: 'tasks'}, group.issues.map(item => this._item(item, !(byProject && group.title === item.repo)))),
+        ])) : [element('p', {className: 'empty-state', text: terms.length ? 'Nothing matches your search.'
+            : this.page === 'issues' ? 'No open issues assigned to you.' : 'No open pull requests for you.'})]);
     }
 
-    _item(item) {
-        const link = element('a', {text: `#${item.number} ${item.title}`, attrs: {href: '#'}});
-        link.addEventListener('click', event => {
-            event.preventDefault();
-            if (item.url)
-                openLink(item.url).catch(e => console.warn('sourceglance: link refused', e));
-        });
-        const labels = item.labels.map(label => element('span', {className: 'label', text: label.name}));
-        return element('li', {}, [link, ...labels]);
+    /** An issue or pull request: its state, number and title, its repository, labels, and Open. */
+    _item(item, showRepo) {
+        const pr = item.kind === 'pr';
+        const open = element('button', {className: 'flat', attrs: {type: 'button', title: 'Open in the browser'}}, [iconNode(ICONS.open)]);
+        open.disabled = !item.url;
+        open.addEventListener('click', () => openLink(item.url).catch(e => console.warn('sourceglance: link refused', e)));
+        const labels = (item.labels ?? []).map(label => element('span', {className: 'label', text: label.name}));
+        const state = iconNode(pr ? ICONS.pr : ICONS.issue);
+        state.classList.add(pr ? 'state-pr' : 'state-open');
+        return element('li', {}, [
+            state,
+            iconNode(item.platform === 'gitlab' ? ICONS.gitlab : ICONS.github),
+            element('span', {className: 'who'}, [
+                element('span', {text: `${itemRef(item)}  ${item.title}${pr && item.reason === 'review' ? ' · review requested' : ''}`}),
+                element('small', {text: showRepo ? item.repo : ''}),
+            ]),
+            ...labels.length ? [element('span', {className: 'labels'}, labels)] : [],
+            open,
+        ]);
     }
 
-    _boards(source) {
-        if (source.platform !== 'github')
-            return [element('p', {className: 'hint', text: 'Project boards are GitHub only.'})];
-        if (source.boardsError)
-            return [element('p', {className: 'hint', text: 'This sign-in can’t read your project boards.'})];
-        return (source.boards ?? []).map(board => element('div', {className: 'group'}, [
-            element('h4', {text: board.title}),
-            element('ul', {}, board.drafts.map(draft => element('li', {text: `${draft.title}${draft.status ? ` · ${draft.status}` : ''}`}))),
-        ]));
+    /** A draft on a project board: its title, status and the board. */
+    _draft(board, draft) {
+        const {item} = draftTarget(board, draft);
+        const open = element('button', {className: 'flat', attrs: {type: 'button', title: 'Open the board'}}, [iconNode(ICONS.open)]);
+        open.disabled = !board.url;
+        open.addEventListener('click', () => openLink(board.url).catch(e => console.warn('sourceglance: link refused', e)));
+        return element('li', {attrs: {'data-key': item.number ?? ''}}, [
+            iconNode(ICONS.draft),
+            element('span', {className: 'who'}, [element('span', {text: draft.title || 'Untitled draft'}),
+                element('small', {text: [draft.status ?? 'No status', board.title].join(' · ')})]),
+            open,
+        ]);
+    }
+
+    /** The Accounts card under the header's button, as on Ubuntu. */
+    _showCard() {
+        const card = $('accounts-card');
+        const people = this.state.sources.map(src => {
+            const initials = (src.login ?? src.title).replace(/^@/, '').slice(0, 2).toUpperCase();
+            const status = src.status === 'signed-out' || src.error?.kind === 'auth' ? 'bad'
+                : src.status === 'error' || !src.updatedAt ? 'wait' : 'ok';
+            const label = {ok: 'Signed in', wait: src.status === 'error' ? 'Couldn’t load' : 'Loading', bad: 'Signed out'}[status];
+            return element('div', {className: 'person'}, [
+                element('span', {className: 'avatar', attrs: {'aria-hidden': 'true'}}, [initials,
+                    element('span', {className: 'platform'}, [iconNode(src.platform === 'gitlab' ? ICONS.gitlab : ICONS.github)])]),
+                element('span', {className: 'who'}, [element('span', {text: accountTitle({...src.account, login: ''})}),
+                    element('small', {text: src.login ? `@${src.login}` : ''})]),
+                element('span', {className: `dot ${status}`, attrs: {title: label, 'aria-label': label}}),
+            ]);
+        });
+        const action = (text, icon, onClick) => {
+            const button = element('button', {className: 'action', attrs: {type: 'button'}}, [iconNode(icon), element('span', {text})]);
+            button.addEventListener('click', onClick);
+            return button;
+        };
+        const signOutAll = action('Sign out of all', ICONS.quit, () => {
+            confirm.hidden = false;
+        });
+        const confirm = element('div', {className: 'confirm', attrs: {hidden: ''}}, [
+            element('p', {text: 'Sign out of every account? You’ll need to sign in again to see your lists.'}),
+        ]);
+        const cancel = element('button', {text: 'Cancel', attrs: {type: 'button'}});
+        const yes = element('button', {className: 'danger', text: 'Sign out of all', attrs: {type: 'button'}});
+        cancel.addEventListener('click', () => {
+            confirm.hidden = true;
+        });
+        yes.addEventListener('click', async () => {
+            for (const account of [...this.accounts]) {
+                try {
+                    await removeAccount(this.store.list, secrets, account);
+                } catch (e) {
+                    this._accountsMessage(`Couldn’t sign out of ${accountTitle(account)}: ${e?.message ?? e}`);
+                }
+            }
+            this._hideCard();
+        });
+        confirm.append(element('div', {className: 'row-buttons'}, [cancel, yes]));
+        card.replaceChildren(...people, ...people.length ? [element('hr')] : [],
+            action(people.length ? 'Add another account' : 'Add an account', ICONS.signIn, () => {
+                this.openPage('accounts');
+                $('platform').focus();
+            }),
+            action('Manage accounts', ICONS.settings, () => this.openPage('accounts')),
+            ...people.length ? [signOutAll, confirm] : []);
+        card.hidden = false;
+        $('accounts-button').setAttribute('aria-expanded', 'true');
+    }
+
+    _hideCard() {
+        $('accounts-card').hidden = true;
+        $('accounts-button').setAttribute('aria-expanded', 'false');
     }
 
     /** Adds a github.com, gitlab.com or self-hosted account. */

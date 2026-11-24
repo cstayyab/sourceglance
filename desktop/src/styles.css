@@ -1,184 +1,222 @@
-/* Source Glance's own look: the top bar's blue, in light and dark (follows macOS). */
+/* The Source Glance window, laid out and coloured like Ubuntu's (colours measured from Ubuntu 24.04
+   screenshots, light and dark): the sections, the section's pages, and the page. */
 :root {
-  --accent: #3584e4;
-  --accent-strong: #1c71d8;
+  --accent: #1f6feb;
+  --accent-soft: #5793f0;
   --bg: #fafafa;
   --surface: #ffffff;
-  --text: #1f2328;
-  --muted: #59636e;
-  --border: #d1d9e0;
+  --text: #2e3033;
+  --muted: #7d8085;
+  --border: #e3e6e9;
   --problem: #c01c28;
+  --nav-1: #f4f7fb;
+  --nav-1-header: #ceddef;
+  --nav-1-selected: #e0edfb;
+  --nav-2: #e0edfb;
+  --nav-2-header: #c5dffc;
+  --badge: #bad9fc;
+  --hover: rgb(0 0 0 / 0.05);
   color-scheme: light dark;
-  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --accent: #62a0ea;
-    --accent-strong: #78aeed;
-    --bg: #1e1e1e;
-    --surface: #2a2a2a;
-    --text: #e6edf3;
-    --muted: #9198a1;
-    --border: #3d444d;
+    --bg: #242424;
+    --surface: #353535;
+    --text: #ddddde;
+    --muted: #9a9b9e;
+    --border: #3a3c3e;
     --problem: #ff7b72;
+    --nav-1: #26292c;
+    --nav-1-header: #384759;
+    --nav-1-selected: #2c3947;
+    --nav-2: #2c3947;
+    --nav-2-header: #344e6b;
+    --badge: #38577a;
+    --hover: rgb(255 255 255 / 0.06);
   }
 }
 
 * { box-sizing: border-box; }
-
-/* Keep `hidden` working on elements that set their own display. */
 [hidden] { display: none !important; }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); overflow: hidden; -webkit-user-select: none; user-select: none; cursor: default; }
+input, textarea, select { -webkit-user-select: text; user-select: text; }
+
+.app { display: grid; grid-template-columns: 236px 196px 1fr; height: 100vh; }
+
+/* The two sidebars. The window's traffic lights sit over the first one's header. */
+.sidebar { display: flex; flex-direction: column; min-height: 0; }
+.sidebar.primary { background: var(--nav-1); border-right: 1px solid var(--border); }
+.sidebar.secondary { background: var(--nav-2); }
+.sidebar-header { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 14px; flex: none; }
+.sidebar.primary .sidebar-header { background: var(--nav-1-header); padding-left: 80px; font-weight: 700; white-space: nowrap; }
+.sidebar.secondary .sidebar-header { background: var(--nav-2-header); justify-content: center; }
+.sidebar-header h2 { margin: 0; font-size: 14px; }
+.app-icon { width: 22px; height: 22px; }
+
+.nav { list-style: none; margin: 0; padding: 6px; display: grid; gap: 2px; }
+.nav.bottom { margin-top: auto; border-top: 1px solid var(--border); }
+.nav button {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+  border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left;
 }
+.nav button:hover { background: var(--hover); }
+.sidebar.primary .nav button[aria-current=true] { background: var(--nav-1-selected); }
+.sidebar.secondary .nav button[aria-current=true] { background: var(--accent); color: #fff; }
+.nav .label { flex: 1; }
+.nav .badge { min-width: 22px; padding: 0 7px; border-radius: 10px; background: var(--badge); font-size: 11px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.nav button[aria-current=true] .badge { background: var(--accent-soft); color: #fff; }
 
-.titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  background: var(--accent);
-  color: #fff;
-}
+/* The page and its header. */
+.content { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+.content-header { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px; flex: none; }
+.content-header h1 { flex: 1; margin: 0; font-size: 14px; text-align: center; }
+.content-header .search { width: 220px; padding: 5px 10px; border: 0; border-radius: 8px; background: var(--hover); color: inherit; font: inherit; }
+.status { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.status.problem { color: var(--problem); }
+.accounts-button { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 
-.titlebar h1 { margin: 0; font-size: 15px; font-weight: 600; }
-.titlebar-actions { display: flex; align-items: center; gap: 8px; }
-.status { font-size: 12px; opacity: 0.9; }
-.status.problem { font-weight: 600; }
-
-button {
-  font: inherit;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.titlebar button { border-color: rgb(255 255 255 / 0.4); background: rgb(255 255 255 / 0.15); color: #fff; }
-
-main { padding: 16px; display: grid; gap: 16px; }
-
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 16px;
-}
-
-.panel h2 { margin: 0 0 8px; font-size: 14px; }
+.pages { flex: 1; overflow-y: auto; padding: 8px 24px 32px; }
+.page { max-width: 600px; margin: 0 auto; }
+.page.wide { max-width: none; }
+.page-heading { margin: 18px 0 8px; font-size: 18px; }
+.page h3 { margin: 20px 0 6px; font-size: 13px; }
+.heading-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.heading-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.heading-controls input[type=number] { width: 52px; }
+.divider { width: 1px; height: 20px; background: var(--border); }
 .hint { color: var(--muted); margin: 4px 0; }
 
-.account-list { list-style: none; padding: 0; margin: 0 0 12px; }
-.account-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.icon { display: inline-block; flex: none; width: 16px; height: 16px; background: currentColor; mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; vertical-align: middle; }
+.icon.blank { background: none; }
 
-.add-account { display: grid; gap: 8px; max-width: 460px; }
-.add-account h3 { margin: 8px 0 0; font-size: 13px; }
-.add-account label { display: grid; gap: 2px; }
-.add-account input[type=text], .add-account input[type=password], .add-account select {
-  font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);
-}
-.add-account fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 16px; }
-.add-account fieldset label { display: flex; gap: 4px; align-items: center; }
-.form-actions { display: flex; gap: 8px; }
-
-.tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-.tabs button[aria-selected=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-.badge {
-  display: inline-block;
-  min-width: 18px;
-  padding: 0 6px;
-  margin-left: 4px;
-  border-radius: 9px;
-  background: var(--accent-strong);
-  color: #fff;
-  font-size: 11px;
-  text-align: center;
-}
-
-.source h3 { margin: 12px 0 4px; font-size: 13px; }
-.group h4 { margin: 8px 0 2px; font-size: 12px; color: var(--muted); font-weight: 600; }
-.group ul { list-style: none; margin: 0; padding: 0; }
-.group li { padding: 3px 0; }
-.group a { color: var(--text); text-decoration: none; }
-.group a:hover { color: var(--accent-strong); text-decoration: underline; }
-
-.label {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 9px;
-  border: 1px solid var(--border);
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.add-account label.inline { display: flex; gap: 6px; align-items: center; }
-
-.row-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: inherit; }
+button:disabled { opacity: 0.5; }
+button.flat { border: 0; background: none; padding: 5px 8px; }
+button.flat:hover { background: var(--hover); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.danger { color: var(--problem); }
-.confirm { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+input[type=text], input[type=password], input[type=number], input[type=search], select, textarea { font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: inherit; }
+
+/* Cards and rows, like libadwaita's boxed lists. */
+.card { background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: 0 0 0 1px var(--border); }
+.card-list { list-style: none; margin: 0 0 12px; padding: 0; background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--border); }
+.card-list > li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; }
+.card-list > li + li { border-top: 1px solid var(--border); }
+.card-list > li > label { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.who { display: grid; min-width: 0; }
+.who small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.link { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: none; padding: 0; text-align: left; }
+.row.link .who { flex: 1; }
+.form { display: grid; gap: 10px; }
+.form label { display: grid; gap: 3px; }
+.form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; }
+label.inline, .inline { display: inline-flex; align-items: center; gap: 6px; }
+.row-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.confirm { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-top: 6px; }
 .confirm p { margin: 0 0 8px; }
 
-/* Settings → Organizations: one row per organization, with its name. */
-.organization-list { list-style: none; padding: 0; margin: 0 0 12px; border: 1px solid var(--border); border-radius: 10px; }
-.organization-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; }
-.organization-list li + li { border-top: 1px solid var(--border); }
-.organization-list .who { display: grid; min-width: 0; }
-.organization-list .who small { color: var(--muted); }
-.organization-list input { width: 220px; flex: none; font: inherit; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: inherit; }
+/* A GNOME switch. */
+input.switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 42px; height: 24px; margin: 0; border-radius: 12px; background: var(--border); transition: background 0.2s; }
+input.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: left 0.2s; }
+input.switch:checked { background: var(--accent); }
+input.switch:checked::after { left: 21px; }
 
-/* Settings → Projects: each project with its repositories as chips you drag between projects. */
-.section-title { display: flex; align-items: center; justify-content: space-between; }
-button.flat { border: 0; background: none; color: inherit; font: inherit; padding: 2px 8px; border-radius: 6px; }
-button.flat:hover { background: var(--border); }
-.project-list { list-style: none; padding: 0; margin: 0 0 12px; border: 1px solid var(--border); border-radius: 10px; }
-.project-list > li { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; }
+/* Glance → Widgets and System Tray. */
+.widgets-placeholder { background: #1046b9; color: #fff; padding: 28px; box-shadow: none; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+.tile { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--border); }
+.tile:has(input:checked) { box-shadow: 0 0 0 2px var(--accent); }
+.tile-preview { display: flex; justify-content: flex-end; gap: 4px; height: 30px; padding: 6px; border-radius: 6px; background: #1d1d1d; }
+.tile-preview span { width: 26px; border-radius: 4px; background: #3a3a3a; }
+.tile-preview.tabs span { width: 70px; }
+.lists { border: 0; padding: 0; margin: 6px 0; display: flex; gap: 16px; flex-wrap: wrap; }
+.lists legend { color: var(--muted); padding: 0 0 4px; }
+
+/* Tasks. */
+.task-group { margin: 8px 0 16px; }
+.task-group > h3 { display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px; font-size: 13px; }
+.task-group > h3 .count { min-width: 22px; padding: 0 7px; border-radius: 10px; background: var(--hover); font-size: 11px; text-align: center; }
+.tasks { list-style: none; margin: 0; padding: 0; background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--border); }
+.tasks > li { display: flex; align-items: center; gap: 10px; padding: 9px 14px; }
+.tasks > li + li { border-top: 1px solid var(--border); }
+.tasks .who span { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.tasks .state-open { color: #26a269; }
+.tasks .state-pr { color: #1c71d8; }
+.tasks .labels { display: flex; gap: 4px; flex-wrap: wrap; }
+.tasks .label { padding: 1px 8px; border-radius: 999px; font-size: 11px; box-shadow: inset 0 0 0 1px var(--border); white-space: nowrap; }
+.tasks .who { flex: 1; }
+.empty-state { color: var(--muted); text-align: center; padding: 40px 0; }
+
+/* Accounts. */
+.account-list .account-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.avatar { position: relative; flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: #fff; font-weight: 700; font-size: 12px; }
+.avatar .platform { position: absolute; right: -3px; bottom: -3px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); color: var(--text); display: grid; place-items: center; }
+.avatar .platform .icon { width: 10px; height: 10px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.ok { background: #26a269; }
+.dot.wait { background: #e5a50a; }
+.dot.bad { background: #c01c28; }
+
+/* The Accounts card under the header's button. */
+.accounts-card { position: absolute; top: 48px; right: 14px; z-index: 5; width: 320px; padding: 8px; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--border), 0 8px 24px rgb(0 0 0 / 0.18); }
+.accounts-card .person { display: flex; align-items: center; gap: 10px; padding: 8px; }
+.accounts-card .person .who { flex: 1; }
+.accounts-card hr { border: 0; border-top: 1px solid var(--border); margin: 6px 0; }
+.accounts-card .action { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; padding: 8px; border-radius: 8px; text-align: left; }
+.accounts-card .action:hover { background: var(--hover); }
+
+/* Preferences: big tabs. */
+.big-tabs { display: flex; justify-content: center; gap: 8px; margin: 14px 0; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.big-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 28px; border: 0; border-radius: 10px; background: none; font-size: 15px; font-weight: 700; }
+.big-tabs button[aria-selected=true] { background: var(--hover); }
+
+/* Preferences → Organizations. */
+.organization-list { list-style: none; padding: 0; margin: 0 0 12px; background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--border); }
+.organization-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 14px; }
+.organization-list li + li { border-top: 1px solid var(--border); }
+.organization-list input { width: 220px; flex: none; }
+
+/* Preferences → Projects. */
+.section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.project-list { list-style: none; padding: 0; margin: 0 0 12px; background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--border); }
+.project-list > li { display: flex; gap: 8px; align-items: flex-start; padding: 8px 14px; }
 .project-list > li + li { border-top: 1px solid var(--border); }
-.project-list > li.drop-target { background: rgb(53 132 228 / 0.12); }
+.project-list > li.drop-target { background: rgb(31 111 235 / 0.12); }
 .project-list .project { flex: 1; display: grid; gap: 6px; min-width: 0; }
 .project-list .title { display: flex; align-items: center; gap: 6px; font-weight: 600; min-width: 0; }
 .project-list .title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-list .title small { font-weight: normal; color: var(--muted); }
-.project-list .title input { flex: 1; font: inherit; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: inherit; }
+.project-list .title input { flex: 1; }
+.project-list .title .flat { opacity: 0.7; }
 .project-list .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.project-list .chip { padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; cursor: grab; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-list .chip { padding: 2px 8px; border-radius: 999px; font-size: 12px; box-shadow: inset 0 0 0 1px var(--border); cursor: grab; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-list .empty { color: var(--muted); font-size: 12px; }
 .project-list .end { width: 34px; flex: none; display: grid; justify-items: end; }
-.project-list .confirm { margin-top: 6px; }
 .project-list .new-project { color: var(--accent); }
 
-/* Small icons, tinted with the text colour (a mask over the SVG, see iconNode() in views.js). */
-.icon { display: inline-block; flex: none; width: 16px; height: 16px; background: currentColor; mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; vertical-align: middle; }
-.icon.blank { background: none; }
-.project-list .title .flat { opacity: 0.7; }
-.project-list .title .flat:hover { opacity: 1; }
-
+/* About. */
+.about-head { text-align: center; margin: 24px 0 8px; }
+.about-head h2 { margin: 8px 0 2px; font-size: 26px; }
+.about-icon { width: 84px; height: 84px; }
 
 /* Limit repositories & boards: a panel over the window's right side, as on Ubuntu. */
 .side-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 92vw); display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgb(0 0 0 / 0.18); z-index: 10; }
 .side-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
 .side-panel-header h2 { margin: 0; font-size: 15px; }
-.side-panel-header small { color: var(--muted); }
 .side-panel-body { flex: 1; overflow-y: auto; padding: 4px 16px 16px; }
 .side-panel-body h3 { margin: 16px 0 4px; font-size: 13px; }
-.side-panel .who { display: grid; min-width: 0; }
-.side-panel .who small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-panel .row.link { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: inherit; font: inherit; text-align: left; }
-.side-panel .search { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: inherit; margin: 4px 0 6px; }
-.side-panel .results { list-style: none; padding: 0; margin: 0 0 8px; border: 1px solid var(--border); border-radius: 10px; }
+.side-panel .row.link { justify-content: space-between; padding: 8px 12px; border-radius: 10px; background: var(--surface); box-shadow: 0 0 0 1px var(--border); }
+.side-panel .search { width: 100%; margin: 4px 0 6px; }
+.side-panel .results { list-style: none; padding: 0; margin: 0 0 8px; background: var(--surface); border-radius: 10px; box-shadow: 0 0 0 1px var(--border); }
 .side-panel .results:empty { display: none; }
 .side-panel .results li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 12px; }
 .side-panel .results li + li { border-top: 1px solid var(--border); }
-.accordion { border: 1px solid var(--border); border-radius: 10px; margin: 6px 0; background: var(--surface); }
-.accordion summary { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: default; list-style: none; }
+.accordion { border-radius: 10px; margin: 6px 0; background: var(--surface); box-shadow: 0 0 0 1px var(--border); }
+.accordion summary { display: flex; align-items: center; gap: 8px; padding: 8px 12px; list-style: none; }
 .accordion summary::-webkit-details-marker { display: none; }
 .accordion summary::before { content: '›'; color: var(--muted); width: 10px; transition: transform 0.2s; }
 .accordion[open] summary::before { transform: rotate(90deg); }
@@ -187,8 +225,3 @@ button.flat:hover { background: var(--border); }
 .accordion .rows { list-style: none; margin: 0; padding: 0 0 4px; }
 .accordion .rows li label { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 12px 6px 30px; }
 .accordion .rows li + li { border-top: 1px solid var(--border); }
-input.switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 38px; height: 22px; margin: 0; border-radius: 11px; background: var(--border); transition: background 0.2s; }
-input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: left 0.2s; }
-input.switch:checked { background: var(--accent); }
-input.switch:checked::after { left: 18px; }
-.account-list .account-actions { display: flex; gap: 6px; }

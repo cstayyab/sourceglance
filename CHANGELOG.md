@@ -28,7 +28,10 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   repository files (the GitHub App sign-in never asks). **Limit repositories & boards**, on
   each GitHub account, links to GitHub to change what the sign-in can reach, picks which
   github.com repositories the lists show (and adds public ones), and hides the project boards
-  you don't follow from the popovers, the window and the menu-bar counts. Optional Dock icon and start at login.
+  you don't follow from the popovers, the window and the menu-bar counts. The window is laid
+  out like Ubuntu's: Glance (Widgets, System Tray), Tasks (All Tasks, Issues, Pull requests,
+  Project Boards, with search), Settings (Accounts, Preferences, Startup, About) and Exit,
+  with the Accounts card in the header. Optional Dock icon and start at login.
   Reaching a server on your local network asks for macOS's Local Network permission, and
   says how to turn it on if it's off.
 - **A Setup wizard for macOS:** `Source-Glance-X.Y.Z.pkg` opens Apple's Installer and installs

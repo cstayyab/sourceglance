@@ -30,11 +30,15 @@ import mergeIcon from '../../src/icons/git-merge-symbolic.svg';
 import boardsIcon from '../../src/icons/checklist-symbolic.svg';
 import labelIcon from '../../src/icons/label-symbolic.svg';
 import appIcon from '../../src/icons/sourceglance-symbolic.svg';
+import githubIcon from '../../src/icons/github-symbolic.svg';
+import gitlabIcon from '../../src/icons/gitlab-symbolic.svg';
 import {openLink} from './platform/tauri.js';
 import {SYMBOLIC} from './symbolicIcons.js';
 
 export const ICONS = {
     app: appIcon,
+    github: githubIcon,
+    gitlab: gitlabIcon,
     issue: issueIcon,
     issueClosed: issueClosedIcon,
     pr: prIcon,
@@ -220,7 +224,7 @@ function addClosedFooter(ui, count, url, text, icon) {
 }
 
 /** The items as groups, built the way Glance → System Tray says (Group by): [{title, issues}]. */
-function groupsFor(ui, sources, groupsOf) {
+export function groupsFor(ui, sources, groupsOf) {
     const groupBy = normalizeGroupBy(ui.settings.get('group-by', 'project'));
     if (groupBy === 'platform')
         return groupByPlatform(sources, groupsOf);
